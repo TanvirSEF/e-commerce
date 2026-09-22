@@ -731,3 +731,69 @@ export const SEED_SUPPORT_TICKETS: SeedSupportTicket[] = [
   },
 ]
 
+export interface SeedBlogCategory {
+  id: string
+  name: string
+  slug: string
+}
+
+export interface SeedBlog {
+  id: string
+  title: string
+  slug: string
+  shortDescription: string
+  description: string
+  categoryName: string
+  categorySlug: string
+  banner: string
+  date: string
+  author: string
+}
+
+export const SEED_BLOG_CATEGORIES: SeedBlogCategory[] = [
+  { id: "bc-1", name: "Fashion & Trends", slug: "fashion-trends" },
+  { id: "bc-2", name: "Technology & Gadgets", slug: "technology-gadgets" },
+  { id: "bc-3", name: "Lifestyle & Living", slug: "lifestyle-living" },
+  { id: "bc-4", name: "Shopping Tips", slug: "shopping-tips" },
+]
+
+export const SEED_BLOGS: SeedBlog[] = [
+  {
+    id: "b-1",
+    title: "10 Essential Gadgets Every Remote Worker Needs in 2026",
+    slug: "10-essential-gadgets-remote-worker-2026",
+    shortDescription: "Discover the top productivity boosters and smart desktop accessories to elevate your daily home office experience.",
+    description: "Working remotely has become the standard for modern professionals. Having the right tools and ergonomic peripherals not only enhances your daily workflow efficiency but also protects your physical well-being. From active noise-cancelling headphones to wireless charging stations and ultrawide monitors, here is our ultimate gear checklist for 2026.",
+    categoryName: "Technology & Gadgets",
+    categorySlug: "technology-gadgets",
+    banner: "/assets/img/placeholder-rect.jpg",
+    date: "18 Sep 2026",
+    author: "Editorial Team",
+  },
+  {
+    id: "b-2",
+    title: "The Ultimate Guide to Seasonal Fashion & Sustainable Fabrics",
+    slug: "ultimate-guide-seasonal-fashion-sustainable-fabrics",
+    shortDescription: "Explore eco-friendly wardrobe staples, organic cotton blends, and modern minimalist outfit styling.",
+    description: "Sustainable fashion is more than a trend—it's a conscious choice towards enduring quality. In this article, our stylists break down the essential pieces you need for versatile seasonal layering, breathable pure cottons, and timeless colors that never go out of style.",
+    categoryName: "Fashion & Trends",
+    categorySlug: "fashion-trends",
+    banner: "/assets/img/placeholder-rect.jpg",
+    date: "12 Sep 2026",
+    author: "Fashion Editor",
+  },
+  {
+    id: "b-3",
+    title: "How to Maximize Your Savings During Flash Sales and Festival Promos",
+    slug: "how-to-maximize-savings-flash-sales",
+    shortDescription: "Smart coupon stacking tricks, wallet cashbacks, and early-bird checkout tips to get the highest discounts.",
+    description: "Online flash sales offer incredible price drops, but items go out of stock in minutes. Learn the best strategies: setting wishlist alerts, pre-filling shipping addresses, combining store vouchers with bank payment discounts, and collecting club points for extra savings.",
+    categoryName: "Shopping Tips",
+    categorySlug: "shopping-tips",
+    banner: "/assets/img/placeholder-rect.jpg",
+    date: "05 Sep 2026",
+    author: "Smart Shopper",
+  },
+]
+
+
