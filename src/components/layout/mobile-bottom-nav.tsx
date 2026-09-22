@@ -13,6 +13,13 @@ export function MobileBottomNav() {
   if (pathname.startsWith("/admin")) {
     return null
   }
+  if (
+    pathname.startsWith("/seller") &&
+    !pathname.startsWith("/seller/login") &&
+    !pathname.startsWith("/seller/register")
+  ) {
+    return null
+  }
 
   const NAV_ITEMS = [
     { label: "Home", href: "/", icon: Home },

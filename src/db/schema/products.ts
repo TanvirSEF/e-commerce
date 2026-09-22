@@ -59,6 +59,9 @@ export const products = pgTable("products", {
   featured: boolean("featured").default(false).notNull(),
   todaysDeal: boolean("todays_deal").default(false).notNull(),
   published: boolean("published").default(true).notNull(),
+  addedBy: varchar("added_by", { length: 50 }).default("admin").notNull(),
+  userId: text("user_id"),
+  shopId: integer("shop_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })

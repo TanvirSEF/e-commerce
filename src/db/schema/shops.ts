@@ -47,12 +47,31 @@ export const shopFollowers = pgTable("shop_followers", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
+export const sellerWithdrawRequests = pgTable("seller_withdraw_requests", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  shopId: integer("shop_id")
+    .notNull()
+    .references(() => shops.id, { onDelete: "cascade" }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  message: text("message"),
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }),
+  transactionId: varchar("transaction_id", { length: 100 }),
+  adminNote: text("admin_note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
 export const shopsRelations = relations(shops, ({ one, many }) => ({
   user: one(users, {
     fields: [shops.userId],
     references: [users.id],
   }),
   followers: many(shopFollowers),
+  withdrawRequests: many(sellerWithdrawRequests),
 }))
 
 export const shopFollowersRelations = relations(shopFollowers, ({ one }) => ({
@@ -65,3 +84,17 @@ export const shopFollowersRelations = relations(shopFollowers, ({ one }) => ({
     references: [users.id],
   }),
 }))
+
+export const sellerWithdrawRequestsRelations = relations(
+  sellerWithdrawRequests,
+  ({ one }) => ({
+    shop: one(shops, {
+      fields: [sellerWithdrawRequests.shopId],
+      references: [shops.id],
+    }),
+    user: one(users, {
+      fields: [sellerWithdrawRequests.userId],
+      references: [users.id],
+    }),
+  })
+)

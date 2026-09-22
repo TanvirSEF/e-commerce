@@ -11,8 +11,15 @@ export function SiteHeader() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  // Hide storefront header inside admin panel
+  // Hide storefront header inside admin panel and seller panel
   if (pathname.startsWith("/admin")) {
+    return null
+  }
+  if (
+    pathname.startsWith("/seller") &&
+    !pathname.startsWith("/seller/login") &&
+    !pathname.startsWith("/seller/register")
+  ) {
     return null
   }
 

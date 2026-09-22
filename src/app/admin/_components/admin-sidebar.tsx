@@ -14,6 +14,10 @@ import {
   ChevronRight,
   ExternalLink,
   Search,
+  Store,
+  LifeBuoy,
+  BarChart3,
+  BookOpen,
 } from "lucide-react"
 
 interface NavItem {
@@ -48,12 +52,38 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: "Sellers",
+    icon: Store,
+    children: [
+      { title: "All Sellers", href: "/admin/sellers" },
+      { title: "Payout Requests", href: "/admin/sellers/payout-requests" },
+    ],
+  },
+  {
     title: "Marketing",
     icon: Zap,
     children: [
       { title: "Flash Deals", href: "/admin/flash-deals" },
       { title: "Coupons", href: "/admin/coupons" },
     ],
+  },
+  {
+    title: "Reports",
+    icon: BarChart3,
+    children: [
+      { title: "Sales Report", href: "/admin/reports/sales" },
+      { title: "Stock Alert", href: "/admin/reports/stock" },
+    ],
+  },
+  {
+    title: "Support Tickets",
+    href: "/admin/support-tickets",
+    icon: LifeBuoy,
+  },
+  {
+    title: "Blog System",
+    href: "/admin/blogs",
+    icon: BookOpen,
   },
   {
     title: "Customers",

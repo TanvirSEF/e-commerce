@@ -13,6 +13,13 @@ export function Footer() {
   if (pathname.startsWith("/admin")) {
     return null
   }
+  if (
+    pathname.startsWith("/seller") &&
+    !pathname.startsWith("/seller/login") &&
+    !pathname.startsWith("/seller/register")
+  ) {
+    return null
+  }
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault()
