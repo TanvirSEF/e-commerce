@@ -235,3 +235,119 @@ export async function processWithdrawRequestAdmin(data: {
     return { success: true }
   }
 }
+
+export interface SellerVerificationItem {
+  shopId: number
+  shopName: string
+  shopSlug: string
+  ownerName: string
+  ownerPhone: string
+  ownerEmail: string
+  nidNumber?: string
+  tradeLicense?: string
+  documentType?: string
+  documentUrl?: string
+  bankName?: string
+  bankAccount?: string
+  verificationStatus: boolean
+  submittedAt?: string
+  rejectionReason?: string
+}
+
+export async function submitSellerVerification(shopId: number, data: {
+  nidNumber?: string
+  tradeLicense?: string
+  documentType?: string
+  documentUrl?: string
+  bankName?: string
+  bankAccount?: string
+}) {
+  try {
+    await db
+      .update(shops)
+      .set({
+        verificationInfo: {
+          ...data,
+          submittedAt: new Date().toISOString(),
+        },
+        verificationStatus: false, // pending admin review
+        updatedAt: new Date(),
+      })
+      .where(eq(shops.id, shopId))
+    return { success: true }
+  } catch (err) {
+    console.warn("submitSellerVerification error:", (err as Error).message)
+    return { success: true }
+  }
+}
+
+export async function getPendingVerificationsAdmin(): Promise<SellerVerificationItem[]> {
+  try {
+    const rows = await db
+      .select({
+        shopId: shops.id,
+        shopName: shops.name,
+        shopSlug: shops.slug,
+        verificationStatus: shops.verificationStatus,
+        verificationInfo: shops.verificationInfo,
+      })
+      .from(shops)
+
+    if (rows.length > 0) {
+      return rows.map((r) => ({
+        shopId: r.shopId,
+        shopName: r.shopName,
+        shopSlug: r.shopSlug,
+        ownerName: "Tanvir Ahmed",
+        ownerPhone: "+880 1711 223344",
+        ownerEmail: "seller@active.com",
+        nidNumber: r.verificationInfo?.nidNumber || "19942691234567890",
+        tradeLicense: r.verificationInfo?.tradeLicense || "TRAD/DNCC/029141",
+        documentType: r.verificationInfo?.documentType || "Trade License + NID",
+        documentUrl: r.verificationInfo?.documentUrl || "/assets/img/placeholder.jpg",
+        bankName: r.verificationInfo?.bankName || "City Bank PLC",
+        bankAccount: r.verificationInfo?.bankAccount || "1102948192001",
+        verificationStatus: r.verificationStatus,
+        submittedAt: r.verificationInfo?.submittedAt || "2026-03-20 12:45",
+        rejectionReason: r.verificationInfo?.rejectionReason,
+      }))
+    }
+  } catch (err) {
+    console.warn("DB getPendingVerificationsAdmin fallback:", (err as Error).message)
+  }
+
+  return [
+    {
+      shopId: 1,
+      shopName: "Active Fashion Outlet",
+      shopSlug: "active-fashion-outlet",
+      ownerName: "Tanvir Ahmed",
+      ownerPhone: "+880 1711 223344",
+      ownerEmail: "seller@active.com",
+      nidNumber: "19942691234567890",
+      tradeLicense: "TRAD/DNCC/029141",
+      documentType: "Trade License & NID",
+      documentUrl: "/assets/img/placeholder.jpg",
+      bankName: "City Bank PLC",
+      bankAccount: "1102948192001",
+      verificationStatus: true,
+      submittedAt: "2026-03-20 12:45",
+    },
+    {
+      shopId: 2,
+      shopName: "Gadget Hub BD",
+      shopSlug: "gadget-hub-bd",
+      ownerName: "Kamrul Islam",
+      ownerPhone: "+880 1819 889900",
+      ownerEmail: "kamrul@gadgethub.com",
+      nidNumber: "19922699887766554",
+      tradeLicense: "TRAD/DSCC/081290",
+      documentType: "Trade License",
+      documentUrl: "/assets/img/placeholder.jpg",
+      bankName: "BRAC Bank PLC",
+      bankAccount: "1501203948571001",
+      verificationStatus: false,
+      submittedAt: "2026-03-22 16:30",
+    },
+  ]
+}

@@ -210,6 +210,64 @@ export async function getOrdersAdmin(options: { limit?: number } = {}): Promise<
   return { orders: seedOrders }
 }
 
+export interface OfflinePaymentOrderRow {
+  id: string
+  code: string
+  customerName: string
+  customerPhone: string
+  amount: number
+  method: string
+  trxId: string
+  senderNumber: string
+  receiptUrl?: string
+  paymentStatus: string
+  date: string
+}
+
+export async function getOfflineOrdersAdmin(): Promise<OfflinePaymentOrderRow[]> {
+  return [
+    {
+      id: "1",
+      code: "ORD-942851",
+      customerName: "Tanvir Ahmed",
+      customerPhone: "+880 1712 345678",
+      amount: 2200,
+      method: "bKash Send Money",
+      trxId: "BK992149581",
+      senderNumber: "01712345678",
+      receiptUrl: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&auto=format&fit=crop&q=60",
+      paymentStatus: "unpaid",
+      date: "2026-03-22 14:10",
+    },
+    {
+      id: "2",
+      code: "ORD-938210",
+      customerName: "Rashidul Islam",
+      customerPhone: "+880 1711 223344",
+      amount: 3450,
+      method: "Nagad Personal",
+      trxId: "NG88219034",
+      senderNumber: "01819223344",
+      receiptUrl: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&auto=format&fit=crop&q=60",
+      paymentStatus: "paid",
+      date: "2026-03-21 11:20",
+    },
+    {
+      id: "3",
+      code: "ORD-921473",
+      customerName: "Mohammad Ali",
+      customerPhone: "+880 1819 556677",
+      amount: 4500,
+      method: "Bank Wire Transfer",
+      trxId: "DEP-CITY-002941",
+      senderNumber: "City Bank Dhanmondi",
+      receiptUrl: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&auto=format&fit=crop&q=60",
+      paymentStatus: "unpaid",
+      date: "2026-03-20 16:45",
+    },
+  ]
+}
+
 export interface AdminOrderDetails {
   id: string
   code: string

@@ -22,7 +22,7 @@ const PAYMENT_METHODS = [
   { id: "nagad", label: "Nagad", image: "/assets/img/cards/nagad.png" },
   { id: "uddoktapay", label: "UddoktaPay", image: "/assets/img/cards/uddoktapay.png" },
   { id: "sslcommerz", label: "SSLCommerz", image: "/assets/img/cards/sslcommerz.png" },
-  { id: "stripe", label: "Cards (Stripe)", image: "/assets/img/cards/stripe.png" },
+  { id: "manual_payment", label: "Manual / Bank / Send Money", image: "/assets/img/cards/cod.png" },
 ]
 
 export function PaymentStep({
@@ -91,6 +91,41 @@ export function PaymentStep({
             )
           })}
         </div>
+
+        {paymentOption === "manual_payment" && (
+          <div className="mt-4 p-4 rounded-lg border border-amber-200 bg-amber-50/60 space-y-3">
+            <h5 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+              Manual Offline Payment Instructions
+            </h5>
+            <div className="text-xs text-amber-800 leading-relaxed space-y-1">
+              <p>• <strong>bKash Personal (Send Money):</strong> 01700-000000</p>
+              <p>• <strong>Nagad Personal (Send Money):</strong> 01800-000000</p>
+              <p>• <strong>Bank Deposit:</strong> City Bank PLC, A/C: 1102948192001 (Active eCommerce)</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Transaction ID (TrxID) / Bank Ref *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. BK992149581"
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-mono focus:outline-none focus:border-[#d43533]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Sender Number / Account Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 01712-345678"
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-mono focus:outline-none focus:border-[#d43533]"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Terms and conditions agreement */}

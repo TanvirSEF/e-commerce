@@ -15,6 +15,7 @@ import {
   LifeBuoy,
   Tag,
   MessageSquare,
+  ShieldCheck,
   X,
 } from "lucide-react"
 
@@ -58,6 +59,11 @@ const navItems: NavItem[] = [
     title: "Shop Settings",
     href: "/seller/shop",
     icon: Store,
+  },
+  {
+    title: "Shop Verification",
+    href: "/seller/verify",
+    icon: ShieldCheck,
   },
   {
     title: "Support Tickets",

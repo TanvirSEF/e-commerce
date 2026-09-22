@@ -25,6 +25,16 @@ export const shops = pgTable("shops", {
   rating: numeric("rating", { precision: 3, scale: 2 }).default("0.00").notNull(),
   numOfReviews: integer("num_of_reviews").default(0).notNull(),
   verificationStatus: boolean("verification_status").default(true).notNull(),
+  verificationInfo: jsonb("verification_info").$type<{
+    nidNumber?: string
+    tradeLicense?: string
+    documentType?: string
+    documentUrl?: string
+    bankName?: string
+    bankAccount?: string
+    submittedAt?: string
+    rejectionReason?: string
+  }>(),
   facebook: text("facebook"),
   instagram: text("instagram"),
   google: text("google"),

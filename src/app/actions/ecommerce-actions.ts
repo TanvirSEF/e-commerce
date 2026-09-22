@@ -151,3 +151,29 @@ export async function sendMessageAction(data: {
   return await sendMessage(data)
 }
 
+export async function submitSellerVerificationAction(shopId: number, data: {
+  nidNumber?: string
+  tradeLicense?: string
+  documentType?: string
+  documentUrl?: string
+  bankName?: string
+  bankAccount?: string
+}) {
+  const { submitSellerVerification } = await import("@/services/seller-service")
+  return await submitSellerVerification(shopId, data)
+}
+
+export async function updateShippingSettingsAction(data: {
+  shippingType: "area_wise" | "flat_rate" | "product_wise"
+  flatRateCost: number
+  insideDhakaCost: number
+  outsideDhakaCost: number
+  freeShippingThreshold: number
+  freeShippingEnabled: boolean
+  estimatedDaysInside: string
+  estimatedDaysOutside: string
+}) {
+  const { updateShippingSettings } = await import("@/services/settings-service")
+  return await updateShippingSettings(data)
+}
+

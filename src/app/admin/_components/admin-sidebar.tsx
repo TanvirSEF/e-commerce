@@ -50,6 +50,7 @@ const navItems: NavItem[] = [
     icon: ShoppingBag,
     children: [
       { title: "All Orders", href: "/admin/orders" },
+      { title: "Offline Payments", href: "/admin/orders/offline-payments" },
     ],
   },
   {
@@ -58,6 +59,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "All Sellers", href: "/admin/sellers" },
       { title: "Payout Requests", href: "/admin/sellers/payout-requests" },
+      { title: "Verification Desk", href: "/admin/sellers/verification" },
     ],
   },
   {
@@ -92,9 +94,12 @@ const navItems: NavItem[] = [
     icon: Users,
   },
   {
-    title: "Website Settings",
-    href: "/admin/settings",
+    title: "Setup & Settings",
     icon: Settings,
+    children: [
+      { title: "General Settings", href: "/admin/settings" },
+      { title: "Shipping Configuration", href: "/admin/settings/shipping" },
+    ],
   },
 ]
 

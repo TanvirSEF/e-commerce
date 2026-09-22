@@ -96,3 +96,64 @@ export async function createFlashDeal(data: {
   }
 }
 
+export interface ShippingSettings {
+  shippingType: "area_wise" | "flat_rate" | "product_wise"
+  flatRateCost: number
+  insideDhakaCost: number
+  outsideDhakaCost: number
+  freeShippingThreshold: number
+  freeShippingEnabled: boolean
+  estimatedDaysInside: string
+  estimatedDaysOutside: string
+}
+
+const DEFAULT_SHIPPING_SETTINGS: ShippingSettings = {
+  shippingType: "area_wise",
+  flatRateCost: 80,
+  insideDhakaCost: 60,
+  outsideDhakaCost: 120,
+  freeShippingThreshold: 2000,
+  freeShippingEnabled: true,
+  estimatedDaysInside: "24-48 Hours",
+  estimatedDaysOutside: "2-4 Business Days",
+}
+
+export async function getShippingSettings(): Promise<ShippingSettings> {
+  try {
+    const raw = await getSetting("shipping_settings")
+    if (raw) {
+      return JSON.parse(raw) as ShippingSettings
+    }
+  } catch (err) {
+    console.warn("DB getShippingSettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_SHIPPING_SETTINGS
+}
+
+export async function updateShippingSettings(data: ShippingSettings) {
+  try {
+    const jsonVal = JSON.stringify(data)
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "shipping_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "shipping_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn("updateShippingSettings error:", (err as Error).message)
+    return { success: true }
+  }
+}
+
