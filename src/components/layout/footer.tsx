@@ -134,7 +134,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="transition-colors hover:text-[#d43533]">
+                <Link href="/dashboard/purchase-history" className="transition-colors hover:text-[#d43533]">
                   Order History
                 </Link>
               </li>
@@ -144,13 +144,13 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/track-order" className="transition-colors hover:text-[#d43533]">
-                  Track Order
+                <Link href="/dashboard/wallet" className="transition-colors hover:text-[#d43533]">
+                  My Wallet
                 </Link>
               </li>
               <li>
-                <Link href="/affiliate" className="transition-colors hover:text-[#d43533]">
-                  Be an Affiliate Partner
+                <Link href="/track-order" className="transition-colors hover:text-[#d43533]">
+                  Track Order
                 </Link>
               </li>
             </ul>
