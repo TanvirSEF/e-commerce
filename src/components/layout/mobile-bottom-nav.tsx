@@ -10,6 +10,10 @@ export function MobileBottomNav() {
   const pathname = usePathname()
   const { totalCount, toggleCart } = useCart()
 
+  if (pathname.startsWith("/admin")) {
+    return null
+  }
+
   const NAV_ITEMS = [
     { label: "Home", href: "/", icon: Home },
     { label: "Categories", href: "/categories", icon: Grid },
