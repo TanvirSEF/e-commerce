@@ -164,29 +164,29 @@ app/
   - [x] Best Selling products carousel.
   - [x] Promotional banners.
   - [x] Category-specific product blocks.
-- [ ] **Milestone 4: Product Catalog & Listing Page**
-  - [ ] Category & search routing (`/products`, `/category/[slug]`).
-  - [ ] Responsive filter sidebar (Price, Brands, Attributes, Rating).
-  - [ ] Product Card reusable component (`components/ui/product-card.tsx`).
-  - [ ] Pagination & sorting controls.
-- [ ] **Milestone 5: Product Details Page**
-  - [ ] Dynamic product route (`/product/[slug]`).
-  - [ ] Gallery component with thumbnails and active preview.
-  - [ ] Variant options selector (Colors, Sizes).
-  - [ ] Stock, price calculation & Cart actions.
-  - [ ] Product tabs (Description, Reviews, Seller info).
-  - [ ] Related products section.
-- [ ] **Milestone 6: Cart, Checkout & Order Tracking**
-  - [ ] Client Cart Store / Context with persistence.
-  - [ ] Full `/cart` page with quantity updates & coupon support.
-  - [ ] Multi-step `/checkout` page with address management & payment options.
-  - [ ] `/order-confirmed/[code]` confirmation view.
-  - [ ] `/track-order` status tracking view.
-- [ ] **Milestone 7: Auth & Customer Dashboard**
-  - [ ] Login & Register pages / dialogs.
-  - [ ] Customer dashboard layout with sidebar.
-  - [ ] Purchase history table with order details modal.
-  - [ ] Wishlist & address management views.
+- [x] **Milestone 4: Product Catalog & Listing Page**
+  - [x] Category & search routing (`/products`, `/category/[slug]`).
+  - [x] Responsive filter sidebar (Price, Brands, Attributes, Rating).
+  - [x] Product Card reusable component (`components/ui/product-card.tsx`).
+  - [x] Pagination & sorting controls.
+- [x] **Milestone 5: Product Details Page**
+  - [x] Dynamic product route (`/product/[slug]`).
+  - [x] Gallery component with thumbnails and active preview.
+  - [x] Variant options selector (Colors, Sizes).
+  - [x] Stock, price calculation & Cart actions.
+  - [x] Product tabs (Description, Reviews, Seller info).
+  - [x] Related products section.
+- [x] **Milestone 6: Cart, Checkout & Order Tracking**
+  - [x] Client Cart Store / Context with persistence.
+  - [x] Full `/cart` page with quantity updates & coupon support.
+  - [x] Multi-step `/checkout` page with address management & payment options.
+  - [x] `/order-confirmed/[code]` confirmation view.
+  - [x] `/track-order` status tracking view.
+- [x] **Milestone 7: Auth & Customer Dashboard**
+  - [x] Login & Register pages / dialogs.
+  - [x] Customer dashboard layout with sidebar.
+  - [x] Purchase history table with order details modal.
+  - [x] Wishlist & address management views.
 - [ ] **Milestone 8: Data Seeding & API Endpoints**
   - [ ] Seed script to populate MongoDB from Active eCommerce defaults.
   - [ ] REST API routes & Server Actions for Products, Categories, Orders, Cart.
