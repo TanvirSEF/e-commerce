@@ -1,15 +1,23 @@
-import { Geist, Geist_Mono, Inter } from "next/font/google"
-
+import type { Metadata } from "next"
+import { Inter, Geist_Mono } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
+import { CartProvider } from "@/lib/context/cart-context"
+import { SiteHeader } from "@/components/layout/site-header"
+import { Footer } from "@/components/layout/footer"
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav"
+import { CartDrawer } from "@/components/cart/cart-drawer"
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
+const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
+export const metadata: Metadata = {
+  title: "Active eCommerce | Complete Shopping Solution",
+  description: "A complete solution for E-commerce Business with exclusive features & super responsive layout.",
+  icons: {
+    icon: "/assets/img/logo.png",
+  },
+}
 
 export default function RootLayout({
   children,
@@ -19,11 +27,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn("antialiased", inter.variable, fontMono.variable, "font-sans")}
     >
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
+      <body className="flex min-h-screen flex-col bg-white text-[#292933]">
+        <CartProvider>
+          <SiteHeader />
+          <main className="flex-1 pb-14 lg:pb-0">{children}</main>
+          <Footer />
+          <MobileBottomNav />
+          <CartDrawer />
+        </CartProvider>
       </body>
     </html>
   )
