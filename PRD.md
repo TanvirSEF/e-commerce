@@ -187,7 +187,13 @@ app/
   - [x] Customer dashboard layout with sidebar.
   - [x] Purchase history table with order details modal.
   - [x] Wishlist & address management views.
-- [ ] **Milestone 8: Data Seeding & API Endpoints**
-  - [ ] Seed script to populate MongoDB from Active eCommerce defaults.
-  - [ ] REST API routes & Server Actions for Products, Categories, Orders, Cart.
-  - [ ] Payment gateway & Courier integrations.
+- [x] **Milestone 8: Data Seeding & API Endpoints**
+  - [x] Seed script (`scripts/seed.ts` via `pnpm db:seed`) to populate MongoDB Atlas from Active eCommerce defaults.
+  - [x] Resilient database service (`lib/data-service.ts`) with MongoDB Mongoose query & fallback.
+  - [x] REST API routes (`/api/products`, `/api/products/[slug]`, `/api/categories`, `/api/brands`, `/api/orders`, `/api/auth`).
+  - [x] Wired Server Components (`HomePage`, `ProductsPage`, `ProductDetailsPage`, `TrackOrderView`) to live data service.
+- [ ] **Milestone 9: Admin Management & Seller Panel**
+  - [ ] Admin dashboard layout, KPI metrics, product management, category & brand manager.
+  - [ ] Seller portal with shop settings, product upload, and earnings breakdown.
+  - [ ] Payment gateway webhooks & live courier status sync.
+

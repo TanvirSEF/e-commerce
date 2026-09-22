@@ -80,16 +80,49 @@ export function TrackOrderView() {
     return Boolean(initialCode && !lookupOrder(initialCode))
   })
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
-    const result = lookupOrder(trackingCode)
-    if (result) {
-      setSearchedOrder(result)
+    const trimmed = trackingCode.trim()
+    if (!trimmed) return
+
+    const local = lookupOrder(trimmed)
+    if (local) {
+      setSearchedOrder(local)
       setNotFound(false)
-    } else {
-      setSearchedOrder(null)
-      setNotFound(true)
+      return
     }
+
+    try {
+      const res = await fetch(`/api/orders?code=${encodeURIComponent(trimmed)}`)
+      const data = await res.json()
+      if (data.success && data.order) {
+        setSearchedOrder({
+          code: data.order.code,
+          date: data.order.date ? data.order.date * 1000 : Date.now(),
+          delivery_status: data.order.delivery_status || "pending",
+          payment_type: data.order.payment_type || "Cash on Delivery",
+          payment_status: data.order.payment_status || "unpaid",
+          shipping_type: "Home Delivery",
+          carrier: "Steadfast Courier",
+          shipping_address: data.order.shipping_address,
+          grand_total: Number(data.order.grand_total || 0),
+          items: (data.order.items || []).map(
+            (i: { variation?: string; quantity?: number; price?: number }) => ({
+              name: i.variation || "Product Item",
+              quantity: i.quantity || 1,
+              price: i.price || 0,
+            })
+          ),
+        })
+        setNotFound(false)
+        return
+      }
+    } catch {
+      // ignore
+    }
+
+    setSearchedOrder(null)
+    setNotFound(true)
   }
 
   const steps = [

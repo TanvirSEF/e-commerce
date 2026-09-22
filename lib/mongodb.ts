@@ -9,17 +9,19 @@ declare global {
 
 const MONGODB_URI = process.env.MONGODB_URI
 
-if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable inside .env.local")
-}
-
 let cached = global.mongooseCache
 
 if (!cached) {
   cached = global.mongooseCache = { conn: null, promise: null }
 }
 
-export async function connectToDatabase(): Promise<typeof mongoose> {
+export async function connectToDatabase(): Promise<typeof mongoose | null> {
+  const uri = process.env.MONGODB_URI || MONGODB_URI
+  if (!uri) {
+    console.warn("MONGODB_URI is not configured in .env.local")
+    return null
+  }
+
   if (cached!.conn) {
     return cached!.conn
   }
@@ -27,9 +29,10 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
   if (!cached!.promise) {
     const opts: mongoose.ConnectOptions = {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 4000,
     }
 
-    cached!.promise = mongoose.connect(MONGODB_URI!, opts).then((mongooseInstance) => {
+    cached!.promise = mongoose.connect(uri, opts).then((mongooseInstance) => {
       return mongooseInstance
     })
   }
@@ -38,7 +41,11 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
     cached!.conn = await cached!.promise
   } catch (error) {
     cached!.promise = null
-    throw error
+    console.warn(
+      "MongoDB connection could not be established (using resilient fallback):",
+      (error as Error).message
+    )
+    return null
   }
 
   return cached!.conn

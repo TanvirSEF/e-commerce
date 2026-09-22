@@ -7,6 +7,7 @@ import { PromoBanners } from "./_components/promo-banners"
 import { BestSellingSection } from "./_components/best-selling-section"
 import { HomeCategoryProducts } from "./_components/home-category-products"
 import type { ProductCardProps } from "@/components/product/product-card"
+import { getProducts } from "@/lib/data-service"
 
 // Sample Data for Computer & Accessories
 const COMPUTER_PRODUCTS: ProductCardProps[] = [
@@ -126,7 +127,13 @@ const FASHION_PRODUCTS: ProductCardProps[] = [
   },
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  const compRes = await getProducts({ category: "computer-accessories", limit: 5 })
+  const computerProducts: ProductCardProps[] = compRes.data.length ? compRes.data : COMPUTER_PRODUCTS
+
+  const fashRes = await getProducts({ category: "men-clothing-fashion", limit: 5 })
+  const fashionProducts: ProductCardProps[] = fashRes.data.length ? fashRes.data : FASHION_PRODUCTS
+
   return (
     <div className="flex flex-col gap-2">
       {/* 1. Value Proposition Features Bar */}
@@ -157,7 +164,7 @@ export default function HomePage() {
           { name: "Webcams", slug: "webcams" },
           { name: "Laptop Accessories", slug: "laptop-accessories" },
         ]}
-        products={COMPUTER_PRODUCTS}
+        products={computerProducts}
         accentColor="#3490f3"
       />
 
@@ -171,7 +178,7 @@ export default function HomePage() {
           { name: "Polo T-Shirts", slug: "polo-tshirts" },
           { name: "Bags & Accessories", slug: "bags-accessories" },
         ]}
-        products={FASHION_PRODUCTS}
+        products={fashionProducts}
         accentColor="#d43533"
       />
     </div>

@@ -7,6 +7,7 @@ import { ProductInfo, type ProductDetailsData } from "./_components/product-info
 import { ProductTabs } from "./_components/product-tabs"
 import { ProductRelated } from "./_components/product-related"
 import type { ProductCardProps } from "@/components/product/product-card"
+import { getProductBySlug } from "@/lib/data-service"
 
 interface ProductPageProps {
   params: Promise<{
@@ -155,14 +156,48 @@ const RELATED_PRODUCTS: ProductCardProps[] = [
 
 export default async function ProductDetailsPage({ params }: ProductPageProps) {
   const { slug } = await params
-  const product = {
-    ...SAMPLE_PRODUCT_DATA.default,
-    slug,
-    name:
-      slug !== "classic-mens-casual-shirt"
-        ? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-        : SAMPLE_PRODUCT_DATA.default.name,
-  }
+  const dbProduct = await getProductBySlug(slug)
+
+  const product = dbProduct
+    ? {
+        ...SAMPLE_PRODUCT_DATA.default,
+        id: dbProduct.id,
+        name: dbProduct.name,
+        slug: dbProduct.slug,
+        sku: dbProduct.sku || SAMPLE_PRODUCT_DATA.default.sku,
+        brandName: dbProduct.brandSlug ? dbProduct.brandSlug.toUpperCase() : "Active Brand",
+        brandSlug: dbProduct.brandSlug || "brand",
+        categoryName: dbProduct.categorySlug
+          ? dbProduct.categorySlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+          : "General",
+        categorySlug: dbProduct.categorySlug || "general",
+        price: dbProduct.price,
+        originalPrice: dbProduct.originalPrice,
+        discountPercent: dbProduct.discountPercent,
+        rating: dbProduct.rating || 4.8,
+        reviewCount: dbProduct.reviewCount || 12,
+        stock: dbProduct.stock,
+        thumbnail: dbProduct.thumbnail,
+        images: dbProduct.images.length ? dbProduct.images : SAMPLE_PRODUCT_DATA.default.images,
+        colors: dbProduct.colors.length ? dbProduct.colors : SAMPLE_PRODUCT_DATA.default.colors,
+        sizes: dbProduct.sizes.length ? dbProduct.sizes : SAMPLE_PRODUCT_DATA.default.sizes,
+        sellerName: dbProduct.sellerName,
+        sellerSlug: dbProduct.sellerSlug,
+        description: dbProduct.description || SAMPLE_PRODUCT_DATA.default.description,
+        specifications:
+          dbProduct.specifications.length
+            ? dbProduct.specifications
+            : SAMPLE_PRODUCT_DATA.default.specifications,
+        reviews: dbProduct.reviews.length ? dbProduct.reviews : SAMPLE_PRODUCT_DATA.default.reviews,
+      }
+    : {
+        ...SAMPLE_PRODUCT_DATA.default,
+        slug,
+        name:
+          slug !== "classic-mens-casual-shirt"
+            ? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+            : SAMPLE_PRODUCT_DATA.default.name,
+      }
 
   return (
     <div className="bg-gray-50/40 py-5">

@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata } from "next"
 import { ProductCatalogView } from "./_components/product-catalog-view"
 import type { ProductCardProps } from "@/components/product/product-card"
+import { getProducts } from "@/lib/data-service"
 
 export const metadata: Metadata = {
   title: "Products Catalog | Active eCommerce",
@@ -196,9 +197,24 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const category = resolvedParams?.category || ""
   const keyword = resolvedParams?.keyword || ""
 
+  const dbRes = await getProducts({
+    category: category || undefined,
+    q: keyword || undefined,
+    limit: 50,
+  })
+
+  const products = dbRes.data.length
+    ? dbRes.data.map((p) => ({
+        ...p,
+        categorySlug: p.categorySlug,
+        brandSlug: p.brandSlug,
+        colorName: p.colors?.[0]?.name,
+      }))
+    : CATALOG_PRODUCTS
+
   return (
     <ProductCatalogView
-      initialProducts={CATALOG_PRODUCTS}
+      initialProducts={products}
       initialCategory={category}
       initialKeyword={keyword}
     />
