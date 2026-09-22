@@ -6,4 +6,6 @@ export * from "./shops"
 export * from "./coupons"
 export * from "./customer"
 export * from "./blogs"
+export * from "./reviews"
+export * from "./conversations"
 

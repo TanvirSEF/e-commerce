@@ -8,6 +8,7 @@ import { ProductTabs } from "./_components/product-tabs"
 import { ProductRelated } from "./_components/product-related"
 import type { ProductCardProps } from "@/components/product/product-card"
 import { getProductBySlug } from "@/lib/data-service"
+import { getProductReviews } from "@/services/review-service"
 
 interface ProductPageProps {
   params: Promise<{
@@ -237,11 +238,12 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
 
         {/* Tabs: Description, Specs, Reviews */}
         <ProductTabs
+          productId={product.id}
           description={product.description}
           specifications={product.specifications}
           reviews={product.reviews}
           rating={product.rating}
-          reviewCount={product.reviewCount}
+          reviewCount={product.reviews.length || product.reviewCount}
         />
 
         {/* Related Products Carousel / Grid */}

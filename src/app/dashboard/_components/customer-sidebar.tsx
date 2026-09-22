@@ -4,7 +4,7 @@ import React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, ShoppingBag, Heart, User, LogOut, Wallet, Award, Headphones } from "lucide-react"
+import { LayoutDashboard, ShoppingBag, Heart, User, LogOut, Wallet, Award, Headphones, MessageSquare } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
 
 export function CustomerSidebar() {
@@ -15,6 +15,7 @@ export function CustomerSidebar() {
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Purchase History", href: "/dashboard/purchase-history", icon: ShoppingBag },
     { label: "Wishlist", href: "/dashboard/wishlist", icon: Heart },
+    { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
     { label: "My Wallet", href: "/dashboard/wallet", icon: Wallet },
     { label: "Earning Points", href: "/dashboard/club-points", icon: Award },
     { label: "Support Ticket", href: "/dashboard/support-tickets", icon: Headphones },

@@ -300,12 +300,20 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
               <div className="font-bold text-gray-800">{product.sellerName}</div>
             </div>
           </div>
-          <Link
-            href={`/shop/${product.sellerSlug || "store"}`}
-            className="rounded border border-gray-300 bg-white px-3 py-1.5 font-semibold text-gray-700 transition-colors hover:border-[#d43533] hover:text-[#d43533]"
-          >
-            Visit Store
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/conversations"
+              className="rounded border border-[#d43533] bg-red-50/50 px-2.5 py-1.5 text-xs font-semibold text-[#d43533] transition-colors hover:bg-[#d43533] hover:text-white"
+            >
+              Chat with Seller
+            </Link>
+            <Link
+              href={`/shop/${product.sellerSlug || "store"}`}
+              className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:border-[#d43533] hover:text-[#d43533]"
+            >
+              Visit Store
+            </Link>
+          </div>
         </div>
       )}
 

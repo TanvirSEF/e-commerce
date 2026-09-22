@@ -109,3 +109,45 @@ export async function deleteBlogAction(id: number) {
   return await deleteBlog(id)
 }
 
+export async function updateOrderStatusAction(data: {
+  orderId: string
+  deliveryStatus?: string
+  paymentStatus?: string
+  shippingMethod?: string
+  courierTrackingCode?: string
+}) {
+  const { updateOrderStatusAdmin } = await import("@/services/order-service")
+  return await updateOrderStatusAdmin(data)
+}
+
+export async function submitReviewAction(data: {
+  productId: number
+  userId?: string
+  userName: string
+  rating: number
+  comment: string
+  photos?: string[]
+}) {
+  const { submitReview } = await import("@/services/review-service")
+  return await submitReview(data)
+}
+
+export async function toggleReviewStatusAction(id: number, status: boolean) {
+  const { toggleReviewStatus } = await import("@/services/review-service")
+  return await toggleReviewStatus(id, status)
+}
+
+export async function deleteReviewAction(id: number) {
+  const { deleteReview } = await import("@/services/review-service")
+  return await deleteReview(id)
+}
+
+export async function sendMessageAction(data: {
+  conversationId: string
+  senderId: string
+  message: string
+}) {
+  const { sendMessage } = await import("@/services/conversation-service")
+  return await sendMessage(data)
+}
+

@@ -1,7 +1,8 @@
 "use client"
 
 import React, { useState } from "react"
-import { Search, Eye } from "lucide-react"
+import Link from "next/link"
+import { Search, Eye, Printer } from "lucide-react"
 
 export interface AdminOrderItem {
   id: string
@@ -152,14 +153,23 @@ export function AdminOrdersView({ initialOrders }: AdminOrdersViewProps) {
                     </select>
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedOrder(order)}
-                      className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded inline-flex items-center"
-                      title="View Invoice"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="p-1.5 text-slate-500 hover:text-[#d43533] hover:bg-red-50 rounded inline-flex items-center transition-colors"
+                        title="Manage Order"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </Link>
+                      <Link
+                        href={`/invoice/${order.code}`}
+                        target="_blank"
+                        className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded inline-flex items-center transition-colors"
+                        title="Print Invoice"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

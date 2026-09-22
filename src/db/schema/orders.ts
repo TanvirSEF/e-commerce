@@ -47,6 +47,15 @@ export const orders = pgTable("orders", {
   grandTotal: numeric("grand_total", { precision: 12, scale: 2 }).notNull(),
   couponDiscount: numeric("coupon_discount", { precision: 12, scale: 2 }).default("0.00").notNull(),
   shippingCost: numeric("shipping_cost", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  shippingMethod: varchar("shipping_method", { length: 50 }).default("standard"),
+  courierTrackingCode: varchar("courier_tracking_code", { length: 100 }),
+  courierStatus: varchar("courier_status", { length: 100 }),
+  manualPaymentData: jsonb("manual_payment_data").$type<{
+    name?: string
+    amount?: number
+    trx_id?: string
+    photo?: string
+  }>(),
   viewed: boolean("viewed").default(false).notNull(),
   deliveryViewed: boolean("delivery_viewed").default(false).notNull(),
   paymentStatusViewed: boolean("payment_status_viewed").default(false).notNull(),

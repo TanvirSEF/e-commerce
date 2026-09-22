@@ -42,6 +42,7 @@ const navItems: NavItem[] = [
       { title: "Add New Product", href: "/admin/products/create" },
       { title: "Categories", href: "/admin/categories" },
       { title: "Brands", href: "/admin/brands" },
+      { title: "Product Reviews", href: "/admin/reviews" },
     ],
   },
   {
