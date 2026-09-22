@@ -145,7 +145,9 @@ export function DashboardOverview() {
             <ShoppingCart className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-lg font-extrabold text-gray-900">{totalCount}</div>
+            <div suppressHydrationWarning className="text-lg font-extrabold text-gray-900">
+              {totalCount}
+            </div>
             <div className="text-xs text-gray-500">Products in Cart</div>
           </div>
         </Link>
@@ -158,7 +160,9 @@ export function DashboardOverview() {
             <Heart className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-lg font-extrabold text-gray-900">{wishlist.length}</div>
+            <div suppressHydrationWarning className="text-lg font-extrabold text-gray-900">
+              {wishlist.length}
+            </div>
             <div className="text-xs text-gray-500">Products in Wishlist</div>
           </div>
         </Link>
@@ -171,7 +175,9 @@ export function DashboardOverview() {
             <Package className="h-6 w-6" />
           </div>
           <div>
-            <div className="text-lg font-extrabold text-gray-900">{user?.orderedCount || 4}</div>
+            <div suppressHydrationWarning className="text-lg font-extrabold text-gray-900">
+              {user?.orderedCount || 4}
+            </div>
             <div className="text-xs text-gray-500">Total Ordered</div>
           </div>
         </Link>

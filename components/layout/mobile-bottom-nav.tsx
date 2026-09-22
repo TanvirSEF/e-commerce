@@ -33,7 +33,10 @@ export function MobileBottomNav() {
                 <div className="relative">
                   <ShoppingBag className="h-5 w-5" />
                   {totalCount > 0 && (
-                    <span className="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#d43533] text-[9px] font-bold text-white">
+                    <span
+                      suppressHydrationWarning
+                      className="absolute -top-1 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#d43533] text-[9px] font-bold text-white"
+                    >
                       {totalCount}
                     </span>
                   )}

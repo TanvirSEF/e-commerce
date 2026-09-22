@@ -41,44 +41,41 @@ const DEFAULT_USER: UserProfile = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("active_ecom_user")
-      if (stored) {
-        try {
-          return JSON.parse(stored)
-        } catch {
-          return DEFAULT_USER
-        }
-      }
-    }
-    return DEFAULT_USER
-  })
-
-  const [wishlist, setWishlist] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("active_ecom_wishlist")
-      if (stored) {
-        try {
-          return JSON.parse(stored)
-        } catch {
-          return ["prod-1", "prod-3"]
-        }
-      }
-    }
-    return ["prod-1", "prod-3"]
-  })
+  const [user, setUser] = useState<UserProfile | null>(DEFAULT_USER)
+  const [wishlist, setWishlist] = useState<string[]>(["prod-1", "prod-3"])
+  const isInitialized = React.useRef(false)
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem("active_ecom_user", JSON.stringify(user))
-    } else {
-      localStorage.removeItem("active_ecom_user")
+    try {
+      const storedUser = localStorage.getItem("active_ecom_user")
+      if (storedUser) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setUser(JSON.parse(storedUser))
+      }
+      const storedWishlist = localStorage.getItem("active_ecom_wishlist")
+      if (storedWishlist) {
+        setWishlist(JSON.parse(storedWishlist))
+      }
+    } catch {
+      // ignore
+    }
+    isInitialized.current = true
+  }, [])
+
+  useEffect(() => {
+    if (isInitialized.current) {
+      if (user) {
+        localStorage.setItem("active_ecom_user", JSON.stringify(user))
+      } else {
+        localStorage.removeItem("active_ecom_user")
+      }
     }
   }, [user])
 
   useEffect(() => {
-    localStorage.setItem("active_ecom_wishlist", JSON.stringify(wishlist))
+    if (isInitialized.current) {
+      localStorage.setItem("active_ecom_wishlist", JSON.stringify(wishlist))
+    }
   }, [wishlist])
 
   const login = (email: string) => {

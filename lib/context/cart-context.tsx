@@ -85,34 +85,38 @@ const INITIAL_ITEMS: CartItem[] = [
 ]
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("active_ecom_cart")
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed.map((item: CartItem) => ({
-              ...item,
-              selected: item.selected !== undefined ? item.selected : true,
-              sellerName: item.sellerName || "Inhouse Products",
-              tax: item.tax || 0,
-              shippingCost: item.shippingCost || 60,
-            }))
-          }
-        } catch {
-          return INITIAL_ITEMS
-        }
-      }
-    }
-    return INITIAL_ITEMS
-  })
-
+  const [items, setItems] = useState<CartItem[]>(INITIAL_ITEMS)
   const [isOpen, setIsOpen] = useState(false)
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
+  const isInitialized = React.useRef(false)
 
   useEffect(() => {
-    localStorage.setItem("active_ecom_cart", JSON.stringify(items))
+    try {
+      const stored = localStorage.getItem("active_ecom_cart")
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const sanitized = parsed.map((item: CartItem) => ({
+            ...item,
+            selected: item.selected !== undefined ? item.selected : true,
+            sellerName: item.sellerName || "Inhouse Products",
+            tax: item.tax || 0,
+            shippingCost: item.shippingCost || 60,
+          }))
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setItems(sanitized)
+        }
+      }
+    } catch {
+      // ignore
+    }
+    isInitialized.current = true
+  }, [])
+
+  useEffect(() => {
+    if (isInitialized.current) {
+      localStorage.setItem("active_ecom_cart", JSON.stringify(items))
+    }
   }, [items])
 
   const openCart = () => setIsOpen(true)

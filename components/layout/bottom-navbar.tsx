@@ -110,13 +110,16 @@ export function BottomNavbar() {
         >
           <div className="relative">
             <ShoppingBag className="h-5 w-5 text-[#ffc519]" />
-            <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#d43533] text-[10px] font-bold text-white">
+            <span
+              suppressHydrationWarning
+              className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#d43533] text-[10px] font-bold text-white"
+            >
               {totalCount}
             </span>
           </div>
           <div className="text-left text-xs">
             <div className="text-[10px] text-white/70">Cart</div>
-            <div className="font-semibold text-white">
+            <div suppressHydrationWarning className="font-semibold text-white">
               ৳{subtotal.toLocaleString("en-BD")}
             </div>
           </div>
