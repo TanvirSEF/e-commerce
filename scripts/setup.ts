@@ -1,7 +1,7 @@
 import pg from "pg"
 import { drizzle } from "drizzle-orm/node-postgres"
 import * as schema from "../src/db/schema/index.js"
-import { SEED_CATEGORIES, SEED_BRANDS, SEED_PRODUCTS, SEED_FLASH_DEALS } from "../src/db/seed/data.js"
+import { SEED_CATEGORIES, SEED_BRANDS, SEED_PRODUCTS, SEED_FLASH_DEALS, SEED_SHOPS, SEED_COUPONS } from "../src/db/seed/data.js"
 import { eq } from "drizzle-orm"
 
 const { Pool } = pg
@@ -172,6 +172,48 @@ async function runSetup() {
       })
     }
     console.log("[OK] Default customer created (tanvir@example.com)")
+
+    // 9. Seed Shops
+    for (const shop of SEED_SHOPS) {
+      const existing = await db.select().from(schema.shops).where(eq(schema.shops.slug, shop.slug))
+      if (existing.length === 0) {
+        await db.insert(schema.shops).values({
+          name: shop.name,
+          slug: shop.slug,
+          logo: shop.logo,
+          topBanner: shop.topBanner,
+          sliders: shop.sliders,
+          address: shop.address,
+          phone: shop.phone,
+          rating: shop.rating.toString(),
+          numOfReviews: shop.reviewCount,
+          verificationStatus: shop.verificationStatus,
+          facebook: shop.facebook,
+          instagram: shop.instagram,
+          twitter: shop.twitter,
+          youtube: shop.youtube,
+        })
+      }
+    }
+    console.log("[OK] Shops seeded")
+
+    // 10. Seed Coupons
+    for (const cp of SEED_COUPONS) {
+      const existing = await db.select().from(schema.coupons).where(eq(schema.coupons.code, cp.code))
+      if (existing.length === 0) {
+        await db.insert(schema.coupons).values({
+          code: cp.code,
+          type: cp.type,
+          discount: cp.discount.toString(),
+          discountType: cp.discountType,
+          startDate: Math.floor(cp.startDate / 1000),
+          endDate: Math.floor(cp.endDate / 1000),
+          details: { min_buy: cp.minBuy, max_discount: cp.maxDiscount },
+          status: cp.status,
+        })
+      }
+    }
+    console.log("[OK] Coupons seeded")
 
     console.log("==================================================")
     console.log("[OK] Installation completed")

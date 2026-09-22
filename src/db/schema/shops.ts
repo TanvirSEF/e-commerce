@@ -1,0 +1,67 @@
+import {
+  pgTable,
+  serial,
+  varchar,
+  text,
+  boolean,
+  integer,
+  numeric,
+  timestamp,
+  jsonb,
+} from "drizzle-orm/pg-core"
+import { relations } from "drizzle-orm"
+import { users } from "./auth"
+
+export const shops = pgTable("shops", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  logo: text("logo"),
+  topBanner: text("top_banner"),
+  sliders: jsonb("sliders").$type<string[]>().default([]).notNull(),
+  address: text("address"),
+  phone: varchar("phone", { length: 50 }),
+  rating: numeric("rating", { precision: 3, scale: 2 }).default("0.00").notNull(),
+  numOfReviews: integer("num_of_reviews").default(0).notNull(),
+  verificationStatus: boolean("verification_status").default(true).notNull(),
+  facebook: text("facebook"),
+  instagram: text("instagram"),
+  google: text("google"),
+  twitter: text("twitter"),
+  youtube: text("youtube"),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
+export const shopFollowers = pgTable("shop_followers", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shop_id")
+    .notNull()
+    .references(() => shops.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export const shopsRelations = relations(shops, ({ one, many }) => ({
+  user: one(users, {
+    fields: [shops.userId],
+    references: [users.id],
+  }),
+  followers: many(shopFollowers),
+}))
+
+export const shopFollowersRelations = relations(shopFollowers, ({ one }) => ({
+  shop: one(shops, {
+    fields: [shopFollowers.shopId],
+    references: [shops.id],
+  }),
+  user: one(users, {
+    fields: [shopFollowers.userId],
+    references: [users.id],
+  }),
+}))

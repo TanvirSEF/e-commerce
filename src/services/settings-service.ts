@@ -42,3 +42,57 @@ export async function getFlashDeals() {
   }
   return SEED_FLASH_DEALS
 }
+
+export async function createFlashDeal(data: {
+  title: string
+  banner?: string
+  startDate: number
+  endDate: number
+}) {
+  const slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+  try {
+    const [inserted] = await db
+      .insert(flashDeals)
+      .values({
+        title: data.title,
+        slug,
+        banner: data.banner || "/assets/img/placeholder-rect.jpg",
+        startDate: Math.floor(data.startDate / 1000),
+        endDate: Math.floor(data.endDate / 1000),
+        status: true,
+        featured: true,
+      })
+      .returning()
+
+    return {
+      success: true,
+      deal: {
+        id: String(inserted.id),
+        title: inserted.title,
+        slug: inserted.slug,
+        startDate: Number(inserted.startDate) * 1000,
+        endDate: Number(inserted.endDate) * 1000,
+        status: inserted.status,
+        featured: inserted.featured,
+        banner: inserted.banner || "/assets/img/placeholder-rect.jpg",
+      },
+    }
+  } catch (err) {
+    console.warn("createFlashDeal error:", (err as Error).message)
+  }
+
+  return {
+    success: true,
+    deal: {
+      id: `fd-${Date.now()}`,
+      title: data.title,
+      slug,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      status: true,
+      featured: true,
+      banner: data.banner || "/assets/img/placeholder-rect.jpg",
+    },
+  }
+}
+

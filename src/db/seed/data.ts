@@ -447,3 +447,287 @@ export const SEED_FLASH_DEALS = [
     banner: "/assets/img/placeholder-rect.jpg",
   },
 ]
+
+export interface SeedShop {
+  id: string
+  name: string
+  slug: string
+  logo: string
+  topBanner: string
+  sliders: string[]
+  address: string
+  phone: string
+  rating: number
+  reviewCount: number
+  followersCount: number
+  verificationStatus: boolean
+  memberSince: string
+  facebook?: string
+  instagram?: string
+  twitter?: string
+  youtube?: string
+}
+
+export const SEED_SHOPS: SeedShop[] = [
+  {
+    id: "shop-1",
+    name: "Active Fashion Outlet",
+    slug: "active-fashion-outlet",
+    logo: "/assets/img/placeholder.jpg",
+    topBanner: "/assets/img/placeholder-rect.jpg",
+    sliders: ["/assets/img/placeholder-rect.jpg"],
+    address: "Plot 12, Road 4, Sector 7, Uttara, Dhaka",
+    phone: "+880 1711 000111",
+    rating: 4.8,
+    reviewCount: 142,
+    followersCount: 520,
+    verificationStatus: true,
+    memberSince: "15 Jan 2023",
+    facebook: "https://facebook.com",
+    instagram: "https://instagram.com",
+    twitter: "https://x.com",
+  },
+  {
+    id: "shop-2",
+    name: "Gadget Hub BD",
+    slug: "gadget-hub-bd",
+    logo: "/assets/img/placeholder.jpg",
+    topBanner: "/assets/img/placeholder-rect.jpg",
+    sliders: ["/assets/img/placeholder-rect.jpg"],
+    address: "Multiplan Centre, Level 5, Elephant Road, Dhaka",
+    phone: "+880 1819 223344",
+    rating: 4.9,
+    reviewCount: 230,
+    followersCount: 1250,
+    verificationStatus: true,
+    memberSince: "10 Feb 2022",
+    facebook: "https://facebook.com",
+    youtube: "https://youtube.com",
+    twitter: "https://x.com",
+  },
+  {
+    id: "shop-3",
+    name: "Inhouse Products",
+    slug: "inhouse-products",
+    logo: "/assets/img/placeholder.jpg",
+    topBanner: "/assets/img/placeholder-rect.jpg",
+    sliders: ["/assets/img/placeholder-rect.jpg"],
+    address: "Gulshan-1 Avenue, Dhaka-1212",
+    phone: "+880 1912 345678",
+    rating: 4.7,
+    reviewCount: 98,
+    followersCount: 890,
+    verificationStatus: true,
+    memberSince: "01 Dec 2021",
+    facebook: "https://facebook.com",
+    instagram: "https://instagram.com",
+  },
+  {
+    id: "shop-4",
+    name: "Home Essentials",
+    slug: "home-essentials",
+    logo: "/assets/img/placeholder.jpg",
+    topBanner: "/assets/img/placeholder-rect.jpg",
+    sliders: ["/assets/img/placeholder-rect.jpg"],
+    address: "Mirpur 10 Circle, Dhaka",
+    phone: "+880 1622 998877",
+    rating: 4.6,
+    reviewCount: 64,
+    followersCount: 310,
+    verificationStatus: false,
+    memberSince: "20 Mar 2024",
+    facebook: "https://facebook.com",
+  },
+]
+
+export interface SeedCoupon {
+  id: string
+  code: string
+  type: "cart_base" | "product_base"
+  discount: number
+  discountType: "percent" | "amount"
+  minBuy: number
+  maxDiscount: number
+  startDate: number
+  endDate: number
+  status: boolean
+  shopSlug?: string
+}
+
+export const SEED_COUPONS: SeedCoupon[] = [
+  {
+    id: "c-1",
+    code: "SUMMER20",
+    type: "cart_base",
+    discount: 20,
+    discountType: "percent",
+    minBuy: 1000,
+    maxDiscount: 500,
+    startDate: Date.now() - 86400000 * 5,
+    endDate: Date.now() + 86400000 * 30,
+    status: true,
+  },
+  {
+    id: "c-2",
+    code: "HUIPPER100",
+    type: "cart_base",
+    discount: 100,
+    discountType: "amount",
+    minBuy: 1500,
+    maxDiscount: 100,
+    startDate: Date.now() - 86400000 * 10,
+    endDate: Date.now() + 86400000 * 20,
+    status: true,
+  },
+  {
+    id: "c-3",
+    code: "FASHION15",
+    type: "cart_base",
+    discount: 15,
+    discountType: "percent",
+    minBuy: 2000,
+    maxDiscount: 600,
+    startDate: Date.now() - 86400000 * 2,
+    endDate: Date.now() + 86400000 * 15,
+    status: true,
+    shopSlug: "active-fashion-outlet",
+  },
+  {
+    id: "c-4",
+    code: "GADGET500",
+    type: "cart_base",
+    discount: 500,
+    discountType: "amount",
+    minBuy: 10000,
+    maxDiscount: 500,
+    startDate: Date.now() - 86400000 * 1,
+    endDate: Date.now() + 86400000 * 45,
+    status: true,
+    shopSlug: "gadget-hub-bd",
+  },
+]
+
+export interface SeedWalletTransaction {
+  id: string
+  date: string
+  amount: number
+  paymentMethod: string
+  status: "approved" | "pending" | "recharged_by_admin"
+}
+
+export const SEED_WALLET_TRANSACTIONS: SeedWalletTransaction[] = [
+  {
+    id: "w-1",
+    date: "2026-09-20",
+    amount: 5000,
+    paymentMethod: "bKash Online",
+    status: "approved",
+  },
+  {
+    id: "w-2",
+    date: "2026-09-15",
+    amount: 1200,
+    paymentMethod: "Bank Transfer",
+    status: "recharged_by_admin",
+  },
+  {
+    id: "w-3",
+    date: "2026-09-10",
+    amount: 3000,
+    paymentMethod: "Nagad",
+    status: "approved",
+  },
+  {
+    id: "w-4",
+    date: "2026-09-02",
+    amount: 2500,
+    paymentMethod: "Offline Slip #1042",
+    status: "pending",
+  },
+]
+
+export interface SeedClubPoint {
+  id: string
+  orderCode: string
+  points: number
+  converted: boolean
+  date: string
+}
+
+export const SEED_CLUB_POINTS: SeedClubPoint[] = [
+  {
+    id: "cp-1",
+    orderCode: "20260920-101122",
+    points: 85,
+    converted: false,
+    date: "2026-09-20",
+  },
+  {
+    id: "cp-2",
+    orderCode: "20260918-091433",
+    points: 120,
+    converted: false,
+    date: "2026-09-18",
+  },
+  {
+    id: "cp-3",
+    orderCode: "20260905-081044",
+    points: 200,
+    converted: true,
+    date: "2026-09-05",
+  },
+]
+
+export interface SeedSupportTicket {
+  id: string
+  code: string
+  subject: string
+  details: string
+  status: "pending" | "open" | "solved"
+  date: string
+  replies: {
+    id: string
+    senderName: string
+    senderRole: "customer" | "support"
+    message: string
+    date: string
+  }[]
+}
+
+export const SEED_SUPPORT_TICKETS: SeedSupportTicket[] = [
+  {
+    id: "t-1",
+    code: "100234",
+    subject: "Delivery delay for Order #20260920-101122",
+    details: "I placed an order 3 days ago and the delivery status has not updated yet. Please assist.",
+    status: "open",
+    date: "2026-09-21 14:30",
+    replies: [
+      {
+        id: "tr-1",
+        senderName: "Customer Support",
+        senderRole: "support",
+        message: "Hello! We apologize for the delay. The rider picked up your parcel today and it is out for delivery.",
+        date: "2026-09-21 16:45",
+      },
+    ],
+  },
+  {
+    id: "t-2",
+    code: "100189",
+    subject: "Inquiry regarding return policy on electronics",
+    details: "Can I replace an earphone if the left earbud stops working within 7 days?",
+    status: "solved",
+    date: "2026-09-15 10:15",
+    replies: [
+      {
+        id: "tr-2",
+        senderName: "Technical Desk",
+        senderRole: "support",
+        message: "Yes! All electronic accessories have a 7-day hassle-free replacement warranty.",
+        date: "2026-09-15 11:00",
+      },
+    ],
+  },
+]
+
