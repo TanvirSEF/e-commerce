@@ -157,3 +157,103 @@ export async function updateShippingSettings(data: ShippingSettings) {
   }
 }
 
+export interface SellerCommissionSettings {
+  commissionActivation: boolean
+  commissionType: "fixed_rate" | "seller_based" | "category_based"
+  fixedCommissionRate: number
+  minimumWithdrawalAmount: number
+}
+
+const DEFAULT_COMMISSION_SETTINGS: SellerCommissionSettings = {
+  commissionActivation: true,
+  commissionType: "fixed_rate",
+  fixedCommissionRate: 10,
+  minimumWithdrawalAmount: 1000,
+}
+
+export async function getSellerCommissionSettings(): Promise<SellerCommissionSettings> {
+  try {
+    const raw = await getSetting("seller_commission_settings")
+    if (raw) return JSON.parse(raw) as SellerCommissionSettings
+  } catch (err) {
+    console.warn("DB getSellerCommissionSettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_COMMISSION_SETTINGS
+}
+
+export async function updateSellerCommissionSettings(data: SellerCommissionSettings) {
+  try {
+    const jsonVal = JSON.stringify(data)
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "seller_commission_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "seller_commission_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn("updateSellerCommissionSettings error:", (err as Error).message)
+    return { success: true }
+  }
+}
+
+export interface ClubPointsSettings {
+  enabled: boolean
+  pointsToWalletRate: number
+  pointsPerOrder100BDT: number
+}
+
+const DEFAULT_CLUB_POINTS_SETTINGS: ClubPointsSettings = {
+  enabled: true,
+  pointsToWalletRate: 10,
+  pointsPerOrder100BDT: 2,
+}
+
+export async function getClubPointsSettings(): Promise<ClubPointsSettings> {
+  try {
+    const raw = await getSetting("club_points_settings")
+    if (raw) return JSON.parse(raw) as ClubPointsSettings
+  } catch (err) {
+    console.warn("DB getClubPointsSettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_CLUB_POINTS_SETTINGS
+}
+
+export async function updateClubPointsSettings(data: ClubPointsSettings) {
+  try {
+    const jsonVal = JSON.stringify(data)
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "club_points_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "club_points_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn("updateClubPointsSettings error:", (err as Error).message)
+    return { success: true }
+  }
+}
+

@@ -103,3 +103,22 @@ export const ticketRepliesRelations = relations(ticketReplies, ({ one }) => ({
     references: [users.id],
   }),
 }))
+
+export const customerProducts = pgTable("customer_products", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  category: varchar("category", { length: 150 }).notNull(),
+  thumbnailImg: text("thumbnail_img").notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  condition: varchar("condition", { length: 50 }).default("used").notNull(),
+  customerName: varchar("customer_name", { length: 255 }).notNull(),
+  customerPhone: varchar("customer_phone", { length: 50 }).notNull(),
+  customerEmail: varchar("customer_email", { length: 255 }),
+  location: varchar("location", { length: 255 }).default("Dhaka, Bangladesh").notNull(),
+  published: boolean("published").default(true).notNull(),
+  status: varchar("status", { length: 50 }).default("approved").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export type CustomerProduct = typeof customerProducts.$inferSelect

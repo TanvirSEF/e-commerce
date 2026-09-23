@@ -241,3 +241,51 @@ export async function deleteStaffAction(id: number) {
   return await deleteStaff(id)
 }
 
+export async function updateSellerCommissionAction(data: {
+  commissionActivation: boolean
+  commissionType: "fixed_rate" | "seller_based" | "category_based"
+  fixedCommissionRate: number
+  minimumWithdrawalAmount: number
+}) {
+  const { updateSellerCommissionSettings } = await import("@/services/settings-service")
+  return await updateSellerCommissionSettings(data)
+}
+
+export async function updateClubPointsSettingsAction(data: {
+  enabled: boolean
+  pointsToWalletRate: number
+  pointsPerOrder100BDT: number
+}) {
+  const { updateClubPointsSettings } = await import("@/services/settings-service")
+  return await updateClubPointsSettings(data)
+}
+
+export async function addSubscriberAction(email: string) {
+  const { addSubscriber } = await import("@/services/marketing-service")
+  return await addSubscriber(email)
+}
+
+export async function deleteSubscriberAction(id: number) {
+  const { deleteSubscriber } = await import("@/services/marketing-service")
+  return await deleteSubscriber(id)
+}
+
+export async function sendNewsletterAction(data: {
+  subject: string
+  content: string
+  audience: "all_users" | "subscribers" | "both"
+}) {
+  const { sendNewsletterBroadcast } = await import("@/services/marketing-service")
+  return await sendNewsletterBroadcast(data)
+}
+
+export async function updateClassifiedPublishedAction(id: number, published: boolean) {
+  const { updateClassifiedPublished } = await import("@/services/customer-product-service")
+  return await updateClassifiedPublished(id, published)
+}
+
+export async function deleteClassifiedProductAction(id: number) {
+  const { deleteClassifiedProduct } = await import("@/services/customer-product-service")
+  return await deleteClassifiedProduct(id)
+}
+

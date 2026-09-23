@@ -63,6 +63,7 @@ const navItems: NavItem[] = [
       { title: "All Sellers", href: "/admin/sellers" },
       { title: "Payout Requests", href: "/admin/sellers/payout-requests" },
       { title: "Verification Desk", href: "/admin/sellers/verification" },
+      { title: "Seller Commission", href: "/admin/sellers/commission" },
     ],
   },
   {
@@ -71,6 +72,9 @@ const navItems: NavItem[] = [
     children: [
       { title: "Flash Deals", href: "/admin/flash-deals" },
       { title: "Coupons", href: "/admin/coupons" },
+      { title: "Subscribers", href: "/admin/subscribers" },
+      { title: "Newsletters", href: "/admin/newsletter" },
+      { title: "Club Points Setup", href: "/admin/club-points" },
     ],
   },
   {
@@ -93,8 +97,11 @@ const navItems: NavItem[] = [
   },
   {
     title: "Customers",
-    href: "/admin/customers",
     icon: Users,
+    children: [
+      { title: "All Customers", href: "/admin/customers" },
+      { title: "Classified Products", href: "/admin/customer-products" },
+    ],
   },
   {
     title: "Staffs & Roles",
