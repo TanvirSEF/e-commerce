@@ -177,3 +177,67 @@ export async function updateShippingSettingsAction(data: {
   return await updateShippingSettings(data)
 }
 
+export async function createRefundAction(data: {
+  orderCode: string
+  productName: string
+  userName: string
+  shopName?: string
+  amount: number
+  reason: string
+  details?: string
+}) {
+  const { createRefundRequest } = await import("@/services/refund-service")
+  return await createRefundRequest(data)
+}
+
+export async function processRefundAction(data: {
+  requestId: string | number
+  status: "approved" | "rejected"
+  adminNote?: string
+}) {
+  const { processRefundAdmin } = await import("@/services/refund-service")
+  return await processRefundAdmin(data)
+}
+
+export async function createAttributeAction(data: {
+  name: string
+  values: string[]
+}) {
+  const { createAttribute } = await import("@/services/attribute-service")
+  return await createAttribute(data)
+}
+
+export async function updateAttributeAction(
+  id: number,
+  data: { name?: string; values?: string[] }
+) {
+  const { updateAttribute } = await import("@/services/attribute-service")
+  return await updateAttribute(id, data)
+}
+
+export async function deleteAttributeAction(id: number) {
+  const { deleteAttribute } = await import("@/services/attribute-service")
+  return await deleteAttribute(id)
+}
+
+export async function createStaffAction(data: {
+  name: string
+  email: string
+  phone?: string
+  roleName: string
+  roleId?: number
+}) {
+  const { createStaff } = await import("@/services/staff-service")
+  return await createStaff(data)
+}
+
+export async function updateStaffStatusAction(id: number, isActive: boolean) {
+  const { updateStaffStatus } = await import("@/services/staff-service")
+  return await updateStaffStatus(id, isActive)
+}
+
+export async function deleteStaffAction(id: number) {
+  const { deleteStaff } = await import("@/services/staff-service")
+  return await deleteStaff(id)
+}
+

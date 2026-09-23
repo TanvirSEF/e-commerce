@@ -18,6 +18,7 @@ import {
   LifeBuoy,
   BarChart3,
   BookOpen,
+  ShieldCheck,
 } from "lucide-react"
 
 interface NavItem {
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
       { title: "Add New Product", href: "/admin/products/create" },
       { title: "Categories", href: "/admin/categories" },
       { title: "Brands", href: "/admin/brands" },
+      { title: "Attributes", href: "/admin/products/attributes" },
       { title: "Product Reviews", href: "/admin/reviews" },
     ],
   },
@@ -51,6 +53,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "All Orders", href: "/admin/orders" },
       { title: "Offline Payments", href: "/admin/orders/offline-payments" },
+      { title: "Refund Requests", href: "/admin/refund-requests" },
     ],
   },
   {
@@ -92,6 +95,11 @@ const navItems: NavItem[] = [
     title: "Customers",
     href: "/admin/customers",
     icon: Users,
+  },
+  {
+    title: "Staffs & Roles",
+    href: "/admin/staffs",
+    icon: ShieldCheck,
   },
   {
     title: "Setup & Settings",

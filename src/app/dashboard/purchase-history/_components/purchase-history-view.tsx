@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import { formatPrice } from "@/lib/utils"
-import { Download, ExternalLink, Package, Search } from "lucide-react"
+import { Download, ExternalLink, Package, Search, RotateCcw } from "lucide-react"
 
 const ALL_ORDERS = [
   {
@@ -138,6 +138,15 @@ export function PurchaseHistoryView() {
                       >
                         <Package className="h-4 w-4" />
                       </Link>
+                      {order.deliveryStatus === "delivered" && (
+                        <Link
+                          href={`/dashboard/refund-requests`}
+                          className="rounded p-1 text-gray-400 hover:text-amber-600 hover:bg-amber-50"
+                          title="Request Refund / Return"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Link>
+                      )}
                       <Link
                         href={`/order-confirmed/${order.code}`}
                         className="rounded p-1 text-gray-400 hover:text-[#d43533] hover:bg-red-50"

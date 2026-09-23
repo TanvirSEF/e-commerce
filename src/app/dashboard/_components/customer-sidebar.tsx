@@ -4,7 +4,7 @@ import React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, ShoppingBag, Heart, User, LogOut, Wallet, Award, Headphones, MessageSquare } from "lucide-react"
+import { LayoutDashboard, ShoppingBag, Heart, User, LogOut, Wallet, Award, Headphones, MessageSquare, RotateCcw } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
 
 export function CustomerSidebar() {
@@ -14,6 +14,7 @@ export function CustomerSidebar() {
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Purchase History", href: "/dashboard/purchase-history", icon: ShoppingBag },
+    { label: "Refund Requests", href: "/dashboard/refund-requests", icon: RotateCcw },
     { label: "Wishlist", href: "/dashboard/wishlist", icon: Heart },
     { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
     { label: "My Wallet", href: "/dashboard/wallet", icon: Wallet },
