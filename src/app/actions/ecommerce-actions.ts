@@ -391,5 +391,31 @@ export async function deleteCustomerProductAction(id: number) {
   return await deleteClassifiedProduct(id)
 }
 
+export async function updateCouriersSettingsAction(data: any) {
+  const { updateCouriersSettings } = await import("@/services/courier-config-service")
+  return await updateCouriersSettings(data)
+}
+
+export async function createColorAction(data: { name: string; code: string }) {
+  const { createColor } = await import("@/services/color-service")
+  return await createColor(data)
+}
+
+export async function deleteColorAction(id: number) {
+  const { deleteColor } = await import("@/services/color-service")
+  return await deleteColor(id)
+}
+
+export async function createWarrantyAction(data: { text: string; logo?: string; duration?: string }) {
+  const { createWarranty } = await import("@/services/warranty-service")
+  return await createWarranty(data)
+}
+
+export async function deleteWarrantyAction(id: number) {
+  const { deleteWarranty } = await import("@/services/warranty-service")
+  return await deleteWarranty(id)
+}
+
+
 
 
