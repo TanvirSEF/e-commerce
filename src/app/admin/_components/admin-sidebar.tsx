@@ -81,6 +81,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "Flash Deals", href: "/admin/flash-deals" },
       { title: "Coupons", href: "/admin/coupons" },
+      { title: "Sale Alerts", href: "/admin/marketing/custom-sale-alerts" },
       { title: "Push Notifications", href: "/admin/notifications" },
       { title: "Subscribers", href: "/admin/subscribers" },
       { title: "Newsletters", href: "/admin/newsletter" },
@@ -142,6 +143,7 @@ const navItems: NavItem[] = [
       { title: "Tax & VAT Desk", href: "/admin/taxes" },
       { title: "Currencies & Rates", href: "/admin/settings/currencies" },
       { title: "Shipping Configuration", href: "/admin/settings/shipping" },
+      { title: "Shipping Label", href: "/admin/settings/shipping-label" },
       { title: "Pick-up Points", href: "/admin/pickup-points" },
       { title: "Couriers Integration", href: "/admin/settings/couriers" },
       { title: "SMTP Mail Settings", href: "/admin/settings/smtp" },

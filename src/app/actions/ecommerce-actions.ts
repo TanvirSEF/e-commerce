@@ -608,3 +608,14 @@ export async function bulkUploadProductsAction(items: Array<{
   }
   return { success: true, count: successCount }
 }
+
+export async function updateShippingLabelSettingsAction(data: any) {
+  const { updateShippingLabelSettings } = await import("@/services/settings-service")
+  return await updateShippingLabelSettings(data)
+}
+
+export async function updateSaleAlertSettingsAction(data: any) {
+  const { updateSaleAlertSettings } = await import("@/services/settings-service")
+  return await updateSaleAlertSettings(data)
+}
+

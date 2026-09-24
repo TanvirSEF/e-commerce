@@ -51,13 +51,22 @@ export function InvoiceView({ invoice }: InvoiceViewProps) {
             <span>Back to Orders</span>
           </Link>
 
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs transition-colors cursor-pointer"
-          >
-            <Printer className="size-4" />
-            <span>Print Invoice</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/shipping-label/${invoice.code}`}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 transition-colors"
+            >
+              <Printer className="size-4 text-gray-600" />
+              <span>Thermal Shipping Label</span>
+            </Link>
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs transition-colors cursor-pointer"
+            >
+              <Printer className="size-4" />
+              <span>Print Invoice</span>
+            </button>
+          </div>
         </div>
 
         {/* Invoice Printable Card */}

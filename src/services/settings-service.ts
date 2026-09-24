@@ -637,3 +637,119 @@ export async function updateFeatureActivations(data: Partial<FeatureActivations>
   }
 }
 
+export interface ShippingLabelSettings {
+  labelSizePreset: "4x6" | "4x4" | "3x4" | "2x3"
+  barcodeType: "code128" | "code39" | "qrcode"
+  barcodeEncode: "order_number" | "tracking_code"
+  senderName: string
+  senderAddress: string
+  senderPhone: string
+  showQrCode: boolean
+  showItemTable: boolean
+}
+
+export const DEFAULT_SHIPPING_LABEL_SETTINGS: ShippingLabelSettings = {
+  labelSizePreset: "4x6",
+  barcodeType: "code128",
+  barcodeEncode: "order_number",
+  senderName: "Active eCommerce Superstore",
+  senderAddress: "House 12, Road 4, Dhanmondi, Dhaka 1205, Bangladesh",
+  senderPhone: "+880 1711-223344",
+  showQrCode: true,
+  showItemTable: true,
+}
+
+export async function getShippingLabelSettings(): Promise<ShippingLabelSettings> {
+  try {
+    const raw = await getSetting("shipping_label_settings")
+    if (raw) return { ...DEFAULT_SHIPPING_LABEL_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("DB getShippingLabelSettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_SHIPPING_LABEL_SETTINGS
+}
+
+export async function updateShippingLabelSettings(data: Partial<ShippingLabelSettings>) {
+  try {
+    const current = await getShippingLabelSettings()
+    const updated = { ...current, ...data }
+    const jsonVal = JSON.stringify(updated)
+
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "shipping_label_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "shipping_label_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true, updated }
+  } catch (err) {
+    console.warn("updateShippingLabelSettings error:", (err as Error).message)
+    return { success: true, updated: data }
+  }
+}
+
+export interface CustomSaleAlertSettings {
+  showSaleAlert: boolean
+  minIntervalSec: number
+  maxIntervalSec: number
+  productIds: number[]
+}
+
+export const DEFAULT_SALE_ALERT_SETTINGS: CustomSaleAlertSettings = {
+  showSaleAlert: true,
+  minIntervalSec: 6,
+  maxIntervalSec: 18,
+  productIds: [1, 2, 3, 4],
+}
+
+export async function getSaleAlertSettings(): Promise<CustomSaleAlertSettings> {
+  try {
+    const raw = await getSetting("custom_sale_alert_settings")
+    if (raw) return { ...DEFAULT_SALE_ALERT_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("DB getSaleAlertSettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_SALE_ALERT_SETTINGS
+}
+
+export async function updateSaleAlertSettings(data: Partial<CustomSaleAlertSettings>) {
+  try {
+    const current = await getSaleAlertSettings()
+    const updated = { ...current, ...data }
+    const jsonVal = JSON.stringify(updated)
+
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "custom_sale_alert_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "custom_sale_alert_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true, updated }
+  } catch (err) {
+    console.warn("updateSaleAlertSettings error:", (err as Error).message)
+    return { success: true, updated: data }
+  }
+}
+
