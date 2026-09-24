@@ -20,6 +20,8 @@ import {
   BookOpen,
   ShieldCheck,
   UploadCloud,
+  Receipt,
+  MessageSquare,
 } from "lucide-react"
 
 interface NavItem {
@@ -35,6 +37,15 @@ const navItems: NavItem[] = [
     title: "Dashboard",
     href: "/admin",
     icon: LayoutDashboard,
+  },
+  {
+    title: "POS System",
+    icon: Receipt,
+    children: [
+      { title: "POS Manager", href: "/admin/pos" },
+      { title: "POS Configuration", href: "/admin/pos-activation" },
+      { title: "POS Orders", href: "/admin/pos-orders" },
+    ],
   },
   {
     title: "Products",
@@ -136,6 +147,16 @@ const navItems: NavItem[] = [
     title: "Staffs & Roles",
     href: "/admin/staffs",
     icon: ShieldCheck,
+  },
+  {
+    title: "OTP & SMS System",
+    icon: MessageSquare,
+    children: [
+      { title: "OTP Configuration", href: "/admin/otp-configuration" },
+      { title: "OTP Login Configuration", href: "/admin/otp-login-configuration" },
+      { title: "Bulk SMS", href: "/admin/sms" },
+      { title: "SMS Templates", href: "/admin/sms-templates" },
+    ],
   },
   {
     title: "Setup & Settings",

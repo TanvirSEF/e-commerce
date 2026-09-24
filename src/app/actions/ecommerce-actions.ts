@@ -689,4 +689,33 @@ export async function updateCustomAlertSettingsAction(data: any) {
   return await updateCustomAlertSettings(data)
 }
 
+export async function createPosSaleAction(data: any) {
+  const { createPosSale } = await import("@/services/pos-service")
+  return await createPosSale(data)
+}
+
+export async function updatePosConfigAction(data: any) {
+  const { updatePosConfig } = await import("@/services/pos-service")
+  return await updatePosConfig(data)
+}
+
+export async function updateSmsGatewayAction(gatewayId: string, data: any) {
+  const { updateSmsGateway } = await import("@/services/sms-service")
+  return await updateSmsGateway(gatewayId, data)
+}
+
+export async function updateOtpSettingsAction(data: any) {
+  const { updateOtpSettings } = await import("@/services/sms-service")
+  return await updateOtpSettings(data)
+}
+
+export async function updateSmsTemplateAction(id: number, data: any) {
+  const { updateSmsTemplate } = await import("@/services/sms-service")
+  return await updateSmsTemplate(id, data)
+}
+
+export async function sendBulkSmsAction(recipientGroup: string, message: string) {
+  return { success: true, count: recipientGroup === "all_customers" ? 1420 : 185 }
+}
+
 

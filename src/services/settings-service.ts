@@ -18,6 +18,32 @@ export async function getSetting(type: string): Promise<string | null> {
   }
 }
 
+export async function updateSetting(type: string, value: string): Promise<boolean> {
+  try {
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, type))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type,
+        value,
+      })
+    }
+    return true
+  } catch (err) {
+    console.warn(`updateSetting(${type}) error:`, (err as Error).message)
+    return false
+  }
+}
+
 export async function getFlashDeals() {
   try {
     const rows = await db

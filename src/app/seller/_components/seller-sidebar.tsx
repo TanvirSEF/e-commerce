@@ -16,6 +16,7 @@ import {
   Tag,
   MessageSquare,
   ShieldCheck,
+  Receipt,
   X,
 } from "lucide-react"
 
@@ -31,6 +32,15 @@ const navItems: NavItem[] = [
     title: "Dashboard",
     href: "/seller/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    title: "POS System",
+    icon: Receipt,
+    children: [
+      { title: "POS Manager", href: "/seller/pos" },
+      { title: "POS Orders", href: "/seller/pos-orders" },
+      { title: "POS Configuration", href: "/seller/pos-configuration" },
+    ],
   },
   {
     title: "Products",
