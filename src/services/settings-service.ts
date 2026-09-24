@@ -552,3 +552,88 @@ export async function updateSmartBarSettings(data: SmartBarSettings) {
   }
 }
 
+export interface FeatureActivations {
+  // Infrastructure
+  forceHttps: boolean
+  maintenanceMode: boolean
+  disableImageOptimization: boolean
+  // Seller & Multivendor
+  vendorSystemActivation: boolean
+  productApproveByAdmin: boolean
+  sellerOrderManagement: boolean
+  sellerRegistrationVerify: boolean
+  digitalProductsForSeller: boolean
+  classifiedProducts: boolean
+  // Customer & Checkout
+  customerRegistrationVerify: boolean
+  guestCheckout: boolean
+  pickupPoint: boolean
+  billingAddressRequired: boolean
+  walletSystem: boolean
+  clubPoint: boolean
+  couponSystem: boolean
+  refundSystem: boolean
+  conversationSystem: boolean
+}
+
+export const DEFAULT_FEATURE_ACTIVATIONS: FeatureActivations = {
+  forceHttps: true,
+  maintenanceMode: false,
+  disableImageOptimization: false,
+  vendorSystemActivation: true,
+  productApproveByAdmin: true,
+  sellerOrderManagement: true,
+  sellerRegistrationVerify: true,
+  digitalProductsForSeller: true,
+  classifiedProducts: true,
+  customerRegistrationVerify: true,
+  guestCheckout: true,
+  pickupPoint: true,
+  billingAddressRequired: false,
+  walletSystem: true,
+  clubPoint: true,
+  couponSystem: true,
+  refundSystem: true,
+  conversationSystem: true,
+}
+
+export async function getFeatureActivations(): Promise<FeatureActivations> {
+  try {
+    const raw = await getSetting("feature_activations")
+    if (raw) return { ...DEFAULT_FEATURE_ACTIVATIONS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("DB getFeatureActivations fallback:", (err as Error).message)
+  }
+  return DEFAULT_FEATURE_ACTIVATIONS
+}
+
+export async function updateFeatureActivations(data: Partial<FeatureActivations>) {
+  try {
+    const current = await getFeatureActivations()
+    const updated = { ...current, ...data }
+    const jsonVal = JSON.stringify(updated)
+
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "feature_activations"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "feature_activations",
+        value: jsonVal,
+      })
+    }
+    return { success: true, updated }
+  } catch (err) {
+    console.warn("updateFeatureActivations error:", (err as Error).message)
+    return { success: true, updated: data }
+  }
+}
+

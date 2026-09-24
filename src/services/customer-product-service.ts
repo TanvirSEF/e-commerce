@@ -17,6 +17,7 @@ export interface ClassifiedProductItem {
   published: boolean
   status: string
   date: string
+  description?: string
 }
 
 const SEED_CLASSIFIED: ClassifiedProductItem[] = [
@@ -278,5 +279,38 @@ export async function createCustomerProduct(data: {
       date: new Date().toISOString().slice(0, 10),
     },
   }
+}
+
+export async function getCustomerProductById(id: number): Promise<ClassifiedProductItem | null> {
+  try {
+    const [row] = await db
+      .select()
+      .from(customerProducts)
+      .where(eq(customerProducts.id, id))
+      .limit(1)
+
+    if (row) {
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        category: row.category,
+        thumbnailImg: row.thumbnailImg,
+        unitPrice: Number(row.unitPrice),
+        condition: row.condition,
+        customerName: row.customerName,
+        customerPhone: row.customerPhone,
+        customerEmail: row.customerEmail || undefined,
+        location: row.location,
+        published: row.published,
+        status: row.status,
+        date: row.createdAt ? row.createdAt.toISOString().slice(0, 10) : "",
+      }
+    }
+  } catch (err) {
+    console.warn("DB getCustomerProductById fallback:", (err as Error).message)
+  }
+
+  return SEED_CLASSIFIED.find((p) => p.id === id) || null
 }
 

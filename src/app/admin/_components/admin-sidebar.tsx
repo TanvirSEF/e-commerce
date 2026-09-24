@@ -132,6 +132,7 @@ const navItems: NavItem[] = [
     icon: Settings,
     children: [
       { title: "General Settings", href: "/admin/settings" },
+      { title: "Features Activation", href: "/admin/features-activation" },
       { title: "Appearance & Layout", href: "/admin/settings/appearance" },
       { title: "Website Pages", href: "/admin/website-settings/pages" },
       { title: "Payment Methods", href: "/admin/settings/payments" },

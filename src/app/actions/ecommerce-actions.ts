@@ -499,3 +499,8 @@ export async function updateSmartBarSettingsAction(data: {
   const { updateSmartBarSettings } = await import("@/services/settings-service")
   return await updateSmartBarSettings(data)
 }
+
+export async function updateFeatureActivationsAction(data: any) {
+  const { updateFeatureActivations } = await import("@/services/settings-service")
+  return await updateFeatureActivations(data)
+}
