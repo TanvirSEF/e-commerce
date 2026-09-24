@@ -19,6 +19,7 @@ import {
   BarChart3,
   BookOpen,
   ShieldCheck,
+  UploadCloud,
 } from "lucide-react"
 
 interface NavItem {
@@ -87,9 +88,17 @@ const navItems: NavItem[] = [
     children: [
       { title: "Sales Report", href: "/admin/reports/sales" },
       { title: "In-House Sales", href: "/admin/reports/in-house-sales" },
+      { title: "Seller Sales", href: "/admin/reports/seller-sales" },
       { title: "Stock Alert", href: "/admin/reports/stock" },
+      { title: "User Searches", href: "/admin/reports/user-searches" },
+      { title: "Product Wishlist", href: "/admin/reports/wishlist" },
       { title: "Wallet History", href: "/admin/reports/wallet-history" },
     ],
+  },
+  {
+    title: "Uploaded Files",
+    href: "/admin/uploaded-files",
+    icon: UploadCloud,
   },
   {
     title: "Support Tickets",
@@ -121,11 +130,13 @@ const navItems: NavItem[] = [
     children: [
       { title: "General Settings", href: "/admin/settings" },
       { title: "Appearance & Layout", href: "/admin/settings/appearance" },
+      { title: "Website Pages", href: "/admin/website-settings/pages" },
       { title: "Payment Methods", href: "/admin/settings/payments" },
       { title: "Currencies & Rates", href: "/admin/settings/currencies" },
       { title: "Shipping Configuration", href: "/admin/settings/shipping" },
       { title: "Couriers Integration", href: "/admin/settings/couriers" },
       { title: "SMTP Mail Settings", href: "/admin/settings/smtp" },
+      { title: "Server Status", href: "/admin/system/server-status" },
     ],
   },
 ]

@@ -416,6 +416,59 @@ export async function deleteWarrantyAction(id: number) {
   return await deleteWarranty(id)
 }
 
+export async function createCustomPageAction(data: {
+  title: string
+  slug: string
+  content: string
+  metaTitle?: string
+  metaDescription?: string
+  keywords?: string
+  metaImage?: string
+}) {
+  const { createCustomPage } = await import("@/services/page-service")
+  return await createCustomPage(data)
+}
 
+export async function updateCustomPageAction(
+  id: number,
+  data: {
+    title: string
+    slug: string
+    content: string
+    metaTitle?: string
+    metaDescription?: string
+    keywords?: string
+    metaImage?: string
+  }
+) {
+  const { updateCustomPage } = await import("@/services/page-service")
+  return await updateCustomPage(id, data)
+}
 
+export async function deleteCustomPageAction(id: number) {
+  const { deleteCustomPage } = await import("@/services/page-service")
+  return await deleteCustomPage(id)
+}
 
+export async function createUploadRecordAction(data: {
+  fileOriginalName: string
+  fileName: string
+  userId?: string
+  fileSize?: number
+  extension?: string
+  type?: string
+  externalLink?: string
+}) {
+  const { createUploadRecord } = await import("@/services/upload-service")
+  return await createUploadRecord(data)
+}
+
+export async function deleteUploadRecordAction(id: number) {
+  const { deleteUploadRecord } = await import("@/services/upload-service")
+  return await deleteUploadRecord(id)
+}
+
+export async function bulkDeleteUploadRecordsAction(ids: number[]) {
+  const { bulkDeleteUploadRecords } = await import("@/services/upload-service")
+  return await bulkDeleteUploadRecords(ids)
+}
