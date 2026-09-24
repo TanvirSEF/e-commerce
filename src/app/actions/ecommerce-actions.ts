@@ -472,3 +472,30 @@ export async function bulkDeleteUploadRecordsAction(ids: number[]) {
   const { bulkDeleteUploadRecords } = await import("@/services/upload-service")
   return await bulkDeleteUploadRecords(ids)
 }
+
+export async function createDigitalProductAction(data: {
+  name: string
+  categoryId?: number
+  unitPrice: number
+  thumbnailImg: string
+  digitalFile?: string
+  description?: string
+}) {
+  const { createDigitalProduct } = await import("@/services/product-service")
+  return await createDigitalProduct(data)
+}
+
+export async function deleteDigitalProductAction(id: number) {
+  const { deleteDigitalProduct } = await import("@/services/product-service")
+  return await deleteDigitalProduct(id)
+}
+
+export async function updateSmartBarSettingsAction(data: {
+  showSmartBar: boolean
+  backgroundDesign: "plain" | "blur"
+  backgroundColor: string
+  textColor: string
+}) {
+  const { updateSmartBarSettings } = await import("@/services/settings-service")
+  return await updateSmartBarSettings(data)
+}

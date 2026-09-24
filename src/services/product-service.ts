@@ -247,3 +247,143 @@ export async function getProductBySlug(slug: string): Promise<SeedProduct | null
 
   return SEED_PRODUCTS.find((p) => p.slug === slug) || null
 }
+
+export interface DigitalProductItem {
+  id: number
+  name: string
+  slug: string
+  categoryName: string
+  thumbnailImg: string
+  unitPrice: number
+  todaysDeal: boolean
+  published: boolean
+  featured: boolean
+  digitalFile: string | null
+}
+
+export const SEED_DIGITAL_PRODUCTS: DigitalProductItem[] = [
+  {
+    id: 901,
+    name: "Active eCommerce CMS Laravel Full Source Code",
+    slug: "active-ecommerce-cms-laravel-source",
+    categoryName: "Software & Scripts",
+    thumbnailImg: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=300&auto=format&fit=crop&q=80",
+    unitPrice: 5900,
+    todaysDeal: true,
+    published: true,
+    featured: true,
+    digitalFile: "/downloads/active-ecommerce-cms-v11.zip",
+  },
+  {
+    id: 902,
+    name: "Multi-Vendor eCommerce Flutter Mobile App Source Code",
+    slug: "multi-vendor-ecommerce-flutter-app",
+    categoryName: "Mobile Apps",
+    thumbnailImg: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=300&auto=format&fit=crop&q=80",
+    unitPrice: 4200,
+    todaysDeal: false,
+    published: true,
+    featured: true,
+    digitalFile: "/downloads/ecommerce-flutter-source.zip",
+  },
+  {
+    id: 903,
+    name: "Modern E-Commerce SEO Playbook & Growth Guide (PDF)",
+    slug: "modern-ecommerce-seo-playbook",
+    categoryName: "Digital Books",
+    thumbnailImg: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&auto=format&fit=crop&q=80",
+    unitPrice: 850,
+    todaysDeal: true,
+    published: true,
+    featured: false,
+    digitalFile: "/downloads/ecommerce-seo-masterclass.pdf",
+  },
+]
+
+export async function getDigitalProductsAdmin(search?: string): Promise<DigitalProductItem[]> {
+  try {
+    const list = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        categoryName: categories.name,
+        thumbnailImg: products.thumbnailImg,
+        unitPrice: products.unitPrice,
+        todaysDeal: products.todaysDeal,
+        published: products.published,
+        featured: products.featured,
+        digitalFile: products.digitalFile,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(eq(products.isDigital, true))
+      .orderBy(desc(products.id))
+
+    if (!list || list.length === 0) {
+      if (search) {
+        return SEED_DIGITAL_PRODUCTS.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+      }
+      return SEED_DIGITAL_PRODUCTS
+    }
+
+    const items: DigitalProductItem[] = list.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      categoryName: p.categoryName || "Digital",
+      thumbnailImg: p.thumbnailImg,
+      unitPrice: Number(p.unitPrice),
+      todaysDeal: p.todaysDeal,
+      published: p.published,
+      featured: p.featured,
+      digitalFile: p.digitalFile,
+    }))
+
+    if (search) {
+      return items.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+    }
+    return items
+  } catch (error) {
+    console.error("DB getDigitalProductsAdmin fallback:", error)
+    return SEED_DIGITAL_PRODUCTS
+  }
+}
+
+export async function createDigitalProduct(data: {
+  name: string
+  categoryId?: number
+  unitPrice: number
+  thumbnailImg: string
+  digitalFile?: string
+  description?: string
+}): Promise<any> {
+  const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+  const [created] = await db
+    .insert(products)
+    .values({
+      name: data.name,
+      slug,
+      categoryId: data.categoryId,
+      unitPrice: String(data.unitPrice),
+      thumbnailImg: data.thumbnailImg,
+      digitalFile: data.digitalFile || null,
+      description: data.description || "",
+      isDigital: true,
+      published: true,
+      featured: false,
+      todaysDeal: false,
+    })
+    .returning()
+  return created
+}
+
+export async function deleteDigitalProduct(id: number): Promise<boolean> {
+  try {
+    await db.delete(products).where(and(eq(products.id, id), eq(products.isDigital, true)))
+    return true
+  } catch (error) {
+    console.error("Error deleting digital product:", error)
+    return false
+  }
+}

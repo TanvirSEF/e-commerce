@@ -6,6 +6,7 @@ import { ProductGallery } from "./_components/product-gallery"
 import { ProductInfo, type ProductDetailsData } from "./_components/product-info"
 import { ProductTabs } from "./_components/product-tabs"
 import { ProductRelated } from "./_components/product-related"
+import { ProductSmartBar } from "./_components/product-smart-bar"
 import type { ProductCardProps } from "@/components/product/product-card"
 import { getProductBySlug } from "@/lib/data-service"
 import { getProductReviews } from "@/services/review-service"
@@ -250,6 +251,16 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
 
         {/* Related Products Carousel / Grid */}
         <ProductRelated products={RELATED_PRODUCTS} />
+
+        {/* Sticky Product Smart Bar on Scroll */}
+        <ProductSmartBar
+          id={product.id}
+          name={product.name}
+          slug={product.slug}
+          price={product.price}
+          originalPrice={product.originalPrice}
+          thumbnail={product.thumbnail}
+        />
       </div>
     </div>
   )

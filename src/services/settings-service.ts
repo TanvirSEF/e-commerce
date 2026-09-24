@@ -501,3 +501,54 @@ export async function updateSmtpSettings(data: SmtpSettings) {
   }
 }
 
+export interface SmartBarSettings {
+  showSmartBar: boolean
+  backgroundDesign: "plain" | "blur"
+  backgroundColor: string
+  textColor: string
+}
+
+export const DEFAULT_SMART_BAR_SETTINGS: SmartBarSettings = {
+  showSmartBar: true,
+  backgroundDesign: "plain",
+  backgroundColor: "#ffffff",
+  textColor: "#1f2937",
+}
+
+export async function getSmartBarSettings(): Promise<SmartBarSettings> {
+  try {
+    const raw = await getSetting("smart_bar_settings")
+    if (raw) return { ...DEFAULT_SMART_BAR_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("DB getSmartBarSettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_SMART_BAR_SETTINGS
+}
+
+export async function updateSmartBarSettings(data: SmartBarSettings) {
+  try {
+    const jsonVal = JSON.stringify(data)
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "smart_bar_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "smart_bar_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn("updateSmartBarSettings error:", (err as Error).message)
+    return { success: true }
+  }
+}
+
