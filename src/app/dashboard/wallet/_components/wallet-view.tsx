@@ -18,6 +18,8 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
   // Form states
   const [amount, setAmount] = useState<number | "">("")
   const [paymentMethod, setPaymentMethod] = useState("bKash Online")
+  const [offlineMethod, setOfflineMethod] = useState("bKash Manual")
+  const [senderNumber, setSenderNumber] = useState("")
   const [txnId, setTxnId] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
@@ -27,10 +29,15 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
 
     setSubmitting(true)
     const isOffline = modalType === "offline"
+    const chosenMethod = isOffline ? offlineMethod : paymentMethod
+    const details = isOffline
+      ? `Sender: ${senderNumber} | TrxID: ${txnId}`
+      : undefined
 
     const res = await rechargeWalletAction({
       amount: Number(amount),
-      paymentMethod: isOffline ? `Bank Transfer (Txn: ${txnId})` : paymentMethod,
+      paymentMethod: isOffline ? `${offlineMethod} (Trx: ${txnId})` : paymentMethod,
+      paymentDetails: details,
       offlinePayment: isOffline,
     })
 
@@ -38,7 +45,7 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
       id: `w-${Date.now()}`,
       date: new Date().toISOString().slice(0, 10),
       amount: Number(amount),
-      paymentMethod: isOffline ? `Bank Transfer (Txn: ${txnId})` : paymentMethod,
+      paymentMethod: isOffline ? `${offlineMethod} (Trx: ${txnId})` : paymentMethod,
       status: isOffline ? "pending" : "approved",
     }
 
@@ -50,6 +57,7 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
     setSubmitting(false)
     setModalType(null)
     setAmount("")
+    setSenderNumber("")
     setTxnId("")
   }
 
@@ -220,20 +228,68 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
                 </div>
               ) : (
                 <>
-                  <div className="bg-gray-50 border border-gray-200 p-3 rounded text-[11px] text-gray-600 space-y-1">
-                    <p className="font-semibold text-gray-800">Bank Account Details:</p>
-                    <p>Bank: Dutch Bangla Bank Ltd (Uttara Branch)</p>
-                    <p>Account Name: Active eCommerce CMS</p>
-                    <p>Account No: 115.120.987654</p>
-                  </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Bank Deposit / Txn ID <span className="text-red-500">*</span>
+                      Select Offline Payment Channel <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={offlineMethod}
+                      onChange={(e) => setOfflineMethod(e.target.value)}
+                      className="w-full text-xs border border-gray-200 rounded p-2.5 focus:border-primary focus:outline-none bg-white"
+                    >
+                      <option value="bKash Manual (Send Money)">bKash Manual (Send Money)</option>
+                      <option value="Nagad Manual (Cash Out)">Nagad Manual (Send Money / Cash Out)</option>
+                      <option value="Bank Wire / Deposit">Bank Wire (DBBL / City Bank)</option>
+                    </select>
+                  </div>
+
+                  {offlineMethod.includes("bKash") && (
+                    <div className="bg-rose-50 border border-rose-200 p-3 rounded text-[11px] text-rose-900 space-y-1">
+                      <p className="font-semibold text-rose-800">bKash Account Instructions:</p>
+                      <p>Send Money to Personal No: <span className="font-bold text-gray-900">01711-223344</span></p>
+                      <p className="text-[10px] text-gray-500">Please enter your bKash sender number and the TrxID received via SMS below.</p>
+                    </div>
+                  )}
+
+                  {offlineMethod.includes("Nagad") && (
+                    <div className="bg-amber-50 border border-amber-200 p-3 rounded text-[11px] text-amber-900 space-y-1">
+                      <p className="font-semibold text-amber-800">Nagad Account Instructions:</p>
+                      <p>Send Money to Personal No: <span className="font-bold text-gray-900">01812-998877</span></p>
+                      <p className="text-[10px] text-gray-500">Please enter your Nagad sender number and the TrxID received via SMS below.</p>
+                    </div>
+                  )}
+
+                  {offlineMethod.includes("Bank") && (
+                    <div className="bg-gray-50 border border-gray-200 p-3 rounded text-[11px] text-gray-600 space-y-1">
+                      <p className="font-semibold text-gray-800">Bank Wire / Deposit Details:</p>
+                      <p>Bank: <span className="font-medium text-gray-900">Dutch Bangla Bank Ltd (Uttara Branch)</span></p>
+                      <p>Account Name: <span className="font-medium text-gray-900">Active eCommerce CMS Ltd</span></p>
+                      <p>Account No: <span className="font-bold text-gray-900">115.120.987654</span></p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Sender Phone / Account No <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. DBBL-TXN-889922"
+                      placeholder="e.g. 01711-XXXXXX or Account No"
+                      value={senderNumber}
+                      onChange={(e) => setSenderNumber(e.target.value)}
+                      className="w-full text-xs border border-gray-200 rounded p-2.5 focus:border-primary focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Transaction ID (TrxID) / Deposit Slip No <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. BKH982310 or DBBL-SLIP-4820"
                       value={txnId}
                       onChange={(e) => setTxnId(e.target.value)}
                       className="w-full text-xs border border-gray-200 rounded p-2.5 focus:border-primary focus:outline-none"

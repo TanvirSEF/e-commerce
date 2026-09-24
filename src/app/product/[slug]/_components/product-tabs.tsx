@@ -1,11 +1,14 @@
 "use client"
 
 import React, { useState } from "react"
-import { Star, MessageSquare, PenLine, X, CheckCircle } from "lucide-react"
+import { Star, MessageSquare, PenLine, X, CheckCircle, HelpCircle } from "lucide-react"
 import { submitReviewAction } from "@/app/actions/ecommerce-actions"
+import { ProductQATab } from "./product-qa-tab"
 
 interface ProductTabsProps {
   productId?: number | string
+  productSlug?: string
+  productName?: string
   description: string
   specifications?: { label: string; value: string }[]
   reviews?: {
@@ -21,13 +24,15 @@ interface ProductTabsProps {
 
 export function ProductTabs({
   productId = 1,
+  productSlug = "product",
+  productName = "Product",
   description,
   specifications = [],
   reviews = [],
   rating,
   reviewCount,
 }: ProductTabsProps) {
-  const [activeTab, setActiveTab] = useState<"description" | "specs" | "reviews">("description")
+  const [activeTab, setActiveTab] = useState<"description" | "specs" | "reviews" | "qa">("description")
   const [reviewList, setReviewList] = useState(reviews)
   const [showModal, setShowModal] = useState(false)
   const [userRating, setUserRating] = useState(5)
@@ -104,6 +109,17 @@ export function ProductTabs({
           }`}
         >
           Reviews ({reviewCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("qa")}
+          className={`px-5 py-3.5 transition-colors ${
+            activeTab === "qa"
+              ? "border-b-2 border-[#d43533] text-[#d43533]"
+              : "hover:text-gray-900"
+          }`}
+        >
+          Questions & Answers
         </button>
       </div>
 
@@ -304,6 +320,11 @@ export function ProductTabs({
               </div>
             )}
           </div>
+        )}
+
+        {/* Questions & Answers Tab */}
+        {activeTab === "qa" && (
+          <ProductQATab productSlug={productSlug} productName={productName} />
         )}
       </div>
     </div>

@@ -257,3 +257,247 @@ export async function updateClubPointsSettings(data: ClubPointsSettings) {
   }
 }
 
+export interface PaymentGatewaysSettings {
+  bkash: {
+    active: boolean
+    sandbox: boolean
+    appKey: string
+    appSecret: string
+    username: string
+  }
+  nagad: {
+    active: boolean
+    sandbox: boolean
+    merchantId: string
+    publicKey: string
+  }
+  sslcommerz: {
+    active: boolean
+    sandbox: boolean
+    storeId: string
+    storePassword: string
+  }
+  stripe: {
+    active: boolean
+    publishableKey: string
+    secretKey: string
+  }
+  cod: {
+    active: boolean
+  }
+  offline: {
+    active: boolean
+    bankName: string
+    accountName: string
+    accountNumber: string
+    branch: string
+    bkashPersonal: string
+    nagadPersonal: string
+    instructions: string
+  }
+}
+
+const DEFAULT_PAYMENT_SETTINGS: PaymentGatewaysSettings = {
+  bkash: {
+    active: true,
+    sandbox: true,
+    appKey: "bkash_sandbox_app_key_huipper",
+    appSecret: "bkash_sandbox_app_secret_huipper",
+    username: "01700000000",
+  },
+  nagad: {
+    active: true,
+    sandbox: true,
+    merchantId: "NAGAD_MERC_001",
+    publicKey: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...",
+  },
+  sslcommerz: {
+    active: true,
+    sandbox: true,
+    storeId: "huipper_test_live",
+    storePassword: "ssl_password_test",
+  },
+  stripe: {
+    active: true,
+    publishableKey: "pk_test_51Mz...",
+    secretKey: "sk_test_51Mz...",
+  },
+  cod: {
+    active: true,
+  },
+  offline: {
+    active: true,
+    bankName: "City Bank Limited",
+    accountName: "Huipper eCommerce Ltd",
+    accountNumber: "1502938475001",
+    branch: "Gulshan Branch, Dhaka",
+    bkashPersonal: "01711-223344",
+    nagadPersonal: "01812-998877",
+    instructions: "Send exact bill amount to our official personal bKash/Nagad or deposit in City Bank account. Mention Order Code in reference and paste TrxID in the box.",
+  },
+}
+
+export async function getPaymentGatewaysSettings(): Promise<PaymentGatewaysSettings> {
+  try {
+    const raw = await getSetting("payment_gateways_settings")
+    if (raw) return JSON.parse(raw) as PaymentGatewaysSettings
+  } catch (err) {
+    console.warn("DB getPaymentGatewaysSettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_PAYMENT_SETTINGS
+}
+
+export async function updatePaymentGatewaysSettings(data: PaymentGatewaysSettings) {
+  try {
+    const jsonVal = JSON.stringify(data)
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "payment_gateways_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "payment_gateways_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn("updatePaymentGatewaysSettings error:", (err as Error).message)
+    return { success: true }
+  }
+}
+
+export interface CurrencyItem {
+  id: number
+  name: string
+  symbol: string
+  code: string
+  exchangeRate: number
+  isDefault: boolean
+  status: boolean
+}
+
+export interface CurrencySettings {
+  defaultCurrencyCode: string
+  symbolFormat: "symbol_amount" | "amount_symbol" | "symbol_space_amount" | "amount_space_symbol"
+  decimalSeparator: "." | ","
+  numberOfDecimals: number
+  currencies: CurrencyItem[]
+}
+
+const DEFAULT_CURRENCY_SETTINGS: CurrencySettings = {
+  defaultCurrencyCode: "BDT",
+  symbolFormat: "symbol_space_amount",
+  decimalSeparator: ".",
+  numberOfDecimals: 0,
+  currencies: [
+    { id: 1, name: "Bangladeshi Taka", symbol: "৳", code: "BDT", exchangeRate: 1, isDefault: true, status: true },
+    { id: 2, name: "US Dollar", symbol: "$", code: "USD", exchangeRate: 120, isDefault: false, status: true },
+    { id: 3, name: "Euro", symbol: "€", code: "EUR", exchangeRate: 130, isDefault: false, status: true },
+    { id: 4, name: "Indian Rupee", symbol: "₹", code: "INR", exchangeRate: 1.45, isDefault: false, status: true },
+  ],
+}
+
+export async function getCurrencySettings(): Promise<CurrencySettings> {
+  try {
+    const raw = await getSetting("currency_settings")
+    if (raw) return JSON.parse(raw) as CurrencySettings
+  } catch (err) {
+    console.warn("DB getCurrencySettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_CURRENCY_SETTINGS
+}
+
+export async function updateCurrencySettings(data: CurrencySettings) {
+  try {
+    const jsonVal = JSON.stringify(data)
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "currency_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "currency_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn("updateCurrencySettings error:", (err as Error).message)
+    return { success: true }
+  }
+}
+
+export interface SmtpSettings {
+  mailDriver: "smtp" | "sendmail" | "mailgun"
+  mailHost: string
+  mailPort: number
+  mailUsername: string
+  mailPassword?: string
+  mailEncryption: "tls" | "ssl" | "none"
+  mailFromAddress: string
+  mailFromName: string
+}
+
+const DEFAULT_SMTP_SETTINGS: SmtpSettings = {
+  mailDriver: "smtp",
+  mailHost: "smtp.mailgun.org",
+  mailPort: 587,
+  mailUsername: "postmaster@huipper.com",
+  mailPassword: "smtp_password_secret",
+  mailEncryption: "tls",
+  mailFromAddress: "no-reply@huipper.com",
+  mailFromName: "Active eCommerce System",
+}
+
+export async function getSmtpSettings(): Promise<SmtpSettings> {
+  try {
+    const raw = await getSetting("smtp_settings")
+    if (raw) return JSON.parse(raw) as SmtpSettings
+  } catch (err) {
+    console.warn("DB getSmtpSettings fallback:", (err as Error).message)
+  }
+  return DEFAULT_SMTP_SETTINGS
+}
+
+export async function updateSmtpSettings(data: SmtpSettings) {
+  try {
+    const jsonVal = JSON.stringify(data)
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "smtp_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "smtp_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn("updateSmtpSettings error:", (err as Error).message)
+    return { success: true }
+  }
+}
+

@@ -239,6 +239,8 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
         {/* Tabs: Description, Specs, Reviews */}
         <ProductTabs
           productId={product.id}
+          productSlug={product.slug}
+          productName={product.name}
           description={product.description}
           specifications={product.specifications}
           reviews={product.reviews}

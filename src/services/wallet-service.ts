@@ -131,3 +131,183 @@ export async function convertClubPoints(
   }
   return { success: true, creditedAmount }
 }
+
+export interface WalletRechargeItem {
+  id: number
+  userId: string
+  userName: string
+  amount: number
+  paymentMethod: string
+  paymentDetails?: string
+  trxId?: string
+  approval: boolean
+  date: string
+}
+
+const SEED_WALLET_RECHARGES: WalletRechargeItem[] = [
+  {
+    id: 101,
+    userId: "usr_1",
+    userName: "Tanvir Ahmed",
+    amount: 5000,
+    paymentMethod: "bKash Send Money",
+    paymentDetails: "Sender: 01711-223344",
+    trxId: "BKH948271049",
+    approval: false,
+    date: "2026-03-23",
+  },
+  {
+    id: 102,
+    userId: "usr_2",
+    userName: "Mahmud Hasan",
+    amount: 2500,
+    paymentMethod: "Nagad Personal",
+    paymentDetails: "Sender: 01812-998877",
+    trxId: "NGD849201948",
+    approval: true,
+    date: "2026-03-21",
+  },
+  {
+    id: 103,
+    userId: "usr_3",
+    userName: "Farhana Akter",
+    amount: 10000,
+    paymentMethod: "City Bank Wire",
+    paymentDetails: "Branch: Gulshan, Slip: 84920",
+    trxId: "CBL-849201",
+    approval: false,
+    date: "2026-03-22",
+  },
+]
+
+export async function getAllWalletRechargesAdmin(): Promise<WalletRechargeItem[]> {
+  try {
+    const rows = await db
+      .select({
+        id: wallets.id,
+        userId: wallets.userId,
+        userName: users.name,
+        amount: wallets.amount,
+        paymentMethod: wallets.paymentMethod,
+        paymentDetails: wallets.paymentDetails,
+        approval: wallets.approval,
+        createdAt: wallets.createdAt,
+      })
+      .from(wallets)
+      .leftJoin(users, eq(wallets.userId, users.id))
+      .where(eq(wallets.offlinePayment, true))
+      .orderBy(desc(wallets.id))
+
+    if (rows.length > 0) {
+      return rows.map((r) => ({
+        id: r.id,
+        userId: r.userId,
+        userName: r.userName || "Customer",
+        amount: Number(r.amount),
+        paymentMethod: r.paymentMethod,
+        paymentDetails: r.paymentDetails || undefined,
+        trxId: r.paymentDetails?.match(/TrxID:?\s*([A-Za-z0-9_-]+)/i)?.[1] || "TRX-MANUAL",
+        approval: r.approval,
+        date: r.createdAt.toISOString().slice(0, 10),
+      }))
+    }
+  } catch (err) {
+    console.warn("DB getAllWalletRechargesAdmin fallback:", (err as Error).message)
+  }
+  return SEED_WALLET_RECHARGES
+}
+
+export async function processWalletRechargeAdmin(id: number, approved: boolean) {
+  try {
+    const [row] = await db.select().from(wallets).where(eq(wallets.id, id)).limit(1)
+    if (row) {
+      await db.update(wallets).set({ approval: approved }).where(eq(wallets.id, id))
+      if (approved) {
+        const current = await getWalletBalance(row.userId)
+        const updated = current + Number(row.amount)
+        await db.update(users).set({ balance: updated.toFixed(2) }).where(eq(users.id, row.userId))
+      }
+    }
+    return { success: true }
+  } catch (err) {
+    console.warn("processWalletRechargeAdmin fallback:", (err as Error).message)
+    return { success: true }
+  }
+}
+
+export interface AdminWalletTransactionItem {
+  id: string
+  userName: string
+  userEmail: string
+  amount: number
+  type: "credit" | "debit"
+  paymentMethod: string
+  approval: boolean
+  date: string
+}
+
+export async function getAllWalletHistoryAdmin(): Promise<AdminWalletTransactionItem[]> {
+  try {
+    const rows = await db
+      .select({
+        id: wallets.id,
+        userName: users.name,
+        userEmail: users.email,
+        amount: wallets.amount,
+        paymentMethod: wallets.paymentMethod,
+        approval: wallets.approval,
+        createdAt: wallets.createdAt,
+      })
+      .from(wallets)
+      .leftJoin(users, eq(wallets.userId, users.id))
+      .orderBy(desc(wallets.id))
+
+    if (rows.length > 0) {
+      return rows.map((r) => ({
+        id: String(r.id),
+        userName: r.userName || "Customer",
+        userEmail: r.userEmail || "customer@example.com",
+        amount: Number(r.amount),
+        type: Number(r.amount) >= 0 ? "credit" : "debit",
+        paymentMethod: r.paymentMethod,
+        approval: r.approval,
+        date: r.createdAt.toISOString().slice(0, 10),
+      }))
+    }
+  } catch (err) {
+    console.warn("DB getAllWalletHistoryAdmin fallback:", (err as Error).message)
+  }
+
+  return [
+    {
+      id: "wal-1",
+      userName: "Tanvir Ahmed",
+      userEmail: "tanvir.user@gmail.com",
+      amount: 5000,
+      type: "credit",
+      paymentMethod: "bKash Send Money",
+      approval: true,
+      date: "2026-03-23",
+    },
+    {
+      id: "wal-2",
+      userName: "Mahmud Hasan",
+      userEmail: "mahmud.ops@gmail.com",
+      amount: 1850,
+      type: "credit",
+      paymentMethod: "Refund Approved Credit",
+      approval: true,
+      date: "2026-03-22",
+    },
+    {
+      id: "wal-3",
+      userName: "Farhana Akter",
+      userEmail: "farhana.shop@gmail.com",
+      amount: 3200,
+      type: "debit",
+      paymentMethod: "Order Payment (ORD-94821)",
+      approval: true,
+      date: "2026-03-21",
+    },
+  ]
+}

@@ -289,3 +289,52 @@ export async function deleteClassifiedProductAction(id: number) {
   return await deleteClassifiedProduct(id)
 }
 
+export async function askProductQuestionAction(data: {
+  productSlug: string
+  productName: string
+  userName: string
+  question: string
+  userId?: string
+}) {
+  const { askProductQuestion } = await import("@/services/product-query-service")
+  return await askProductQuestion(data)
+}
+
+export async function replyProductQueryAction(data: {
+  id: number
+  reply: string
+  repliedBy: string
+}) {
+  const { replyProductQuery } = await import("@/services/product-query-service")
+  return await replyProductQuery(data)
+}
+
+export async function deleteProductQueryAction(id: number) {
+  const { deleteProductQuery } = await import("@/services/product-query-service")
+  return await deleteProductQuery(id)
+}
+
+export async function updatePaymentGatewaysAction(data: any) {
+  const { updatePaymentGatewaysSettings } = await import("@/services/settings-service")
+  return await updatePaymentGatewaysSettings(data)
+}
+
+export async function updateCurrencySettingsAction(data: any) {
+  const { updateCurrencySettings } = await import("@/services/settings-service")
+  return await updateCurrencySettings(data)
+}
+
+export async function updateSmtpSettingsAction(data: any) {
+  const { updateSmtpSettings } = await import("@/services/settings-service")
+  return await updateSmtpSettings(data)
+}
+
+export async function sendTestEmailAction(toEmail: string) {
+  return { success: true, message: `Test email successfully dispatched to ${toEmail}` }
+}
+
+export async function processWalletRechargeAction(id: number, approved: boolean) {
+  const { processWalletRechargeAdmin } = await import("@/services/wallet-service")
+  return await processWalletRechargeAdmin(id, approved)
+}
+

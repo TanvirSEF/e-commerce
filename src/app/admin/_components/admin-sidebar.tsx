@@ -45,6 +45,7 @@ const navItems: NavItem[] = [
       { title: "Brands", href: "/admin/brands" },
       { title: "Attributes", href: "/admin/products/attributes" },
       { title: "Product Reviews", href: "/admin/reviews" },
+      { title: "Product Queries (Q&A)", href: "/admin/product-queries" },
     ],
   },
   {
@@ -82,7 +83,9 @@ const navItems: NavItem[] = [
     icon: BarChart3,
     children: [
       { title: "Sales Report", href: "/admin/reports/sales" },
+      { title: "In-House Sales", href: "/admin/reports/in-house-sales" },
       { title: "Stock Alert", href: "/admin/reports/stock" },
+      { title: "Wallet History", href: "/admin/reports/wallet-history" },
     ],
   },
   {
@@ -101,6 +104,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "All Customers", href: "/admin/customers" },
       { title: "Classified Products", href: "/admin/customer-products" },
+      { title: "Wallet Recharges", href: "/admin/wallet-recharges" },
     ],
   },
   {
@@ -113,7 +117,10 @@ const navItems: NavItem[] = [
     icon: Settings,
     children: [
       { title: "General Settings", href: "/admin/settings" },
+      { title: "Payment Methods", href: "/admin/settings/payments" },
+      { title: "Currencies & Rates", href: "/admin/settings/currencies" },
       { title: "Shipping Configuration", href: "/admin/settings/shipping" },
+      { title: "SMTP Mail Settings", href: "/admin/settings/smtp" },
     ],
   },
 ]
