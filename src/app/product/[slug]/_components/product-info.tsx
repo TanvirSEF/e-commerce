@@ -14,8 +14,10 @@ import {
   Zap,
   ShieldCheck,
   Store,
+  Ruler,
 } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
+import { SizeGuideModal } from "./size-guide-modal"
 
 export interface ProductDetailsData {
   id: string
@@ -48,6 +50,7 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
   const [selectedSize, setSelectedSize] = useState(
     product.sizes && product.sizes.length > 0 ? product.sizes[0] : ""
   )
+  const [showSizeGuide, setShowSizeGuide] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const [isCopied, setIsCopied] = useState(false)
 
@@ -209,8 +212,18 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
       {/* Size Selection */}
       {product.sizes && product.sizes.length > 0 && (
         <div>
-          <div className="mb-2 font-semibold text-gray-700">
-            Size: <span className="font-bold text-gray-900">{selectedSize}</span>
+          <div className="mb-2 flex items-center justify-between font-semibold text-gray-700">
+            <div>
+              Size: <span className="font-bold text-gray-900">{selectedSize}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSizeGuide(true)}
+              className="flex items-center gap-1 text-[11px] font-medium text-[#d43533] hover:underline"
+            >
+              <Ruler className="h-3 w-3" />
+              <span>Size Guide</span>
+            </button>
           </div>
           <div className="flex gap-2">
             {product.sizes.map((s) => (
@@ -328,6 +341,11 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
           <span>100% Authentic Product</span>
         </div>
       </div>
+
+      <SizeGuideModal
+        isOpen={showSizeGuide}
+        onClose={() => setShowSizeGuide(false)}
+      />
     </div>
   )
 }

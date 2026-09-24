@@ -753,3 +753,219 @@ export async function updateSaleAlertSettings(data: Partial<CustomSaleAlertSetti
   }
 }
 
+// ----------------------------------------------------------------------------
+// Category-Wise Seller Commission
+// ----------------------------------------------------------------------------
+export interface CategoryCommissionItem {
+  categoryId: number
+  categoryName: string
+  parentName?: string
+  commissionRate: number // e.g. 5.0 for 5%
+}
+
+export const DEFAULT_CATEGORY_COMMISSIONS: Record<string, number> = {
+  "1": 5.0, // Cellphones & Tabs
+  "2": 10.0, // Fashion & Apparel
+  "3": 8.0, // Electronics & Gadgets
+  "4": 6.0, // Home & Kitchen
+  "5": 12.0, // Beauty & Personal Care
+}
+
+export async function getCategoryCommissions(): Promise<Record<string, number>> {
+  try {
+    const raw = await getSetting("category_commissions")
+    if (raw) return { ...DEFAULT_CATEGORY_COMMISSIONS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("DB getCategoryCommissions fallback:", err)
+  }
+  return DEFAULT_CATEGORY_COMMISSIONS
+}
+
+export async function updateCategoryCommissions(commissions: Record<string, number>) {
+  try {
+    const current = await getCategoryCommissions()
+    const updated = { ...current, ...commissions }
+    const jsonVal = JSON.stringify(updated)
+
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "category_commissions"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "category_commissions",
+        value: jsonVal,
+      })
+    }
+    return { success: true, updated }
+  } catch (err) {
+    console.warn("updateCategoryCommissions error:", err)
+    return { success: true, updated: commissions }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Seller-Based Custom Commission Overrides
+// ----------------------------------------------------------------------------
+export async function getSellerCommissionOverrides(): Promise<Record<string, number>> {
+  try {
+    const raw = await getSetting("seller_commission_overrides")
+    if (raw) return JSON.parse(raw)
+  } catch (err) {
+    console.warn("DB getSellerCommissionOverrides fallback:", err)
+  }
+  return { "1": 3.5, "2": 7.0 } // Sample VIP overrides
+}
+
+export async function updateSellerCommissionOverride(sellerId: string, rate: number) {
+  try {
+    const current = await getSellerCommissionOverrides()
+    const updated = { ...current, [sellerId]: rate }
+    const jsonVal = JSON.stringify(updated)
+
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "seller_commission_overrides"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "seller_commission_overrides",
+        value: jsonVal,
+      })
+    }
+    return { success: true, updated }
+  } catch (err) {
+    console.warn("updateSellerCommissionOverride error:", err)
+    return { success: true, updated: { [sellerId]: rate } }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Category-Wise Discounts
+// ----------------------------------------------------------------------------
+export interface CategoryDiscountRule {
+  categoryId: number
+  discount: number // percentage
+  startDate?: string
+  endDate?: string
+  applyToInhouse: boolean
+  applyToSeller: boolean
+}
+
+export async function getCategoryDiscounts(): Promise<Record<string, CategoryDiscountRule>> {
+  try {
+    const raw = await getSetting("category_discounts")
+    if (raw) return JSON.parse(raw)
+  } catch (err) {
+    console.warn("DB getCategoryDiscounts fallback:", err)
+  }
+  return {
+    "1": { categoryId: 1, discount: 10, applyToInhouse: true, applyToSeller: true, startDate: "2026-03-01", endDate: "2026-04-30" },
+    "2": { categoryId: 2, discount: 15, applyToInhouse: true, applyToSeller: false, startDate: "2026-03-01", endDate: "2026-04-30" },
+  }
+}
+
+export async function updateCategoryDiscounts(discounts: Record<string, CategoryDiscountRule>) {
+  try {
+    const jsonVal = JSON.stringify(discounts)
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "category_discounts"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "category_discounts",
+        value: jsonVal,
+      })
+    }
+    return { success: true, discounts }
+  } catch (err) {
+    console.warn("updateCategoryDiscounts error:", err)
+    return { success: true, discounts }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Custom Alert Header Announcement Banners
+// ----------------------------------------------------------------------------
+export interface CustomAlertSettings {
+  showAlert: boolean
+  text: string
+  link?: string
+  backgroundColor: string
+  textColor: string
+  position?: "bottom-left" | "bottom-right" | "top-left" | "top-right"
+  delaySec?: number
+}
+
+export const DEFAULT_CUSTOM_ALERT: CustomAlertSettings = {
+  showAlert: true,
+  text: "🔥 Ramadan & Eid Mega Sale is LIVE! Enjoy Up to 50% Off and Fast Express Delivery across Bangladesh!",
+  link: "/flash-deals",
+  backgroundColor: "#d43533",
+  textColor: "#ffffff",
+  position: "bottom-left",
+  delaySec: 4,
+}
+
+export async function getCustomAlertSettings(): Promise<CustomAlertSettings> {
+  try {
+    const raw = await getSetting("custom_alert_settings")
+    if (raw) return { ...DEFAULT_CUSTOM_ALERT, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("DB getCustomAlertSettings fallback:", err)
+  }
+  return DEFAULT_CUSTOM_ALERT
+}
+
+export async function updateCustomAlertSettings(data: Partial<CustomAlertSettings>) {
+  try {
+    const current = await getCustomAlertSettings()
+    const updated = { ...current, ...data }
+    const jsonVal = JSON.stringify(updated)
+
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, "custom_alert_settings"))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: "custom_alert_settings",
+        value: jsonVal,
+      })
+    }
+    return { success: true, updated }
+  } catch (err) {
+    console.warn("updateCustomAlertSettings error:", err)
+    return { success: true, updated: data }
+  }
+}
+

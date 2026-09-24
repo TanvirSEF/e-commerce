@@ -619,3 +619,74 @@ export async function updateSaleAlertSettingsAction(data: any) {
   return await updateSaleAlertSettings(data)
 }
 
+export async function createSizeChartAction(data: any) {
+  const { createSizeChart } = await import("@/services/size-chart-service")
+  return await createSizeChart(data)
+}
+
+export async function deleteSizeChartAction(id: number) {
+  const { deleteSizeChart } = await import("@/services/size-chart-service")
+  return await deleteSizeChart(id)
+}
+
+export async function createDynamicPopupAction(data: any) {
+  const { createDynamicPopup } = await import("@/services/dynamic-popup-service")
+  return await createDynamicPopup(data)
+}
+
+export async function toggleDynamicPopupStatusAction(id: number, status: boolean) {
+  const { toggleDynamicPopupStatus } = await import("@/services/dynamic-popup-service")
+  return await toggleDynamicPopupStatus(id, status)
+}
+
+export async function deleteDynamicPopupAction(id: number) {
+  const { deleteDynamicPopup } = await import("@/services/dynamic-popup-service")
+  return await deleteDynamicPopup(id)
+}
+
+export async function toggleCityDeliveryStatusAction(id: number, status: boolean) {
+  const { toggleCityDeliveryStatus } = await import("@/services/shipping-location-service")
+  return await toggleCityDeliveryStatus(id, status)
+}
+
+export async function createShippingCityAction(data: any) {
+  const { createShippingCity } = await import("@/services/shipping-location-service")
+  return await createShippingCity(data)
+}
+
+export async function updateOrderRulesAction(data: any) {
+  const { updateOrderRules } = await import("@/services/order-rules-service")
+  return await updateOrderRules(data)
+}
+
+export async function createOrderNoteAction(data: any) {
+  const { createOrderNote } = await import("@/services/order-rules-service")
+  return await createOrderNote(data)
+}
+
+export async function deleteOrderNoteAction(id: number) {
+  const { deleteOrderNote } = await import("@/services/order-rules-service")
+  return await deleteOrderNote(id)
+}
+
+export async function updateCategoryCommissionsAction(data: any) {
+  const { updateCategoryCommissions } = await import("@/services/settings-service")
+  return await updateCategoryCommissions(data)
+}
+
+export async function updateSellerCommissionOverrideAction(sellerId: string, rate: number) {
+  const { updateSellerCommissionOverride } = await import("@/services/settings-service")
+  return await updateSellerCommissionOverride(sellerId, rate)
+}
+
+export async function updateCategoryDiscountsAction(data: any) {
+  const { updateCategoryDiscounts } = await import("@/services/settings-service")
+  return await updateCategoryDiscounts(data)
+}
+
+export async function updateCustomAlertSettingsAction(data: any) {
+  const { updateCustomAlertSettings } = await import("@/services/settings-service")
+  return await updateCustomAlertSettings(data)
+}
+
+

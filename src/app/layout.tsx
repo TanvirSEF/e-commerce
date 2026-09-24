@@ -9,6 +9,7 @@ import { Footer } from "@/components/layout/footer"
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav"
 import { CartDrawer } from "@/components/cart/cart-drawer"
 import { StorefrontSaleAlert } from "@/components/layout/storefront-sale-alert"
+import { StorefrontDynamicPopup } from "@/components/layout/storefront-dynamic-popup"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
@@ -40,6 +41,7 @@ export default function RootLayout({
             <MobileBottomNav />
             <CartDrawer />
             <StorefrontSaleAlert />
+            <StorefrontDynamicPopup />
           </CartProvider>
         </AuthProvider>
       </body>

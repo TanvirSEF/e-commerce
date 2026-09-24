@@ -38,6 +38,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "All Products", href: "/seller/products" },
       { title: "Add New Product", href: "/seller/products/create" },
+      { title: "Bulk Upload", href: "/seller/product-bulk-upload" },
     ],
   },
   {
@@ -46,9 +47,19 @@ const navItems: NavItem[] = [
     icon: ShoppingBag,
   },
   {
+    title: "Custom Labels",
+    href: "/seller/custom-labels",
+    icon: Tag,
+  },
+  {
     title: "My Coupons",
     href: "/seller/coupons",
     icon: Tag,
+  },
+  {
+    title: "Commission History",
+    href: "/seller/commission-history",
+    icon: DollarSign,
   },
   {
     title: "Payout Requests",
