@@ -504,3 +504,107 @@ export async function updateFeatureActivationsAction(data: any) {
   const { updateFeatureActivations } = await import("@/services/settings-service")
   return await updateFeatureActivations(data)
 }
+
+export async function createCustomLabelAction(data: {
+  text: string
+  backgroundColor: string
+  textColor: string
+  productIds?: number[]
+  userType?: string
+  addedBy?: string
+  sellerAccess?: boolean
+}) {
+  const { createCustomLabel } = await import("@/services/custom-label-service")
+  return await createCustomLabel(data)
+}
+
+export async function toggleCustomLabelStatusAction(id: number, status: boolean) {
+  const { toggleCustomLabelStatus } = await import("@/services/custom-label-service")
+  return await toggleCustomLabelStatus(id, status)
+}
+
+export async function toggleCustomLabelSellerAccessAction(id: number, sellerAccess: boolean) {
+  const { toggleCustomLabelSellerAccess } = await import("@/services/custom-label-service")
+  return await toggleCustomLabelSellerAccess(id, sellerAccess)
+}
+
+export async function deleteCustomLabelAction(id: number) {
+  const { deleteCustomLabel } = await import("@/services/custom-label-service")
+  return await deleteCustomLabel(id)
+}
+
+export async function createTaxAction(name: string) {
+  const { createTax } = await import("@/services/tax-service")
+  return await createTax(name)
+}
+
+export async function toggleTaxStatusAction(id: number, status: boolean) {
+  const { toggleTaxStatus } = await import("@/services/tax-service")
+  return await toggleTaxStatus(id, status)
+}
+
+export async function deleteTaxAction(id: number) {
+  const { deleteTax } = await import("@/services/tax-service")
+  return await deleteTax(id)
+}
+
+export async function createPickupPointAction(data: {
+  name: string
+  address: string
+  phone: string
+  managerName?: string
+  cashOnPickupStatus?: boolean
+}) {
+  const { createPickupPoint } = await import("@/services/pickup-point-service")
+  return await createPickupPoint(data)
+}
+
+export async function togglePickupPointStatusAction(id: number, status: boolean) {
+  const { togglePickupPointStatus } = await import("@/services/pickup-point-service")
+  return await togglePickupPointStatus(id, status)
+}
+
+export async function deletePickupPointAction(id: number) {
+  const { deletePickupPoint } = await import("@/services/pickup-point-service")
+  return await deletePickupPoint(id)
+}
+
+export async function sendCustomNotificationAction(data: {
+  title: string
+  content: string
+  link?: string
+  notificationType?: string
+  recipientCount?: number
+}) {
+  const { sendCustomNotification } = await import("@/services/notification-service")
+  return await sendCustomNotification(data)
+}
+
+export async function bulkUploadProductsAction(items: Array<{
+  name: string
+  categoryId?: number
+  brandId?: number
+  unitPrice: number
+  currentStock?: number
+  description?: string
+}>) {
+  const { createProduct } = await import("@/services/product-service")
+  let successCount = 0
+  for (const item of items) {
+    try {
+      await createProduct({
+        name: item.name,
+        categoryId: item.categoryId || 1,
+        brandId: item.brandId || 1,
+        unitPrice: String(item.unitPrice),
+        currentStock: item.currentStock || 10,
+        description: item.description || item.name,
+        thumbnailImg: "/assets/img/placeholder.jpg",
+      })
+      successCount++
+    } catch (e) {
+      console.error("Bulk upload item error:", e)
+    }
+  }
+  return { success: true, count: successCount }
+}

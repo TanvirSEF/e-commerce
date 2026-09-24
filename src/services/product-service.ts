@@ -387,3 +387,38 @@ export async function deleteDigitalProduct(id: number): Promise<boolean> {
     return false
   }
 }
+
+export async function createProduct(data: {
+  name: string
+  categoryId?: number | string
+  brandId?: number | string
+  unitPrice: string | number
+  currentStock?: number
+  description?: string
+  thumbnailImg?: string
+}): Promise<any> {
+  try {
+    const slug =
+      data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") +
+      "-" +
+      Date.now().toString().slice(-4)
+    const [inserted] = await db
+      .insert(products)
+      .values({
+        name: data.name,
+        slug,
+        categoryId: data.categoryId ? Number(data.categoryId) : 1,
+        brandId: data.brandId ? Number(data.brandId) : 1,
+        unitPrice: String(data.unitPrice),
+        currentStock: data.currentStock || 10,
+        description: data.description || data.name,
+        thumbnailImg: data.thumbnailImg || "/assets/img/placeholder.jpg",
+      })
+      .returning()
+    return inserted || null
+  } catch (error) {
+    console.error("Failed to insert product:", error)
+    return null
+  }
+}
+
