@@ -9,9 +9,12 @@ import { useCart } from "@/lib/context/cart-context"
 const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Flash Sale", href: "/flash-deals" },
+  { label: "Blogs", href: "/blogs" },
   { label: "All Sellers", href: "/sellers" },
   { label: "All Brands", href: "/brands" },
   { label: "All Categories", href: "/categories" },
+  { label: "Classified Ads", href: "/customer-products" },
+  { label: "Contact Us", href: "/contact" },
 ]
 
 const SAMPLE_CATEGORIES = [

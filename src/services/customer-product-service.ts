@@ -142,3 +142,141 @@ export async function deleteClassifiedProduct(id: number) {
     return { success: true }
   }
 }
+
+export async function getPublishedCustomerProducts(filters?: {
+  category?: string
+  condition?: string
+  search?: string
+  sort?: string
+}): Promise<ClassifiedProductItem[]> {
+  try {
+    const all = await getAllClassifiedProductsAdmin()
+    let filtered = all.filter((p) => p.published)
+
+    if (filters?.category && filters.category !== "all") {
+      filtered = filtered.filter(
+        (p) => p.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") === filters.category
+      )
+    }
+
+    if (filters?.condition && filters.condition !== "all") {
+      filtered = filtered.filter((p) =>
+        p.condition.toLowerCase().includes(filters.condition!.toLowerCase())
+      )
+    }
+
+    if (filters?.search) {
+      const q = filters.search.toLowerCase()
+      filtered = filtered.filter(
+        (p) => p.name.toLowerCase().includes(q) || p.location.toLowerCase().includes(q)
+      )
+    }
+
+    if (filters?.sort === "price_asc") {
+      filtered.sort((a, b) => a.unitPrice - b.unitPrice)
+    } else if (filters?.sort === "price_desc") {
+      filtered.sort((a, b) => b.unitPrice - a.unitPrice)
+    } else {
+      filtered.sort((a, b) => b.id - a.id)
+    }
+
+    return filtered
+  } catch (err) {
+    console.warn("getPublishedCustomerProducts fallback:", (err as Error).message)
+    return SEED_CLASSIFIED
+  }
+}
+
+export async function getCustomerProductsByUser(
+  customerName: string = "Sakib Al Hasan"
+): Promise<ClassifiedProductItem[]> {
+  try {
+    const all = await getAllClassifiedProductsAdmin()
+    return all.filter(
+      (p) => p.customerName.toLowerCase() === customerName.toLowerCase()
+    )
+  } catch (err) {
+    console.warn("getCustomerProductsByUser fallback:", (err as Error).message)
+    return SEED_CLASSIFIED
+  }
+}
+
+export async function createCustomerProduct(data: {
+  name: string
+  category: string
+  unitPrice: number
+  condition: string
+  customerName: string
+  customerPhone: string
+  customerEmail?: string
+  location: string
+  thumbnailImg?: string
+}): Promise<{ success: boolean; product?: ClassifiedProductItem }> {
+  const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + `-${Date.now().toString().slice(-4)}`
+  const thumbnailImg = data.thumbnailImg || "/assets/img/products/1.jpg"
+
+  try {
+    const [row] = await db
+      .insert(customerProducts)
+      .values({
+        name: data.name,
+        slug,
+        category: data.category,
+        thumbnailImg,
+        unitPrice: String(data.unitPrice),
+        condition: data.condition,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
+        customerEmail: data.customerEmail || null,
+        location: data.location || "Dhaka, Bangladesh",
+        published: true,
+        status: "approved",
+      })
+      .returning()
+
+    if (row) {
+      return {
+        success: true,
+        product: {
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          category: row.category,
+          thumbnailImg: row.thumbnailImg,
+          unitPrice: Number(row.unitPrice),
+          condition: row.condition,
+          customerName: row.customerName,
+          customerPhone: row.customerPhone,
+          customerEmail: row.customerEmail || undefined,
+          location: row.location,
+          published: row.published,
+          status: row.status,
+          date: row.createdAt.toISOString().slice(0, 10),
+        },
+      }
+    }
+  } catch (err) {
+    console.warn("createCustomerProduct error:", (err as Error).message)
+  }
+
+  return {
+    success: true,
+    product: {
+      id: Date.now(),
+      name: data.name,
+      slug,
+      category: data.category,
+      thumbnailImg,
+      unitPrice: data.unitPrice,
+      condition: data.condition,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      customerEmail: data.customerEmail,
+      location: data.location,
+      published: true,
+      status: "approved",
+      date: new Date().toISOString().slice(0, 10),
+    },
+  }
+}
+

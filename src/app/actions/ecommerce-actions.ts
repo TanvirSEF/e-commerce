@@ -360,4 +360,36 @@ export async function updateAnalyticsSettingsAction(data: any) {
   return await updateAnalyticsSettings(data)
 }
 
+export async function submitContactInquiryAction(data: {
+  name: string
+  email: string
+  phone?: string
+  subject?: string
+  content: string
+}) {
+  const { submitContactInquiry } = await import("@/services/contact-service")
+  return await submitContactInquiry(data)
+}
+
+export async function createCustomerProductAction(data: {
+  name: string
+  category: string
+  unitPrice: number
+  condition: string
+  customerName: string
+  customerPhone: string
+  customerEmail?: string
+  location: string
+  thumbnailImg?: string
+}) {
+  const { createCustomerProduct } = await import("@/services/customer-product-service")
+  return await createCustomerProduct(data)
+}
+
+export async function deleteCustomerProductAction(id: number) {
+  const { deleteClassifiedProduct } = await import("@/services/customer-product-service")
+  return await deleteClassifiedProduct(id)
+}
+
+
 
