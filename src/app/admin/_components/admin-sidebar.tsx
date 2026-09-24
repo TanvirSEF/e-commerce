@@ -76,6 +76,7 @@ const navItems: NavItem[] = [
       { title: "Subscribers", href: "/admin/subscribers" },
       { title: "Newsletters", href: "/admin/newsletter" },
       { title: "Club Points Setup", href: "/admin/club-points" },
+      { title: "Marketing Analytics", href: "/admin/marketing/analytics" },
     ],
   },
   {
@@ -117,6 +118,7 @@ const navItems: NavItem[] = [
     icon: Settings,
     children: [
       { title: "General Settings", href: "/admin/settings" },
+      { title: "Appearance & Layout", href: "/admin/settings/appearance" },
       { title: "Payment Methods", href: "/admin/settings/payments" },
       { title: "Currencies & Rates", href: "/admin/settings/currencies" },
       { title: "Shipping Configuration", href: "/admin/settings/shipping" },

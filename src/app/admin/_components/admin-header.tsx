@@ -87,12 +87,20 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
                 <p className="text-gray-500 text-[11px] truncate">admin@example.com</p>
               </div>
               <Link
-                href="/admin/settings"
+                href="/admin/profile"
                 onClick={() => setShowProfileMenu(false)}
                 className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-[#d43533] transition-colors"
               >
                 <User className="w-3.5 h-3.5 mr-2 text-gray-400" />
-                Settings
+                Manage Profile
+              </Link>
+              <Link
+                href="/admin/settings"
+                onClick={() => setShowProfileMenu(false)}
+                className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-[#d43533] transition-colors"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 mr-2 text-gray-400" />
+                General Settings
               </Link>
               <Link
                 href="/login"

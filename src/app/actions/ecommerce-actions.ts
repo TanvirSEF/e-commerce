@@ -338,3 +338,26 @@ export async function processWalletRechargeAction(id: number, approved: boolean)
   return await processWalletRechargeAdmin(id, approved)
 }
 
+export async function updateAdminProfileAction(data: {
+  adminId?: string
+  name: string
+  email: string
+  phone?: string
+  image?: string
+  newPassword?: string
+}) {
+  const { updateAdminProfile } = await import("@/services/admin-profile-service")
+  return await updateAdminProfile(data.adminId || "usr_admin_default_01", data)
+}
+
+export async function updateAppearanceSettingsAction(data: any) {
+  const { updateAppearanceSettings } = await import("@/services/appearance-service")
+  return await updateAppearanceSettings(data)
+}
+
+export async function updateAnalyticsSettingsAction(data: any) {
+  const { updateAnalyticsSettings } = await import("@/services/analytics-service")
+  return await updateAnalyticsSettings(data)
+}
+
+
