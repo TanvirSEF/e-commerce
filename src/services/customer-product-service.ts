@@ -314,3 +314,38 @@ export async function getCustomerProductById(id: number): Promise<ClassifiedProd
   return SEED_CLASSIFIED.find((p) => p.id === id) || null
 }
 
+export async function getCustomerProductBySlug(slug: string): Promise<ClassifiedProductItem | null> {
+  try {
+    const [row] = await db
+      .select()
+      .from(customerProducts)
+      .where(eq(customerProducts.slug, slug))
+      .limit(1)
+
+    if (row) {
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        category: row.category,
+        thumbnailImg: row.thumbnailImg,
+        unitPrice: Number(row.unitPrice),
+        condition: row.condition,
+        customerName: row.customerName,
+        customerPhone: row.customerPhone,
+        customerEmail: row.customerEmail || undefined,
+        location: row.location,
+        published: row.published,
+        status: row.status,
+        date: row.createdAt ? row.createdAt.toISOString().slice(0, 10) : "",
+      }
+    }
+  } catch (err) {
+    console.warn("DB getCustomerProductBySlug fallback:", (err as Error).message)
+  }
+
+  const num = parseInt(slug, 10)
+  return SEED_CLASSIFIED.find((p) => p.slug === slug || (!isNaN(num) && p.id === num)) || null
+}
+
+
