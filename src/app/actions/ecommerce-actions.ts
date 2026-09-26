@@ -899,4 +899,32 @@ export async function updatePreorderSettingsAction(data: any) {
   return await updatePreorderSettings(data)
 }
 
+// Auction Actions
+export async function createAuctionProductAction(data: {
+  name: string
+  slug: string
+  thumbnail: string
+  description?: string
+  startingBid: string
+  minBidIncrement?: string
+  auctionStartDate: Date
+  auctionEndDate: Date
+  sellerSlug?: string
+  sellerName?: string
+  featured?: boolean
+}) {
+  const { createAuctionProduct } = await import("@/services/auction-service")
+  return await createAuctionProduct(data)
+}
+
+export async function placeAuctionBidAction(
+  productId: number,
+  userName: string,
+  userEmail: string,
+  amount: string
+) {
+  const { placeAuctionBid } = await import("@/services/auction-service")
+  return await placeAuctionBid(productId, userName, userEmail, amount)
+}
+
 

@@ -19,6 +19,7 @@ import {
   Receipt,
   PackageCheck,
   CalendarClock,
+  Gavel,
   X,
 } from "lucide-react"
 
@@ -65,6 +66,15 @@ const navItems: NavItem[] = [
     children: [
       { title: "Pre-Order Products", href: "/seller/preorder/products" },
       { title: "Pre-Order Orders", href: "/seller/preorder/orders" },
+    ],
+  },
+  {
+    title: "Auction Desk",
+    icon: Gavel,
+    children: [
+      { title: "Auction Products", href: "/seller/auction/products" },
+      { title: "Add Auction Product", href: "/seller/auction/products/create" },
+      { title: "Auction Orders", href: "/seller/auction/orders" },
     ],
   },
   {

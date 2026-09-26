@@ -23,6 +23,7 @@ import {
   Receipt,
   MessageSquare,
   CalendarClock,
+  Gavel,
 } from "lucide-react"
 
 interface NavItem {
@@ -88,6 +89,17 @@ const navItems: NavItem[] = [
       { title: "Add Pre-Order Product", href: "/admin/preorder/products/create" },
       { title: "Pre-Order Orders", href: "/admin/preorder/orders" },
       { title: "Pre-Order Settings", href: "/admin/preorder/settings" },
+    ],
+  },
+  {
+    title: "Auction System",
+    icon: Gavel,
+    children: [
+      { title: "All Auction Products", href: "/admin/auction/all-products" },
+      { title: "Inhouse Auction Products", href: "/admin/auction/inhouse-products" },
+      { title: "Seller Auction Products", href: "/admin/auction/seller-products" },
+      { title: "Add Auction Product", href: "/admin/auction/products/create" },
+      { title: "Auction Orders & Sales", href: "/admin/auction/orders" },
     ],
   },
   {
