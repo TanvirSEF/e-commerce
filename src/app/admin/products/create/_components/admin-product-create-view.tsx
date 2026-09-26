@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { ChevronLeft, Save, UploadCloud, XCircle } from "lucide-react"
 import { createProductAction } from "@/app/actions/ecommerce-actions"
 import { ProductVariationMatrix, VariantItem } from "./product-variation-matrix"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 interface CategoryOption {
   id: string | number
@@ -27,6 +28,7 @@ interface AdminProductCreateViewProps {
 export function AdminProductCreateView({ categories, brands }: AdminProductCreateViewProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     name: "",
@@ -304,13 +306,44 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
 
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">Product Thumbnail</label>
-          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors bg-slate-50">
-            <UploadCloud className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-            <p className="text-xs font-semibold text-slate-700">Choose images to upload</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">JPG, PNG, WebP up to 5MB</p>
-          </div>
+          {formData.thumbnail && formData.thumbnail !== "/assets/img/placeholder.jpg" ? (
+            <div className="relative w-32 h-32 rounded-lg border border-slate-200 overflow-hidden group">
+              <img
+                src={formData.thumbnail}
+                alt="Product thumbnail"
+                className="w-full h-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, thumbnail: "/assets/img/placeholder.jpg" }))}
+                className="absolute top-1.5 right-1.5 p-1 bg-red-600 text-white rounded-full opacity-90 hover:opacity-100 transition-opacity"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => setIsPickerOpen(true)}
+              className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-[#d43533] cursor-pointer transition-colors bg-slate-50"
+            >
+              <UploadCloud className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+              <p className="text-xs font-semibold text-slate-700">Choose images to upload</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Cloudinary storage enabled</p>
+            </div>
+          )}
         </div>
       </div>
+
+      <MediaPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        title="Select Product Thumbnail"
+        onSelect={(urls) => {
+          if (urls[0]) {
+            setFormData((prev) => ({ ...prev, thumbnail: urls[0] }))
+          }
+        }}
+      />
     </form>
   )
 }

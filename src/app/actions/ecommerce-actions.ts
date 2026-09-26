@@ -468,7 +468,69 @@ export async function createUploadRecordAction(data: {
   return await createUploadRecord(data)
 }
 
-export async function deleteUploadRecordAction(id: number) {
+export async function uploadFileToCloudinaryAction(formData: FormData) {
+  const file = formData.get("file") as File
+  if (!file || file.size === 0) {
+    throw new Error("No file provided")
+  }
+  const bytes = await file.arrayBuffer()
+  const buffer = Buffer.from(bytes)
+
+  const { uploadToCloudinary, isCloudinaryConfigured } = await import("@/lib/cloudinary")
+  const { createUploadRecord } = await import("@/services/upload-service")
+
+  const mimeType = file.type || "application/octet-stream"
+  let resourceType: "auto" | "image" | "video" | "raw" = "auto"
+  let typeCategory = "document"
+
+  if (mimeType.startsWith("image/")) {
+    resourceType = "image"
+    typeCategory = "image"
+  } else if (mimeType.startsWith("video/")) {
+    resourceType = "video"
+    typeCategory = "video"
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg"
+  let fileUrl = ""
+  let publicId = ""
+
+  if (isCloudinaryConfigured()) {
+    const cloudResult = await uploadToCloudinary(buffer, {
+      folder: "active-ecommerce/uploads",
+      resourceType,
+    })
+    fileUrl = cloudResult.secureUrl
+    publicId = cloudResult.publicId
+  } else {
+    fileUrl = `https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800`
+    publicId = `local-${Date.now()}`
+  }
+
+  const userId = (formData.get("userId") as string) || "admin"
+
+  return await createUploadRecord({
+    fileOriginalName: file.name,
+    fileName: publicId || file.name,
+    fileSize: file.size,
+    extension,
+    type: typeCategory,
+    externalLink: fileUrl,
+    userId,
+  })
+}
+
+export async function deleteUploadRecordAction(id: number, publicId?: string) {
+  if (publicId) {
+    try {
+      const { deleteFromCloudinary, isCloudinaryConfigured } = await import("@/lib/cloudinary")
+      if (isCloudinaryConfigured()) {
+        await deleteFromCloudinary(publicId)
+      }
+    } catch (e) {
+      console.warn("Failed to delete Cloudinary asset:", e)
+    }
+  }
   const { deleteUploadRecord } = await import("@/services/upload-service")
   return await deleteUploadRecord(id)
 }

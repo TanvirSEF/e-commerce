@@ -4,25 +4,21 @@ import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { type Upload } from "@/db/schema/uploads"
 import {
-  createUploadRecordAction,
   deleteUploadRecordAction,
   bulkDeleteUploadRecordsAction,
 } from "@/app/actions/ecommerce-actions"
 import {
-  Upload as UploadIcon,
   Search,
-  MoreVertical,
   Info,
-  Download,
   Copy,
   Trash2,
-  File,
   FileText,
-  Image as ImageIcon,
   CheckCircle,
   Plus,
-  X,
+  Cloud,
 } from "lucide-react"
+import { UploadFileModal } from "./upload-file-modal"
+import { FileDetailsModal } from "./file-details-modal"
 
 interface UploadedFilesViewProps {
   initialFiles: Upload[]
@@ -38,12 +34,6 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
   const [infoModalFile, setInfoModalFile] = useState<Upload | null>(null)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
-
-  // Upload Form State
-  const [uploadName, setUploadName] = useState("")
-  const [uploadUrl, setUploadUrl] = useState("")
-  const [uploadType, setUploadType] = useState("image")
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Filter & Sort
   const filteredFiles = files
@@ -87,11 +77,11 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this file?")) return
-    await deleteUploadRecordAction(id)
-    setFiles((prev) => prev.filter((f) => f.id !== id))
-    setSelectedIds((prev) => prev.filter((i) => i !== id))
+  const handleDelete = async (file: Upload) => {
+    if (!confirm("Are you sure you want to delete this file from storage and database?")) return
+    await deleteUploadRecordAction(file.id, file.fileName)
+    setFiles((prev) => prev.filter((f) => f.id !== file.id))
+    setSelectedIds((prev) => prev.filter((i) => i !== file.id))
     router.refresh()
   }
 
@@ -104,30 +94,9 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
     router.refresh()
   }
 
-  const handleAddUpload = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!uploadName.trim() || !uploadUrl.trim()) return
-    setIsSubmitting(true)
-    try {
-      const ext = uploadUrl.split(".").pop()?.split("?")[0] || "jpg"
-      const created = await createUploadRecordAction({
-        fileOriginalName: uploadName,
-        fileName: uploadUrl,
-        fileSize: 450000,
-        extension: ext,
-        type: uploadType,
-        externalLink: uploadUrl,
-      })
-      if (created) {
-        setFiles((prev) => [created, ...prev])
-      }
-      setIsUploadOpen(false)
-      setUploadName("")
-      setUploadUrl("")
-      router.refresh()
-    } finally {
-      setIsSubmitting(false)
-    }
+  const handleUploadedFiles = (newFiles: Upload[]) => {
+    setFiles((prev) => [...newFiles, ...prev])
+    router.refresh()
   }
 
   const formatSize = (bytes: number) => {
@@ -141,8 +110,15 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
       {/* Title Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">All Uploaded Files</h1>
-          <p className="text-xs text-gray-500 mt-1">Manage images, banners, and documents in media library</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-800">All Uploaded Files</h1>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+              <Cloud className="w-3 h-3" /> Cloudinary Enabled
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Manage images, banners, and documents in high-speed CDN media library
+          </p>
         </div>
         <button
           onClick={() => setIsUploadOpen(true)}
@@ -262,7 +238,7 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
                     <Info className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(file.id)}
+                    onClick={() => handleDelete(file)}
                     title="Delete"
                     className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                   >
@@ -294,7 +270,7 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
                 </p>
                 <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
                   <span>{formatSize(file.fileSize || 0)}</span>
-                  <span className="uppercase text-[10px] font-bold px-1.5 py-0.2 bg-gray-100 rounded">
+                  <span className="uppercase text-[10px] font-bold px-1.5 py-0.5 bg-gray-100 rounded">
                     {file.extension}
                   </span>
                 </div>
@@ -304,133 +280,18 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
         })}
       </div>
 
-      {/* Details Info Modal */}
-      {infoModalFile && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-sm font-bold text-gray-800">File Details</h3>
-              <button onClick={() => setInfoModalFile(null)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-gray-100">
-                <span className="text-gray-500 font-medium">Original Name:</span>
-                <span className="text-gray-800 font-semibold truncate max-w-xs">{infoModalFile.fileOriginalName}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-gray-100">
-                <span className="text-gray-500 font-medium">File Size:</span>
-                <span className="text-gray-800 font-semibold">{formatSize(infoModalFile.fileSize || 0)}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-gray-100">
-                <span className="text-gray-500 font-medium">Type:</span>
-                <span className="text-gray-800 font-semibold uppercase">{infoModalFile.type} ({infoModalFile.extension})</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-gray-100">
-                <span className="text-gray-500 font-medium">Uploaded At:</span>
-                <span className="text-gray-800 font-semibold">
-                  {new Date(infoModalFile.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="pt-2">
-                <label className="text-gray-500 font-medium block mb-1">Direct Link:</label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    readOnly
-                    value={infoModalFile.externalLink || infoModalFile.fileName}
-                    className="w-full text-[11px] p-2 bg-gray-50 border border-gray-200 rounded font-mono"
-                  />
-                  <button
-                    onClick={() => handleCopyLink(infoModalFile)}
-                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded text-gray-700"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="text-right pt-2">
-              <button
-                onClick={() => setInfoModalFile(null)}
-                className="px-4 py-1.5 bg-gray-800 text-white rounded-lg text-xs font-semibold"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Upload File Modal */}
+      <UploadFileModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUploaded={handleUploadedFiles}
+      />
 
-      {/* Upload New File Modal */}
-      {isUploadOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <form
-            onSubmit={handleAddUpload}
-            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4"
-          >
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-sm font-bold text-gray-800">Add New File to Library</h3>
-              <button type="button" onClick={() => setIsUploadOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">File Name</label>
-                <input
-                  type="text"
-                  value={uploadName}
-                  onChange={(e) => setUploadName(e.target.value)}
-                  placeholder="e.g. promo-banner-summer.jpg"
-                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">File URL / Source</label>
-                <input
-                  type="url"
-                  value={uploadUrl}
-                  onChange={(e) => setUploadUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/... or file path"
-                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Type</label>
-                <select
-                  value={uploadType}
-                  onChange={(e) => setUploadType(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none bg-white"
-                >
-                  <option value="image">Image</option>
-                  <option value="document">Document (PDF/DOC)</option>
-                  <option value="video">Video</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2 border-t">
-              <button
-                type="button"
-                onClick={() => setIsUploadOpen(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 text-xs rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-[#d43533] text-white text-xs font-semibold rounded-lg hover:bg-[#b82d2b]"
-              >
-                {isSubmitting ? "Uploading..." : "Save File"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* Details Info Modal */}
+      <FileDetailsModal
+        file={infoModalFile}
+        onClose={() => setInfoModalFile(null)}
+      />
     </div>
   )
 }

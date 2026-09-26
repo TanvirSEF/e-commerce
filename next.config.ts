@@ -2,8 +2,21 @@ import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
   async rewrites() {
     return [
+      { source: "/aiz-uploader/upload", destination: "/api/uploader" },
       { source: "/track-your-order", destination: "/track-order" },
       { source: "/users/login", destination: "/login" },
       { source: "/users/registration", destination: "/register" },
