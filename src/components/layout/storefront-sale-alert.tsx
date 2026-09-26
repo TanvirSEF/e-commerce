@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { CheckCircle, X, ShoppingBag } from "lucide-react"
+import { X } from "lucide-react"
 
 interface SaleAlertItem {
   id: number
@@ -102,45 +102,37 @@ export function StorefrontSaleAlert() {
 
   return (
     <div className="fixed bottom-4 left-4 z-40 max-w-sm w-[calc(100vw-32px)] sm:w-auto animate-in fade-in slide-in-from-bottom-5 duration-300">
-      <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xl p-3 flex items-center gap-3 backdrop-blur-md bg-white/95">
+      <div
+        className="bg-white rounded p-3 flex items-center gap-3 border border-gray-100"
+        style={{ boxShadow: "0px 6px 10px rgba(0, 0, 0, 0.24)" }}
+        role="alert"
+      >
         {/* Product Thumbnail */}
         <Link
           href={`/product/${currentAlert.slug}`}
-          className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden shrink-0 border border-gray-100 flex items-center justify-center relative"
+          className="w-[50px] h-[50px] rounded overflow-hidden shrink-0 block"
         >
           <Image
             src={currentAlert.thumbnail}
             alt={currentAlert.productName}
-            width={48}
-            height={48}
-            className="object-cover w-full h-full"
+            width={50}
+            height={50}
+            className="object-cover w-full h-full rounded"
             onError={(e) => {
-              // fallback placeholder
               ;(e.target as any).src = "/assets/img/placeholder.jpg"
             }}
           />
         </Link>
 
-        {/* Info */}
-        <div className="flex-1 min-w-0 pr-1">
-          <div className="text-[11px] text-gray-500 flex items-center gap-1">
-            <span className="font-semibold text-gray-700">Someone in {currentAlert.location}</span>
-            <span>purchased</span>
-          </div>
+        {/* Info matching Laravel: <a href="url" class="text-dark font-weight-bold">Title</a> — ordered just now! */}
+        <div className="flex-1 min-w-0 pr-1 text-xs text-gray-700 leading-snug">
           <Link
             href={`/product/${currentAlert.slug}`}
-            className="text-xs font-bold text-gray-900 hover:text-[#d43533] line-clamp-1 block transition-colors"
+            className="text-gray-900 font-bold hover:text-[#d43533] line-clamp-2 inline"
           >
             {currentAlert.productName}
           </Link>
-          <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
-            <span>{currentAlert.timeAgo}</span>
-            <span>•</span>
-            <span className="text-green-600 font-medium flex items-center gap-0.5">
-              <CheckCircle className="w-2.5 h-2.5" />
-              Verified
-            </span>
-          </div>
+          <span className="text-gray-500 ml-1">— ordered just now!</span>
         </div>
 
         {/* Close Button */}
@@ -150,10 +142,10 @@ export function StorefrontSaleAlert() {
             setVisible(false)
             setDismissed(true)
           }}
-          className="text-gray-400 hover:text-gray-600 p-1 -mr-1"
-          aria-label="Dismiss alert"
+          className="text-gray-400 hover:text-[#d43533] p-1 -mr-1 transition-colors"
+          aria-label="Close"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
     </div>

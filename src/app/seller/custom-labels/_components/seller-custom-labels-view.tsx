@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { Tag, Search, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react"
+import { Tag, Search, CheckCircle2, ShieldCheck, Info } from "lucide-react"
 import type { CustomLabel } from "@/db/schema"
 
 interface SellerCustomLabelsViewProps {
@@ -30,7 +30,7 @@ export function SellerCustomLabelsView({ labels }: SellerCustomLabelsViewProps) 
 
       {/* Info notice */}
       <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-xs text-blue-900 flex items-start gap-3">
-        <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+        <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
         <div>
           <span className="font-bold">Marketplace Merchandising Badges:</span>
           <p className="text-blue-700 mt-0.5 leading-relaxed">

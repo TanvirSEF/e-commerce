@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Blocks, Plus, CheckCircle, Sparkles, UploadCloud } from "lucide-react"
+import { Blocks, Plus, CheckCircle, UploadCloud } from "lucide-react"
 
 interface Addon {
   id: string

@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Sparkles, Flame, Star, Zap, Gavel, Search, CheckCircle, ExternalLink } from "lucide-react"
+import { Flame, Star, Zap, Gavel, Search, CheckCircle, ExternalLink } from "lucide-react"
 
 interface PromoProduct {
   id: number
@@ -83,8 +83,7 @@ export function AdminPromotionalProductsView() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <Sparkles className="w-7 h-7 text-[#d43533]" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Promotional Products Hub
           </h1>
           <p className="text-sm text-slate-500 mt-1">

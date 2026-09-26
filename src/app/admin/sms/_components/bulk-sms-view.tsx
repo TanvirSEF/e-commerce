@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   AlertCircle,
   MessageSquare,
-  Sparkles,
 } from "lucide-react"
 import { sendBulkSmsAction } from "@/app/actions/ecommerce-actions"
 import type { SmsGatewayConfig } from "@/services/sms-service"

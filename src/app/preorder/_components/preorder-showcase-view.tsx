@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react"
 import Image from "next/image"
-import { Clock, Sparkles, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react"
+import { Clock, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react"
 import { createPreorderOrderAction } from "@/app/actions/ecommerce-actions"
 import type { PreorderProduct } from "@/db/schema"
 
@@ -59,8 +59,8 @@ export function PreorderShowcaseView({ products }: PreorderShowcaseViewProps) {
       {/* Hero Header */}
       <div className="rounded-3xl bg-linear-to-r from-gray-900 via-zinc-900 to-stone-900 text-white p-8 md:p-12 shadow-xl relative overflow-hidden">
         <div className="relative z-10 max-w-2xl space-y-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 border border-red-500/30 px-3 py-1 text-xs font-bold text-red-400">
-            <Sparkles className="w-3.5 h-3.5" /> Exclusive Launchpad
+          <span className="inline-flex items-center rounded-full bg-red-500/20 border border-red-500/30 px-3 py-1 text-xs font-bold text-red-400">
+            Pre-Order Showcase
           </span>
           <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
             Upcoming Product Launches &amp; Pre-Orders

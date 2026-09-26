@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { Package, Check, Sparkles, CheckCircle2 } from "lucide-react"
+import { Package, Check, CheckCircle2 } from "lucide-react"
 import type { CustomerPackage } from "@/db/schema"
 
 interface CustomerPackagesClientViewProps {
@@ -47,8 +47,8 @@ export function CustomerPackagesClientView({ packages }: CustomerPackagesClientV
             >
               <div>
                 {pkg.id === 2 && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#d43533] bg-red-50 px-2 py-0.5 rounded-full mb-3">
-                    <Sparkles className="w-3 h-3" /> Recommended
+                  <span className="inline-flex items-center text-[11px] font-bold text-[#d43533] bg-red-50 px-2 py-0.5 rounded-full mb-3">
+                    Recommended
                   </span>
                 )}
                 <h2 className="text-base font-bold text-gray-900">{pkg.name}</h2>

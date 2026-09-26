@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useTransition } from "react"
-import { PackageCheck, Check, Sparkles, CheckCircle2, AlertCircle } from "lucide-react"
+import { PackageCheck, Check, CheckCircle2, AlertCircle } from "lucide-react"
 import { purchaseSellerPackageAction } from "@/app/actions/ecommerce-actions"
 import type { SellerPackage } from "@/db/schema"
 
@@ -74,8 +74,8 @@ export function SellerPackagesShopView({ packages }: SellerPackagesShopViewProps
             >
               <div>
                 {pkg.id === 3 && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#d43533] bg-red-50 px-2 py-0.5 rounded-full mb-3">
-                    <Sparkles className="w-3 h-3" /> Most Popular
+                  <span className="inline-flex items-center text-[11px] font-bold text-[#d43533] bg-red-50 px-2 py-0.5 rounded-full mb-3">
+                    Most Popular
                   </span>
                 )}
                 <h2 className="text-base font-bold text-gray-900">{pkg.name}</h2>

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useTransition } from "react"
-import { Bot, Save, CheckCircle2, AlertCircle, Sparkles } from "lucide-react"
+import { Bot, Save, CheckCircle2, AlertCircle } from "lucide-react"
 import { updateGenericSettingAction } from "@/app/actions/ecommerce-actions"
 import type { AiConfigSettings } from "@/services/settings-service"
 
@@ -58,11 +58,10 @@ export function AiConfigurationView({ initialSettings }: AiConfigurationViewProp
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div>
-              <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                OpenAI Engine Status
+              <h2 className="text-sm font-bold text-gray-900">
+                Google AI (Gemini) Settings
               </h2>
-              <p className="text-[11px] text-gray-500">Enable or pause AI generation features for admin & sellers</p>
+              <p className="text-[11px] text-gray-500">Configure AI generation settings for admin &amp; sellers</p>
             </div>
             <label className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out">
               <input

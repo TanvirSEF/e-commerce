@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Users, DollarSign, Share2, Award, CheckCircle2, ArrowRight, ShieldCheck, Sparkles } from "lucide-react"
+import { Users, DollarSign, Share2, Award, CheckCircle2, ArrowRight, ShieldCheck } from "lucide-react"
 import { applyForAffiliateAction } from "@/app/actions/ecommerce-actions"
 
 export function AffiliateLandingView() {
@@ -40,9 +40,8 @@ export function AffiliateLandingView() {
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-red-950 text-white py-16 px-4">
         <div className="max-w-5xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 text-red-400 border border-red-500/30 text-xs font-semibold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-red-400" />
-            Official Partner & Affiliate Network
+          <div className="inline-flex items-center px-3 py-1 rounded-full bg-red-600/20 text-red-400 border border-red-500/30 text-xs font-semibold uppercase tracking-wider">
+            Official Partner &amp; Affiliate Network
           </div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
             Earn Generous Commissions by <br />

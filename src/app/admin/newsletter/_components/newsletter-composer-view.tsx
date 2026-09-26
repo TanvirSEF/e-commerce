@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Send, CheckCircle, Mail, Users, ArrowLeft, Sparkles } from "lucide-react"
+import { Send, CheckCircle, Mail, Users, ArrowLeft } from "lucide-react"
 import { sendNewsletterAction } from "@/app/actions/ecommerce-actions"
 
 interface NewsletterComposerViewProps {
@@ -108,8 +108,7 @@ export function NewsletterComposerView({
 
       {/* Template Quick Selection */}
       <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-        <div className="text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+        <div className="text-xs font-bold text-slate-700 uppercase mb-2">
           Pre-built Marketing Email Templates
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

@@ -3,7 +3,7 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { getProducts } from "@/services/product-service"
 import { ProductCard } from "@/components/product/product-card"
-import { ChevronRight, Home, Sparkles } from "lucide-react"
+import { ChevronRight, Home } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Featured Products | Active eCommerce",
@@ -30,8 +30,7 @@ export default async function FeaturedProductsPage({ searchParams }: PageProps) 
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Breadcrumb */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pb-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-amber-500" />
+          <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Featured Products</h1>
           </div>
           <nav className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 mt-2 sm:mt-0">

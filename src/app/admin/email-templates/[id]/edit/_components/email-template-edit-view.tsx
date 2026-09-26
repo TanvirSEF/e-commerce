@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Mail, ArrowLeft, Save, Sparkles, Tag, AlertCircle } from "lucide-react"
+import { Mail, ArrowLeft, Save, Tag, AlertCircle } from "lucide-react"
 import { updateEmailTemplateAction } from "@/app/actions/ecommerce-actions"
 import type { EmailTemplate } from "@/db/schema"
 
@@ -98,8 +98,8 @@ export function EmailTemplateEditView({ template }: EmailTemplateEditViewProps) 
             <label className="block text-xs font-semibold text-gray-700">
               Email Body (Plain text / HTML) <span className="text-red-500">*</span>
             </label>
-            <span className="text-[11px] text-gray-400 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-500" /> Click variable pills to insert
+            <span className="text-[11px] text-gray-400">
+              Click variable pills to insert
             </span>
           </div>
 

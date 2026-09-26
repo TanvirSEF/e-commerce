@@ -4,7 +4,7 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createCustomPageAction } from "@/app/actions/ecommerce-actions"
-import { ArrowLeft, Save, FileText, Search, Sparkles } from "lucide-react"
+import { ArrowLeft, Save, FileText, Search } from "lucide-react"
 
 export function CreatePageView() {
   const router = useRouter()

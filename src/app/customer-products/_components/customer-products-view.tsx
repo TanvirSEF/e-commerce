@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Search, Tag, MapPin, Phone, Mail, Plus, X, ShieldAlert, Sparkles } from "lucide-react"
+import { Search, Tag, MapPin, Phone, Mail, Plus, X, ShieldAlert } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
 import type { ClassifiedProductItem } from "@/services/customer-product-service"
 
@@ -53,10 +53,6 @@ export function CustomerProductsView({ initialProducts }: CustomerProductsViewPr
         {/* Top Banner & Header */}
         <div className="bg-gradient-to-r from-[#00002e] to-[#1f2937] text-white rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-amber-300 text-[11px] font-semibold mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              Customer Classifieds Marketplace
-            </div>
             <h1 className="text-xl sm:text-2xl font-bold">Buy & Sell Second-Hand Products</h1>
             <p className="text-xs text-gray-300 mt-1">
               Verified local listings from genuine customers across Bangladesh. Direct peer-to-peer deals.

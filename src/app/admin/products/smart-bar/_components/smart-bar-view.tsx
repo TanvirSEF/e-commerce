@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { type SmartBarSettings } from "@/services/settings-service"
 import { updateSmartBarSettingsAction } from "@/app/actions/ecommerce-actions"
-import { Sparkles, Save, CheckCircle, Smartphone, ShoppingCart } from "lucide-react"
+import { Save, CheckCircle, Smartphone, ShoppingCart } from "lucide-react"
 
 interface SmartBarViewProps {
   initialSettings: SmartBarSettings
@@ -47,8 +47,7 @@ export function SmartBarView({ initialSettings }: SmartBarViewProps) {
       {/* Settings Form */}
       <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-[#fafbfc]">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#d43533]" />
+          <div>
             <h2 className="font-semibold text-gray-800 text-sm">Smart Bar Options</h2>
           </div>
           <span className="text-[11px] text-gray-400">Active eCommerce CMS Standard</span>

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Sparkles, ArrowRight, Tag } from "lucide-react"
+import { ArrowRight, Tag } from "lucide-react"
 import { ProductCard } from "@/components/product/product-card"
 import { SeedProduct, SeedCoupon, SeedShop } from "@/db/seed/data"
 
@@ -20,8 +20,7 @@ export function ShopHomeTab({ shop, products, coupons }: ShopHomeTabProps) {
       {/* Featured Products */}
       <div>
         <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-5 text-primary" />
+          <div>
             <h2 className="text-base sm:text-lg font-bold text-gray-900">Featured Products</h2>
           </div>
           <Link

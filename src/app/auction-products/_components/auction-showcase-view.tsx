@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Gavel, Clock, ShieldCheck, Flame, ArrowRight, Trophy, Sparkles } from "lucide-react"
+import { Gavel, Clock, ShieldCheck, Flame, ArrowRight, Trophy } from "lucide-react"
 import type { AuctionProduct } from "@/db/schema/auction"
 
 interface AuctionShowcaseViewProps {
@@ -53,8 +53,8 @@ export function AuctionShowcaseView({ products }: AuctionShowcaseViewProps) {
 
           <div className="w-full max-w-md bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4" /> Featured Live Lot
+              <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+                Featured Live Lot
               </span>
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-600 text-white font-bold animate-pulse">
                 CLOSING SOON

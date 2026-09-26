@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Eye,
-  Sparkles,
 } from "lucide-react"
 import { createDynamicPopupAction } from "@/app/actions/ecommerce-actions"
 
@@ -311,7 +310,7 @@ export function DynamicPopupCreateView() {
                   />
                 ) : (
                   <div className="text-gray-400 text-xs flex flex-col items-center gap-1">
-                    <Sparkles className="w-5 h-5 text-gray-300" />
+                    <Upload className="w-5 h-5 text-gray-300" />
                     <span>512 x 280 Banner Preview</span>
                   </div>
                 )}

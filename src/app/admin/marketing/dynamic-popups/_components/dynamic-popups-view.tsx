@@ -9,7 +9,6 @@ import {
   Trash2,
   ExternalLink,
   Layers,
-  Sparkles,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -193,7 +192,7 @@ export function DynamicPopupsView({ initialPopups }: DynamicPopupsViewProps) {
               {filteredPopups.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-gray-400">
-                    <Sparkles className="mx-auto h-8 w-8 text-gray-300 mb-2" />
+                    <Layers className="mx-auto h-8 w-8 text-gray-300 mb-2" />
                     No dynamic popups configured yet.
                   </td>
                 </tr>

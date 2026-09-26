@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Tag,
-  Sparkles,
 } from "lucide-react"
 import { updateSmsTemplateAction } from "@/app/actions/ecommerce-actions"
 import type { SmsTemplate } from "@/db/schema"

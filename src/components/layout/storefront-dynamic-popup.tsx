@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { X, Sparkles } from "lucide-react"
+import { X } from "lucide-react"
 
 interface PopupData {
   id: number
@@ -92,18 +92,13 @@ export function StorefrontDynamicPopup() {
           />
         </div>
 
-        {/* Content */}
-        <div className="p-6 text-center space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 text-[11px] font-bold text-[#d43533]">
-            <Sparkles className="h-3 w-3" />
-            Special Limited Time Event
-          </div>
-
-          <h3 className="text-base font-bold text-gray-900 leading-snug">
+        {/* Content matching Laravel mirror-card p-4 text-center 1:1 */}
+        <div className="p-5 text-center space-y-3">
+          <h4 className="text-lg font-bold text-gray-900 leading-snug">
             {popup.title}
-          </h3>
+          </h4>
 
-          <p className="text-xs text-gray-500 leading-relaxed">
+          <p className="text-sm text-gray-500 leading-relaxed">
             {popup.summary}
           </p>
 
@@ -115,19 +110,11 @@ export function StorefrontDynamicPopup() {
                 backgroundColor: popup.btnBackgroundColor || "#d43533",
                 color: popup.btnTextColor === "dark" ? "#111827" : "#ffffff",
               }}
-              className="inline-block w-full py-3 rounded-xl font-bold text-xs shadow-md hover:opacity-90 transition active:scale-[0.99]"
+              className="inline-block w-full py-2.5 rounded font-semibold text-sm shadow hover:opacity-90 transition active:scale-[0.99]"
             >
               {popup.btnText || "Shop Now"}
             </Link>
           </div>
-
-          <button
-            type="button"
-            onClick={handleClose}
-            className="text-[11px] font-medium text-gray-400 hover:text-gray-600 transition"
-          >
-            No thanks, maybe later
-          </button>
         </div>
       </div>
     </div>
