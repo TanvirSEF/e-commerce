@@ -718,4 +718,78 @@ export async function sendBulkSmsAction(recipientGroup: string, message: string)
   return { success: true, count: recipientGroup === "all_customers" ? 1420 : 185 }
 }
 
+// Language Actions
+export async function createLanguageAction(data: { name: string; code: string; appLangCode?: string }) {
+  const { createLanguage } = await import("@/services/language-service")
+  return await createLanguage(data)
+}
+
+export async function updateLanguageAction(id: number, data: { name?: string; code?: string; appLangCode?: string }) {
+  const { updateLanguage } = await import("@/services/language-service")
+  return await updateLanguage(id, data)
+}
+
+export async function toggleLanguageStatusAction(id: number, status: boolean) {
+  const { toggleLanguageStatus } = await import("@/services/language-service")
+  return await toggleLanguageStatus(id, status)
+}
+
+export async function toggleLanguageRtlAction(id: number, rtl: boolean) {
+  const { toggleLanguageRtl } = await import("@/services/language-service")
+  return await toggleLanguageRtl(id, rtl)
+}
+
+export async function setDefaultLanguageAction(id: number) {
+  const { setDefaultLanguage } = await import("@/services/language-service")
+  return await setDefaultLanguage(id)
+}
+
+export async function saveTranslationsAction(langCode: string, values: Record<string, string>) {
+  const { saveTranslationsForLanguage } = await import("@/services/language-service")
+  return await saveTranslationsForLanguage(langCode, values)
+}
+
+// Geographic Actions
+export async function toggleCountryStatusAction(id: number, status: boolean) {
+  const { toggleCountryStatus } = await import("@/services/geographic-service")
+  return await toggleCountryStatus(id, status)
+}
+
+export async function createStateAction(data: { name: string; countryId: number }) {
+  const { createState } = await import("@/services/geographic-service")
+  return await createState(data)
+}
+
+export async function toggleStateStatusAction(id: number, status: boolean) {
+  const { toggleStateStatus } = await import("@/services/geographic-service")
+  return await toggleStateStatus(id, status)
+}
+
+export async function createZoneAction(data: { name: string; countryIds: number[] }) {
+  const { createZone } = await import("@/services/geographic-service")
+  return await createZone(data)
+}
+
+export async function toggleZoneStatusAction(id: number, status: boolean) {
+  const { toggleZoneStatus } = await import("@/services/geographic-service")
+  return await toggleZoneStatus(id, status)
+}
+
+// Email Template Actions
+export async function updateEmailTemplateAction(id: number, data: { subject: string; defaultText: string }) {
+  const { updateEmailTemplate } = await import("@/services/email-template-service")
+  return await updateEmailTemplate(id, data)
+}
+
+export async function toggleEmailTemplateStatusAction(id: number, status: boolean) {
+  const { toggleEmailTemplateStatus } = await import("@/services/email-template-service")
+  return await toggleEmailTemplateStatus(id, status)
+}
+
+// Generic Settings Action
+export async function updateGenericSettingAction(type: string, value: string) {
+  const { updateSetting } = await import("@/services/settings-service")
+  return await updateSetting(type, value)
+}
+
 

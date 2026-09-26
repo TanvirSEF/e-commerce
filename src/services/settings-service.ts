@@ -995,3 +995,200 @@ export async function updateCustomAlertSettings(data: Partial<CustomAlertSetting
   }
 }
 
+// ----------------- Social Login Settings -----------------
+export interface SocialLoginSettings {
+  google: { active: boolean; clientId: string; clientSecret: string }
+  facebook: { active: boolean; appId: string; appSecret: string }
+  twitter: { active: boolean; clientId: string; clientSecret: string }
+  apple: { active: boolean; clientId: string; keyId: string; teamId: string }
+}
+
+export const DEFAULT_SOCIAL_LOGIN_SETTINGS: SocialLoginSettings = {
+  google: { active: true, clientId: "123456789-google.apps.googleusercontent.com", clientSecret: "GOCSPX-secret123" },
+  facebook: { active: false, appId: "9876543210", appSecret: "fb_app_secret_hash" },
+  twitter: { active: false, clientId: "", clientSecret: "" },
+  apple: { active: false, clientId: "", keyId: "", teamId: "" },
+}
+
+export async function getSocialLoginSettings(): Promise<SocialLoginSettings> {
+  try {
+    const raw = await getSetting("social_login_settings")
+    if (raw) return { ...DEFAULT_SOCIAL_LOGIN_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getSocialLoginSettings fallback:", err)
+  }
+  return DEFAULT_SOCIAL_LOGIN_SETTINGS
+}
+
+export async function updateSocialLoginSettings(data: Partial<SocialLoginSettings>) {
+  const current = await getSocialLoginSettings()
+  const updated = { ...current, ...data }
+  await updateSetting("social_login_settings", JSON.stringify(updated))
+  return { success: true, updated }
+}
+
+// ----------------- Floating Chat Widgets Settings -----------------
+export interface ChatWidgetsSettings {
+  whatsapp: { active: boolean; phone: string; position: "bottom-right" | "bottom-left"; message: string }
+  facebook: { active: boolean; pageId: string }
+}
+
+export const DEFAULT_CHAT_WIDGETS: ChatWidgetsSettings = {
+  whatsapp: { active: true, phone: "+8801700000000", position: "bottom-right", message: "Hi! How can we assist you today?" },
+  facebook: { active: false, pageId: "100234567890" },
+}
+
+export async function getChatWidgetsSettings(): Promise<ChatWidgetsSettings> {
+  try {
+    const raw = await getSetting("chat_widgets_settings")
+    if (raw) return { ...DEFAULT_CHAT_WIDGETS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getChatWidgetsSettings fallback:", err)
+  }
+  return DEFAULT_CHAT_WIDGETS
+}
+
+export async function updateChatWidgetsSettings(data: Partial<ChatWidgetsSettings>) {
+  const current = await getChatWidgetsSettings()
+  const updated = { ...current, ...data }
+  await updateSetting("chat_widgets_settings", JSON.stringify(updated))
+  return { success: true, updated }
+}
+
+// ----------------- Custom Scripts & Analytics -----------------
+export interface CustomScriptsSettings {
+  headerScript: string
+  footerScript: string
+  googleAnalyticsId: string
+  googleTagManagerId: string
+  metaPixelId: string
+}
+
+export const DEFAULT_CUSTOM_SCRIPTS: CustomScriptsSettings = {
+  headerScript: "<!-- Global site tag (gtag.js) -->",
+  footerScript: "",
+  googleAnalyticsId: "G-XXXXXXXXXX",
+  googleTagManagerId: "GTM-XXXXXXX",
+  metaPixelId: "123456789012345",
+}
+
+export async function getCustomScriptsSettings(): Promise<CustomScriptsSettings> {
+  try {
+    const raw = await getSetting("custom_scripts_settings")
+    if (raw) return { ...DEFAULT_CUSTOM_SCRIPTS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getCustomScriptsSettings fallback:", err)
+  }
+  return DEFAULT_CUSTOM_SCRIPTS
+}
+
+export async function updateCustomScriptsSettings(data: Partial<CustomScriptsSettings>) {
+  const current = await getCustomScriptsSettings()
+  const updated = { ...current, ...data }
+  await updateSetting("custom_scripts_settings", JSON.stringify(updated))
+  return { success: true, updated }
+}
+
+// ----------------- Global SEO Settings -----------------
+export interface SeoSettings {
+  metaTitle: string
+  metaDescription: string
+  metaKeywords: string
+  ogTitle: string
+  ogDescription: string
+  ogImage: string
+  twitterCard: string
+}
+
+export const DEFAULT_SEO_SETTINGS: SeoSettings = {
+  metaTitle: "Active eCommerce CMS - Modern Multi-Vendor Shopping Marketplace",
+  metaDescription: "Discover top deals on smartphones, fashion, electronics, and accessories with fast door-to-door delivery.",
+  metaKeywords: "ecommerce, shop, marketplace, multi-vendor, best deals, online shopping",
+  ogTitle: "Active eCommerce CMS | Multi-Vendor Marketplace",
+  ogDescription: "Shop thousands of quality products from verified local sellers.",
+  ogImage: "/assets/img/og-banner.jpg",
+  twitterCard: "summary_large_image",
+}
+
+export async function getSeoSettings(): Promise<SeoSettings> {
+  try {
+    const raw = await getSetting("seo_settings")
+    if (raw) return { ...DEFAULT_SEO_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getSeoSettings fallback:", err)
+  }
+  return DEFAULT_SEO_SETTINGS
+}
+
+export async function updateSeoSettings(data: Partial<SeoSettings>) {
+  const current = await getSeoSettings()
+  const updated = { ...current, ...data }
+  await updateSetting("seo_settings", JSON.stringify(updated))
+  return { success: true, updated }
+}
+
+// ----------------- AI Assistant Configuration -----------------
+export interface AiConfigSettings {
+  active: boolean
+  apiKey: string
+  model: string
+  maxTokens: number
+  temperature: number
+}
+
+export const DEFAULT_AI_CONFIG: AiConfigSettings = {
+  active: true,
+  apiKey: "sk-proj-********************************",
+  model: "gpt-4o-mini",
+  maxTokens: 500,
+  temperature: 0.7,
+}
+
+export async function getAiConfigSettings(): Promise<AiConfigSettings> {
+  try {
+    const raw = await getSetting("ai_configuration_settings")
+    if (raw) return { ...DEFAULT_AI_CONFIG, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getAiConfigSettings fallback:", err)
+  }
+  return DEFAULT_AI_CONFIG
+}
+
+export async function updateAiConfigSettings(data: Partial<AiConfigSettings>) {
+  const current = await getAiConfigSettings()
+  const updated = { ...current, ...data }
+  await updateSetting("ai_configuration_settings", JSON.stringify(updated))
+  return { success: true, updated }
+}
+
+// ----------------- Packaging Box Sizes -----------------
+export interface BoxSizeItem {
+  id: number
+  name: string
+  length: number
+  width: number
+  height: number
+  maxWeight: number
+}
+
+export const DEFAULT_BOX_SIZES: BoxSizeItem[] = [
+  { id: 1, name: "Small Flyer / Polybag", length: 25, width: 18, height: 5, maxWeight: 1 },
+  { id: 2, name: "Medium Carton Box", length: 35, width: 25, height: 15, maxWeight: 5 },
+  { id: 3, name: "Large Heavy Carton", length: 50, width: 40, height: 30, maxWeight: 15 },
+]
+
+export async function getBoxSizesSettings(): Promise<BoxSizeItem[]> {
+  try {
+    const raw = await getSetting("box_sizes_settings")
+    if (raw) return JSON.parse(raw)
+  } catch (err) {
+    console.warn("getBoxSizesSettings fallback:", err)
+  }
+  return DEFAULT_BOX_SIZES
+}
+
+export async function updateBoxSizesSettings(sizes: BoxSizeItem[]) {
+  await updateSetting("box_sizes_settings", JSON.stringify(sizes))
+  return { success: true, updated: sizes }
+}
+
