@@ -2,6 +2,7 @@
 
 import React, { useState } from "react"
 import { usePathname } from "next/navigation"
+import { TopBanner } from "./top-banner"
 import { TopBar } from "./top-bar"
 import { MiddleHeader } from "./middle-header"
 import { BottomNavbar } from "./bottom-navbar"
@@ -25,6 +26,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 w-full shadow-sm">
+      <TopBanner />
       <TopBar />
       <MiddleHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} />
       <BottomNavbar />

@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useState } from "react"
-import Link from "next/link"
-import { formatPrice } from "@/lib/utils"
-import { Download, ExternalLink, Package, Search, RotateCcw } from "lucide-react"
+import { Search } from "lucide-react"
+import { PurchaseOrderCard, OrderRecord } from "./purchase-order-card"
+import { ReviewModal } from "./review-modal"
 
-const ALL_ORDERS = [
+const DEFAULT_ORDERS: OrderRecord[] = [
   {
     code: "20260923-847291",
     date: "23 Sep 2026",
@@ -14,6 +14,27 @@ const ALL_ORDERS = [
     paymentStatus: "paid",
     paymentType: "Cash on Delivery",
     itemsCount: 2,
+    shopName: "ElectroMart Official Store",
+    items: [
+      {
+        id: "item-101",
+        name: "Noise Cancelling Wireless Headphones Pro",
+        slug: "noise-cancelling-wireless-headphones-pro",
+        price: 3200,
+        quantity: 1,
+        thumbnail: "/assets/img/placeholder.jpg",
+        reviewed: false,
+      },
+      {
+        id: "item-102",
+        name: "Fast Charging USB-C Braided Cable 2M",
+        slug: "fast-charging-usbc-cable-2m",
+        price: 1560,
+        quantity: 1,
+        thumbnail: "/assets/img/placeholder.jpg",
+        reviewed: false,
+      },
+    ],
   },
   {
     code: "20260918-192842",
@@ -23,6 +44,18 @@ const ALL_ORDERS = [
     paymentStatus: "paid",
     paymentType: "bKash",
     itemsCount: 1,
+    shopName: "Inhouse Products",
+    items: [
+      {
+        id: "item-103",
+        name: "Premium Cotton Graphic T-Shirt Navy",
+        slug: "premium-cotton-graphic-tshirt-navy",
+        price: 1250,
+        quantity: 1,
+        thumbnail: "/assets/img/placeholder.jpg",
+        reviewed: false,
+      },
+    ],
   },
   {
     code: "20260830-671203",
@@ -32,6 +65,18 @@ const ALL_ORDERS = [
     paymentStatus: "paid",
     paymentType: "Nagad",
     itemsCount: 1,
+    shopName: "Fashion Hub",
+    items: [
+      {
+        id: "item-104",
+        name: "Casual Slim Fit Denim Jeans Dark Blue",
+        slug: "casual-slim-fit-denim-jeans-dark-blue",
+        price: 2440,
+        quantity: 1,
+        thumbnail: "/assets/img/placeholder.jpg",
+        reviewed: true,
+      },
+    ],
   },
   {
     code: "20260812-451928",
@@ -40,134 +85,161 @@ const ALL_ORDERS = [
     deliveryStatus: "delivered",
     paymentStatus: "paid",
     paymentType: "Cards (Stripe)",
-    itemsCount: 3,
+    itemsCount: 2,
+    shopName: "Gadget World",
+    items: [
+      {
+        id: "item-105",
+        name: "Wireless Mechanical Gaming Keyboard RGB",
+        slug: "wireless-mechanical-gaming-keyboard-rgb",
+        price: 5120,
+        quantity: 1,
+        thumbnail: "/assets/img/placeholder.jpg",
+        reviewed: false,
+      },
+    ],
   },
 ]
+
+const TABS = ["All", "Unpaid", "Confirmed", "Picked Up", "Delivered", "To Review"]
 
 interface PurchaseHistoryViewProps {
   initialOrders?: any[]
 }
 
 export function PurchaseHistoryView({ initialOrders }: PurchaseHistoryViewProps) {
-  const [filter, setFilter] = useState("")
+  const [activeTab, setActiveTab] = useState("All")
+  const [deliveryFilter, setDeliveryFilter] = useState("all")
+  const [search, setSearch] = useState("")
 
-  const ordersList = initialOrders && initialOrders.length > 0 ? initialOrders : ALL_ORDERS
+  const [reviewProduct, setReviewProduct] = useState<{
+    id: string
+    name: string
+    thumbnail: string
+    orderCode: string
+  } | null>(null)
 
-  const filteredOrders = ordersList.filter((o) =>
-    (o.code || "").toLowerCase().includes(filter.toLowerCase()) ||
-    (o.deliveryStatus || "").toLowerCase().includes(filter.toLowerCase())
-  )
+  const allOrders: OrderRecord[] =
+    initialOrders && initialOrders.length > 0 ? initialOrders : DEFAULT_ORDERS
+
+  // Filtering logic matching Active eCommerce
+  const filteredOrders = allOrders.filter((order) => {
+    // Tab filter
+    if (activeTab === "Unpaid" && order.paymentStatus !== "unpaid") return false
+    if (activeTab === "Confirmed" && order.deliveryStatus !== "confirmed") return false
+    if (activeTab === "Picked Up" && order.deliveryStatus !== "picked_up") return false
+    if (activeTab === "Delivered" && order.deliveryStatus !== "delivered") return false
+    if (activeTab === "To Review") {
+      const hasUnreviewed =
+        order.deliveryStatus === "delivered" &&
+        order.items?.some((i) => !i.reviewed)
+      if (!hasUnreviewed) return false
+    }
+
+    // Delivery dropdown filter
+    if (deliveryFilter !== "all" && order.deliveryStatus !== deliveryFilter) {
+      return false
+    }
+
+    // Search query
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      const matchCode = (order.code || "").toLowerCase().includes(q)
+      const matchShop = (order.shopName || "").toLowerCase().includes(q)
+      const matchItem = order.items?.some((i) => i.name.toLowerCase().includes(q))
+      if (!matchCode && !matchShop && !matchItem) return false
+    }
+
+    return true
+  })
 
   return (
-    <div className="rounded border border-gray-200 bg-white shadow-sm overflow-hidden">
-      {/* Header & Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-gray-100">
-        <div>
-          <h1 className="text-base font-bold text-gray-900">Purchase History</h1>
-          <p className="text-xs text-gray-500">Track and review all previous purchases</p>
+    <div className="space-y-4">
+      {/* Header and Filter Controls */}
+      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">Purchase History</h1>
+            <p className="text-xs text-gray-500">
+              Track, view details, reorder, or review past purchases
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Delivery Status Dropdown Filter */}
+            <select
+              value={deliveryFilter}
+              onChange={(e) => setDeliveryFilter(e.target.value)}
+              className="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 focus:border-[#d43533] focus:outline-none"
+            >
+              <option value="all">All Delivery Status</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="picked_up">Picked Up</option>
+              <option value="on_the_way">On The Way</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+
+            {/* Search Input */}
+            <div className="relative w-full sm:w-60">
+              <input
+                type="text"
+                placeholder="Search orders or products..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded border border-gray-300 pl-8 pr-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:border-[#d43533] focus:outline-none"
+              />
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+            </div>
+          </div>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <input
-            type="text"
-            placeholder="Search by order code..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="w-full rounded border border-gray-300 pl-8 pr-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:border-[#d43533] focus:outline-none"
-          />
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+        {/* Status Tabs Matching Active eCommerce */}
+        <div className="flex items-center gap-2 overflow-x-auto pt-3 scrollbar-none">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
+                activeTab === tab
+                  ? "bg-[#d43533] text-white shadow-sm"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs text-gray-600">
-          <thead className="bg-gray-50/70 text-gray-700 font-bold uppercase text-[10px] border-b border-gray-100">
-            <tr>
-              <th className="px-5 py-3">#</th>
-              <th className="px-5 py-3">Code</th>
-              <th className="px-5 py-3">Date</th>
-              <th className="px-5 py-3">Amount</th>
-              <th className="px-5 py-3">Delivery Status</th>
-              <th className="px-5 py-3">Payment Status</th>
-              <th className="px-5 py-3 text-right">Options</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredOrders.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-xs text-gray-400">
-                  No orders found.
-                </td>
-              </tr>
-            ) : (
-              filteredOrders.map((order, idx) => (
-                <tr key={order.code} className="hover:bg-gray-50/50">
-                  <td className="px-5 py-3.5 text-gray-400 font-medium">{idx + 1}</td>
-                  <td className="px-5 py-3.5 font-bold text-[#d43533]">
-                    <Link href={`/order-confirmed/${order.code}`} className="hover:underline">
-                      {order.code}
-                    </Link>
-                  </td>
-                  <td className="px-5 py-3.5 text-gray-500">{order.date}</td>
-                  <td className="px-5 py-3.5 font-bold text-gray-900">{formatPrice(order.amount)}</td>
-                  <td className="px-5 py-3.5">
-                    <span
-                      className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                        order.deliveryStatus === "delivered"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {order.deliveryStatus.replace(/_/g, " ")}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="inline-block rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 uppercase">
-                      {order.paymentStatus}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => window.print()}
-                        className="rounded p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                        title="Print invoice"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                      <Link
-                        href={`/track-order?code=${order.code}`}
-                        className="rounded p-1 text-gray-400 hover:text-[#1967d2] hover:bg-blue-50"
-                        title="Track order"
-                      >
-                        <Package className="h-4 w-4" />
-                      </Link>
-                      {order.deliveryStatus === "delivered" && (
-                        <Link
-                          href={`/dashboard/refund-requests`}
-                          className="rounded p-1 text-gray-400 hover:text-amber-600 hover:bg-amber-50"
-                          title="Request Refund / Return"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Link>
-                      )}
-                      <Link
-                        href={`/order-confirmed/${order.code}`}
-                        className="rounded p-1 text-gray-400 hover:text-[#d43533] hover:bg-red-50"
-                        title="View details"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Orders List */}
+      {filteredOrders.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center text-gray-500">
+          <p className="text-sm font-semibold">No orders found</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Try adjusting your search filters or browse other tabs.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredOrders.map((order) => (
+            <PurchaseOrderCard
+              key={order.code}
+              order={order}
+              onOpenReview={(item) => setReviewProduct(item)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={Boolean(reviewProduct)}
+        onClose={() => setReviewProduct(null)}
+        product={reviewProduct}
+      />
     </div>
   )
 }
