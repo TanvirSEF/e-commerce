@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Search, Heart, RefreshCw, Bell, User, Menu, X, LogOut, LayoutDashboard, ShoppingBag } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
 import { NotificationBell } from "@/components/layout/notification-bell"
+import { SearchDropdown } from "./search-dropdown"
 
 export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void }) {
   const router = useRouter()
@@ -43,14 +44,6 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
       setMobileSearchOpen(false)
     }
   }
-
-  const SUGGESTIONS = [
-    "Men Casual Shirt",
-    "Wireless Bluetooth Earbuds",
-    "Smart Watch Series 8",
-    "Running Sports Shoes",
-    "Cotton Hoodie",
-  ]
 
   return (
     <div className="relative z-30 border-b border-gray-100 bg-white py-3 lg:py-5">
@@ -109,29 +102,17 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
               </button>
             </form>
 
-            {/* Quick Suggestions Dropdown */}
+            {/* Quick Live Search Dropdown */}
             {searchFocused && (
-              <div className="absolute top-full left-0 z-50 mt-1.5 w-full rounded-md border border-gray-100 bg-white p-3 shadow-xl">
-                <div className="mb-2 text-[11px] font-semibold tracking-wider text-gray-400 uppercase">
-                  Popular Searches
-                </div>
-                <div className="flex flex-col gap-1">
-                  {SUGGESTIONS.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onMouseDown={() => {
-                        setKeyword(item)
-                        router.push(`/products?keyword=${encodeURIComponent(item)}`)
-                      }}
-                      className="flex items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs text-gray-700 hover:bg-red-50 hover:text-[#d43533]"
-                    >
-                      <Search className="h-3 w-3 text-gray-400" />
-                      <span>{item}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <SearchDropdown
+                keyword={keyword}
+                onSelectKeyword={(kw) => {
+                  setKeyword(kw)
+                  router.push(`/products?keyword=${encodeURIComponent(kw)}`)
+                  setSearchFocused(false)
+                }}
+                onClose={() => setSearchFocused(false)}
+              />
             )}
           </div>
         </div>
@@ -302,7 +283,7 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
 
       {/* Mobile Search Input Drawer (When toggled) */}
       {mobileSearchOpen && (
-        <div className="border-t border-gray-100 px-4 pt-3 lg:hidden">
+        <div className="relative border-t border-gray-100 px-4 pt-3 pb-2 lg:hidden">
           <form onSubmit={handleSearchSubmit} className="relative flex">
             <input
               type="text"
@@ -319,6 +300,17 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
               <Search className="h-4 w-4" />
             </button>
           </form>
+          {keyword.trim().length > 0 && (
+            <SearchDropdown
+              keyword={keyword}
+              onSelectKeyword={(kw) => {
+                setKeyword(kw)
+                router.push(`/products?keyword=${encodeURIComponent(kw)}`)
+                setMobileSearchOpen(false)
+              }}
+              onClose={() => setMobileSearchOpen(false)}
+            />
+          )}
         </div>
       )}
     </div>

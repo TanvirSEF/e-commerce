@@ -248,6 +248,86 @@ export async function getProductBySlug(slug: string): Promise<SeedProduct | null
   return SEED_PRODUCTS.find((p) => p.slug === slug) || null
 }
 
+export async function getProductById(id: string | number): Promise<SeedProduct | null> {
+  const numericId = typeof id === "string" ? parseInt(id, 10) : id
+  try {
+    if (!isNaN(numericId)) {
+      const [row] = await db
+        .select({
+          id: products.id,
+          name: products.name,
+          slug: products.slug,
+          sku: products.sku,
+          unitPrice: products.unitPrice,
+          purchasePrice: products.purchasePrice,
+          discount: products.discount,
+          discountType: products.discountType,
+          currentStock: products.currentStock,
+          unit: products.unit,
+          rating: products.rating,
+          numOfReviews: products.numOfReviews,
+          numOfSale: products.numOfSale,
+          thumbnailImg: products.thumbnailImg,
+          photos: products.photos,
+          colors: products.colors,
+          choiceOptions: products.choiceOptions,
+          variations: products.variations,
+          featured: products.featured,
+          todaysDeal: products.todaysDeal,
+          description: products.description,
+          categorySlug: categories.slug,
+          categoryName: categories.name,
+          brandSlug: brands.slug,
+          brandName: brands.name,
+        })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(brands, eq(products.brandId, brands.id))
+        .where(eq(products.id, numericId))
+        .limit(1)
+
+      if (row) {
+        return {
+          id: String(row.id),
+          name: row.name,
+          slug: row.slug,
+          sku: row.sku || "",
+          categorySlug: row.categorySlug || "all",
+          brandSlug: row.brandSlug || "generic",
+          price: Number(row.unitPrice || 0),
+          originalPrice: Number(row.purchasePrice || row.unitPrice || 0),
+          discountPercent: Number(row.discount || 0),
+          rating: Number(row.rating || 5),
+          reviewCount: row.numOfReviews || 0,
+          salesCount: row.numOfSale || 0,
+          stock: row.currentStock || 0,
+          unit: row.unit || "pc",
+          thumbnail: row.thumbnailImg || "/assets/img/placeholder.jpg",
+          images: row.photos?.length ? row.photos : [row.thumbnailImg || "/assets/img/placeholder.jpg"],
+          colors: (row.colors || []).map((hex, i) => ({ name: `Color ${i + 1}`, hex })),
+          sizes: (row.choiceOptions?.[0]?.values as string[]) || ["S", "M", "L", "XL"],
+          featured: row.featured,
+          todaysDeal: row.todaysDeal,
+          sellerName: "Active eCommerce Outlet",
+          sellerSlug: "active-outlet",
+          description: row.description || "",
+          specifications: [
+            { label: "Category", value: row.categoryName || "General" },
+            { label: "Brand", value: row.brandName || "Active" },
+            { label: "Unit", value: row.unit },
+            { label: "Stock", value: `${row.currentStock} items left` },
+          ],
+          reviews: [],
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("DB getProductById fallback:", (err as Error).message)
+  }
+
+  return SEED_PRODUCTS.find((p) => p.id === String(id) || p.slug === String(id)) || null
+}
+
 export interface DigitalProductItem {
   id: number
   name: string

@@ -188,17 +188,21 @@ const CATALOG_PRODUCTS: (ProductCardProps & {
 interface ProductsPageProps {
   searchParams: Promise<{
     category?: string
+    brand?: string
     keyword?: string
+    q?: string
   }>
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const resolvedParams = await searchParams
   const category = resolvedParams?.category || ""
-  const keyword = resolvedParams?.keyword || ""
+  const brand = resolvedParams?.brand || ""
+  const keyword = resolvedParams?.keyword || resolvedParams?.q || ""
 
   const dbRes = await getProducts({
     category: category || undefined,
+    brand: brand || undefined,
     q: keyword || undefined,
     limit: 50,
   })
@@ -216,6 +220,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     <ProductCatalogView
       initialProducts={products}
       initialCategory={category}
+      initialBrand={brand}
       initialKeyword={keyword}
     />
   )

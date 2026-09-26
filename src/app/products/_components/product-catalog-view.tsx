@@ -14,19 +14,21 @@ interface ProductCatalogViewProps {
     colorName?: string
   })[]
   initialCategory?: string
+  initialBrand?: string
   initialKeyword?: string
 }
 
 export function ProductCatalogView({
   initialProducts,
   initialCategory = "",
+  initialBrand = "",
   initialKeyword = "",
 }: ProductCatalogViewProps) {
   const [filters, setFilters] = useState<FilterState>({
     category: initialCategory,
     minPrice: "",
     maxPrice: "",
-    brand: "",
+    brand: initialBrand,
     color: "",
     rating: 0,
   })
