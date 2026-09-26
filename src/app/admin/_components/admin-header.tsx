@@ -46,14 +46,14 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
 
         {/* Notifications */}
         <div className="relative">
-          <button
-            type="button"
-            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors relative"
+          <Link
+            href="/admin/notifications"
+            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors relative block"
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#d43533]"></span>
-          </button>
+          </Link>
         </div>
 
         {/* Admin Profile Dropdown */}

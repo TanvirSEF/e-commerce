@@ -51,10 +51,14 @@ export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
         </Link>
 
         {/* Notifications */}
-        <button className="relative p-2 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">
+        <Link
+          href="/seller/notifications"
+          className="relative p-2 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+          title="Notifications"
+        >
           <Bell className="w-5 h-5" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-[#d43533] rounded-full" />
-        </button>
+        </Link>
 
         {/* Profile Dropdown */}
         <div className="relative">

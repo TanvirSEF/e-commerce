@@ -18,6 +18,7 @@ import {
   Tag,
   Store,
   Download,
+  Bell,
 } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
 
@@ -37,6 +38,7 @@ export function CustomerSidebar() {
     { label: "My Wallet", href: "/dashboard/wallet", icon: Wallet },
     { label: "Earning Points", href: "/dashboard/club-points", icon: Award },
     { label: "Support Ticket", href: "/dashboard/support-tickets", icon: Headphones },
+    { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
     { label: "Manage Profile", href: "/dashboard/profile", icon: User },
   ]
 

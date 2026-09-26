@@ -1034,5 +1034,13 @@ export async function createProductAction(data: {
   return await createProduct(data)
 }
 
+// Notification Actions (Customer & Admin Bulk Delete & Mark As Read)
+export async function deleteNotificationsAction(ids: string[]) {
+  const { deleteUserNotifications } = await import("@/services/notification-service")
+  return await deleteUserNotifications(ids)
+}
 
-
+export async function markNotificationsReadAction(ids?: string[]) {
+  const { markNotificationsAsRead } = await import("@/services/notification-service")
+  return await markNotificationsAsRead(ids)
+}
