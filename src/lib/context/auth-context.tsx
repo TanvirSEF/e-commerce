@@ -52,8 +52,8 @@ const DEFAULT_USER: UserProfile = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(DEFAULT_USER)
-  const [wishlist, setWishlist] = useState<string[]>(["prod-1", "prod-3"])
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [wishlist, setWishlist] = useState<string[]>([])
   const isInitialized = React.useRef(false)
 
   useEffect(() => {
