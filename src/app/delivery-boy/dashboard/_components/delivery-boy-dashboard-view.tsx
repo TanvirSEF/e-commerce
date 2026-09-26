@@ -10,6 +10,12 @@ interface DeliveryBoyDashboardViewProps {
 
 export function DeliveryBoyDashboardView({ driver }: DeliveryBoyDashboardViewProps) {
   const [activeTab, setActiveTab] = useState<"assigned" | "completed">("assigned")
+  const [confirmedCode, setConfirmedCode] = useState<string | null>(null)
+
+  const handleConfirmDrop = (code: string) => {
+    setConfirmedCode(code)
+    setTimeout(() => setConfirmedCode(null), 3000)
+  }
 
   const mockDeliveries = [
     {
@@ -122,7 +128,7 @@ export function DeliveryBoyDashboardView({ driver }: DeliveryBoyDashboardViewPro
                   <span className="text-base font-black text-slate-900">${d.amount}</span>
                 </div>
                 <button
-                  onClick={() => alert(`Order ${d.code} marked as delivered!`)}
+                  onClick={() => handleConfirmDrop(d.code)}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 shadow-sm"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" /> Confirm Drop
@@ -132,6 +138,14 @@ export function DeliveryBoyDashboardView({ driver }: DeliveryBoyDashboardViewPro
           ))}
         </div>
       </div>
+
+      {/* Confirmation toast */}
+      {confirmedCode && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg">
+          <CheckCircle2 className="h-4 w-4" />
+          Order {confirmedCode} marked as delivered!
+        </div>
+      )}
     </div>
   )
 }

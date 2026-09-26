@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Store, Eye, EyeOff } from "lucide-react"
+import { Store, Eye, EyeOff, CheckCircle } from "lucide-react"
 
 export function SellerLoginView() {
   const router = useRouter()
@@ -11,6 +11,7 @@ export function SellerLoginView() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,8 +20,8 @@ export function SellerLoginView() {
     // Demo merchant login
     setTimeout(() => {
       setLoading(false)
-      alert("Seller login successful! Welcome to the Merchant Portal.")
-      router.push("/admin/products")
+      setSuccess(true)
+      setTimeout(() => router.push("/admin/products"), 1200)
     }, 1000)
   }
 
@@ -88,13 +89,20 @@ export function SellerLoginView() {
             </div>
           </div>
 
+          {success && (
+            <div className="flex items-center gap-2 rounded border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-700">
+              <CheckCircle className="h-4 w-4 shrink-0" />
+              Seller login successful! Redirecting to Merchant Portal...
+            </div>
+          )}
+
           <div className="pt-2">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || success}
               className="w-full py-3 rounded text-xs font-bold bg-primary hover:bg-primary/90 text-white uppercase tracking-wider shadow-sm transition-all cursor-pointer disabled:opacity-50"
             >
-              {loading ? "Signing in..." : "Login to Seller Panel"}
+              {loading ? "Signing in..." : success ? "Redirecting..." : "Login to Seller Panel"}
             </button>
           </div>
 

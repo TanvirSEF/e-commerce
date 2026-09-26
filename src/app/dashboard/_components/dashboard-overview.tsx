@@ -31,10 +31,21 @@ const MOCK_RECENT_ORDERS = [
   },
 ]
 
-export function DashboardOverview() {
+interface DashboardOverviewProps {
+  recentOrders?: any[]
+  walletBalance?: number
+  clubPoints?: number
+  totalOrders?: number
+}
+
+export function DashboardOverview({ recentOrders, walletBalance, clubPoints, totalOrders }: DashboardOverviewProps) {
   const { user, wishlist } = useAuth()
   const { totalCount } = useCart()
   const [copied, setCopied] = useState(false)
+
+  const ordersToDisplay = recentOrders && recentOrders.length > 0 ? recentOrders : MOCK_RECENT_ORDERS
+  const displayWallet = walletBalance !== undefined ? walletBalance : 2500
+  const displayPoints = clubPoints !== undefined ? clubPoints : 150
 
   const handleCopyCoupon = () => {
     navigator.clipboard.writeText("WELCOME10")
@@ -68,7 +79,7 @@ export function DashboardOverview() {
             <div>
               <p className="text-xs font-semibold text-gray-500">Wallet Balance</p>
               <h3 className="text-xl font-extrabold text-gray-900 mt-1">
-                {formatPrice(user?.balance || 0)}
+                {formatPrice(displayWallet)}
               </h3>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-[#1967d2]">
@@ -116,7 +127,7 @@ export function DashboardOverview() {
             <div>
               <p className="text-xs font-medium text-gray-800">Total Club Points</p>
               <h3 className="text-xl font-extrabold text-gray-900 mt-1">
-                {user?.clubPoints || 150} pts
+                {displayPoints} pts
               </h3>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/50 text-gray-900">
@@ -176,7 +187,7 @@ export function DashboardOverview() {
           </div>
           <div>
             <div suppressHydrationWarning className="text-lg font-extrabold text-gray-900">
-              {user?.orderedCount || 4}
+              {totalOrders ?? ordersToDisplay.length}
             </div>
             <div className="text-xs text-gray-500">Total Ordered</div>
           </div>
@@ -208,7 +219,7 @@ export function DashboardOverview() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {MOCK_RECENT_ORDERS.map((order) => (
+              {ordersToDisplay.map((order) => (
                 <tr key={order.code} className="hover:bg-gray-50/50">
                   <td className="px-5 py-3.5 font-bold text-[#d43533]">
                     <Link href={`/order-confirmed/${order.code}`} className="hover:underline">

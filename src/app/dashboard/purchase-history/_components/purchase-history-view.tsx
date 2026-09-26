@@ -44,12 +44,18 @@ const ALL_ORDERS = [
   },
 ]
 
-export function PurchaseHistoryView() {
+interface PurchaseHistoryViewProps {
+  initialOrders?: any[]
+}
+
+export function PurchaseHistoryView({ initialOrders }: PurchaseHistoryViewProps) {
   const [filter, setFilter] = useState("")
 
-  const filteredOrders = ALL_ORDERS.filter((o) =>
-    o.code.toLowerCase().includes(filter.toLowerCase()) ||
-    o.deliveryStatus.toLowerCase().includes(filter.toLowerCase())
+  const ordersList = initialOrders && initialOrders.length > 0 ? initialOrders : ALL_ORDERS
+
+  const filteredOrders = ordersList.filter((o) =>
+    (o.code || "").toLowerCase().includes(filter.toLowerCase()) ||
+    (o.deliveryStatus || "").toLowerCase().includes(filter.toLowerCase())
   )
 
   return (

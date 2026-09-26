@@ -86,7 +86,6 @@ export function ShopHomeTab({ shop, products, coupons }: ShopHomeTabProps) {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(c.code)
-                    alert(`Coupon ${c.code} copied!`)
                   }}
                   className="px-2.5 py-1 text-[11px] font-bold rounded bg-amber-500 hover:bg-amber-600 text-white transition-colors"
                 >

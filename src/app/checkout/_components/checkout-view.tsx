@@ -73,6 +73,7 @@ export function CheckoutView() {
   const [additionalNotes, setAdditionalNotes] = useState("")
   const [agreed, setAgreed] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [orderError, setOrderError] = useState("")
 
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId) || addresses[0]
 
@@ -156,7 +157,7 @@ export function CheckoutView() {
       router.push(`/order-confirmed/${orderCode}`)
     } catch (err) {
       console.error("Order submission failed:", err)
-      alert("Failed to submit order. Please try again.")
+      setOrderError("Failed to submit order. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -200,6 +201,13 @@ export function CheckoutView() {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Order error banner */}
+          {orderError && (
+            <div className="lg:col-span-12 flex items-center gap-2 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              <span>⚠</span>
+              {orderError}
+            </div>
+          )}
           {/* Left Column (8 cols): Accordion Steps */}
           <div className="lg:col-span-8 space-y-4">
             {/* Step 1: Shipping Info */}

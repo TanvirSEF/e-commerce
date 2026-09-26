@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, UploadCloud, Key, CheckCircle2, ShieldCheck } from "lucide-react"
+import { ArrowLeft, UploadCloud, Key, CheckCircle2, ShieldCheck, XCircle } from "lucide-react"
 
 export function AdminAddonsCreateView() {
   const router = useRouter()
@@ -11,11 +11,13 @@ export function AdminAddonsCreateView() {
   const [fileSelected, setFileSelected] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     if (!purchaseCode) {
-      alert("Please enter purchase code")
+      setError("Please enter a valid purchase code.")
       return
     }
 
@@ -51,6 +53,13 @@ export function AdminAddonsCreateView() {
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-emerald-600" />
           Addon uploaded and verified successfully! Redirecting...
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
+          <XCircle className="h-4 w-4 shrink-0" />
+          {error}
         </div>
       )}
 

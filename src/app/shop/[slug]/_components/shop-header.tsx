@@ -122,7 +122,6 @@ export function ShopHeader({ shop }: ShopHeaderProps) {
                     navigator.share({ title: shop.name, url: window.location.href })
                   } else {
                     navigator.clipboard.writeText(window.location.href)
-                    alert("Store URL copied to clipboard!")
                   }
                 }}
                 className="p-2 border border-gray-200 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"

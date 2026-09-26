@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, UploadCloud } from "lucide-react"
+import { ChevronLeft, Save, UploadCloud, XCircle } from "lucide-react"
 import { createProductAction } from "@/app/actions/ecommerce-actions"
 import { ProductVariationMatrix, VariantItem } from "./product-variation-matrix"
 
@@ -27,6 +27,7 @@ interface AdminProductCreateViewProps {
 export function AdminProductCreateView({ categories, brands }: AdminProductCreateViewProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     name: "",
     categoryId: categories[0]?.id || 1,
@@ -81,11 +82,11 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
       if (res) {
         router.push("/admin/products")
       } else {
-        alert("Failed to save product to database.")
+        setError("Failed to save product to database. Please try again.")
       }
     } catch (err) {
       console.error("Error creating product:", err)
-      alert("An error occurred while saving the product.")
+      setError("An error occurred while saving the product.")
     } finally {
       setIsSubmitting(false)
     }
@@ -93,6 +94,12 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto pb-12">
+      {error && (
+        <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
+          <XCircle className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      )}
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">

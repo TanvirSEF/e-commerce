@@ -3,12 +3,13 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Store, Eye, EyeOff, CheckCircle } from "lucide-react"
+import { Store, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react"
 
 export function SellerRegisterView() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState("")
 
   // Form states
   const [formData, setFormData] = useState({
@@ -23,14 +24,14 @@ export function SellerRegisterView() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     if (formData.password !== formData.passwordConfirmation) {
-      alert("Passwords do not match!")
+      setError("Passwords do not match!")
       return
     }
 
     setSubmitted(true)
     setTimeout(() => {
-      alert("Shop application submitted successfully! Our merchant onboarding team will review and verify your store.")
       router.push("/seller/login")
     }, 1500)
   }
@@ -54,12 +55,17 @@ export function SellerRegisterView() {
         {submitted ? (
           <div className="py-12 text-center space-y-3">
             <CheckCircle className="size-14 text-green-500 mx-auto" />
-            <h2 className="text-lg font-bold text-gray-900">Registration Complete!</h2>
-            <p className="text-xs text-gray-500">Redirecting you to the seller portal...</p>
+            <h2 className="text-lg font-bold text-gray-900">Application Submitted!</h2>
+            <p className="text-xs text-gray-500">Our merchant onboarding team will review and verify your store. Redirecting to login...</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Personal Info */}
+            {error && (
+              <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
+                <XCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+            )}
             <div className="border-b border-gray-100 pb-2 mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
                 Personal Information

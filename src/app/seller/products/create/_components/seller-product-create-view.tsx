@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Package, Save, CheckCircle } from "lucide-react"
+import { ArrowLeft, Package, Save, CheckCircle, XCircle } from "lucide-react"
 import type { SeedCategory } from "@/db/seed/data"
 import type { SeedBrand } from "@/db/seed/data"
 
@@ -51,6 +51,7 @@ export function SellerProductCreateView({ categories, brands }: SellerProductCre
   const [form, setForm] = useState<ProductFormState>(initialForm)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState("")
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -65,6 +66,7 @@ export function SellerProductCreateView({ categories, brands }: SellerProductCre
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     setIsSubmitting(true)
 
     try {
@@ -91,11 +93,11 @@ export function SellerProductCreateView({ categories, brands }: SellerProductCre
           setForm(initialForm)
         }, 2000)
       } else {
-        alert("Failed to save product.")
+        setError("Failed to save product. Please try again.")
       }
     } catch (err) {
       console.error("Seller product create failed:", err)
-      alert("Error saving product.")
+      setError("Error saving product. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -123,6 +125,13 @@ export function SellerProductCreateView({ categories, brands }: SellerProductCre
         <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-sm font-semibold">
           <CheckCircle className="w-4 h-4" />
           Product submitted for approval successfully!
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
+          <XCircle className="h-4 w-4 shrink-0" />
+          {error}
         </div>
       )}
 

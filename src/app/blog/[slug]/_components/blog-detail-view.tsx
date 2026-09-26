@@ -15,7 +15,6 @@ export function BlogDetailView({ blog, recentBlogs }: BlogDetailViewProps) {
       navigator.share({ title: blog.title, url: window.location.href })
     } else {
       navigator.clipboard.writeText(window.location.href)
-      alert("Article link copied to clipboard!")
     }
   }
 

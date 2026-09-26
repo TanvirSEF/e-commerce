@@ -3,12 +3,13 @@
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Save, Truck, User, Mail, Phone, MapPin } from "lucide-react"
+import { ArrowLeft, Save, Truck, XCircle } from "lucide-react"
 import { createDeliveryBoyAction } from "@/app/actions/ecommerce-actions"
 
 export function AdminDeliveryBoysCreateView() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -18,8 +19,9 @@ export function AdminDeliveryBoysCreateView() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     if (!formData.name || !formData.email || !formData.phone) {
-      alert("Please fill in required fields")
+      setError("Please fill in all required fields.")
       return
     }
 
@@ -30,7 +32,7 @@ export function AdminDeliveryBoysCreateView() {
       router.refresh()
     } catch (err) {
       console.error(err)
-      alert("Failed to register courier personnel")
+      setError("Failed to register courier personnel. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -55,6 +57,12 @@ export function AdminDeliveryBoysCreateView() {
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-5">
+        {error && (
+          <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
+            <XCircle className="h-4 w-4 shrink-0" />
+            {error}
+          </div>
+        )}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-700">Full Name *</label>
           <input
