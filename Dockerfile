@@ -8,9 +8,9 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
-# Install dependencies based on pnpm-lock.yaml
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+# Install dependencies based on pnpm-lock.yaml & .npmrc
+COPY package.json pnpm-lock.yaml* .npmrc* ./
+RUN pnpm install --frozen-lockfile --config.dangerously-allow-all-builds=true
 
 # -------------------------------------------------------------
 # Stage 2: Builder
@@ -27,26 +27,20 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Dokploy build args and environment variables
-ARG DATABASE_URL
+# Public Build Args (non-secret only, baked into frontend assets)
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_SITE_MOTTO
 ARG NEXT_PUBLIC_CURRENCY_SYMBOL
 ARG NEXT_PUBLIC_CURRENCY_CODE
 ARG NEXT_PUBLIC_HELPLINE
-ARG BETTER_AUTH_SECRET
-ARG BETTER_AUTH_URL
 
-ENV DATABASE_URL=$DATABASE_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
 ENV NEXT_PUBLIC_SITE_MOTTO=$NEXT_PUBLIC_SITE_MOTTO
 ENV NEXT_PUBLIC_CURRENCY_SYMBOL=$NEXT_PUBLIC_CURRENCY_SYMBOL
 ENV NEXT_PUBLIC_CURRENCY_CODE=$NEXT_PUBLIC_CURRENCY_CODE
 ENV NEXT_PUBLIC_HELPLINE=$NEXT_PUBLIC_HELPLINE
-ENV BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET
-ENV BETTER_AUTH_URL=$BETTER_AUTH_URL
 
 # Build standalone Next.js package with webpack
 RUN pnpm run build
