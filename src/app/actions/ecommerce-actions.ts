@@ -927,4 +927,45 @@ export async function placeAuctionBidAction(
   return await placeAuctionBid(productId, userName, userEmail, amount)
 }
 
+// Affiliate Actions
+export async function updateAffiliateOptionAction(type: string, percentage: string, status: boolean) {
+  const { updateAffiliateOption } = await import("@/services/affiliate-service")
+  return await updateAffiliateOption(type, percentage, status)
+}
+
+export async function updateAffiliateConfigsAction(configs: Record<string, string>) {
+  const { updateAffiliateConfigs } = await import("@/services/affiliate-service")
+  return await updateAffiliateConfigs(configs)
+}
+
+export async function approveAffiliateUserAction(id: number) {
+  const { approveAffiliateUser } = await import("@/services/affiliate-service")
+  return await approveAffiliateUser(id)
+}
+
+export async function rejectAffiliateUserAction(id: number) {
+  const { rejectAffiliateUser } = await import("@/services/affiliate-service")
+  return await rejectAffiliateUser(id)
+}
+
+export async function approveWithdrawRequestAction(id: number) {
+  const { approveWithdrawRequest } = await import("@/services/affiliate-service")
+  return await approveWithdrawRequest(id)
+}
+
+export async function rejectWithdrawRequestAction(id: number) {
+  const { rejectWithdrawRequest } = await import("@/services/affiliate-service")
+  return await rejectWithdrawRequest(id)
+}
+
+export async function applyForAffiliateAction(data: {
+  userName: string
+  userEmail: string
+  paypalEmail?: string
+  bankInfo?: string
+}) {
+  const { applyForAffiliate } = await import("@/services/affiliate-service")
+  return await applyForAffiliate(data)
+}
+
 

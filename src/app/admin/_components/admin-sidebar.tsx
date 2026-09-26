@@ -24,6 +24,7 @@ import {
   MessageSquare,
   CalendarClock,
   Gavel,
+  Share2,
 } from "lucide-react"
 
 interface NavItem {
@@ -130,6 +131,18 @@ const navItems: NavItem[] = [
       { title: "Newsletters", href: "/admin/newsletter" },
       { title: "Club Points Setup", href: "/admin/club-points" },
       { title: "Marketing Analytics", href: "/admin/marketing/analytics" },
+    ],
+  },
+  {
+    title: "Affiliate System",
+    icon: Share2,
+    children: [
+      { title: "Affiliate Configurations", href: "/admin/affiliate" },
+      { title: "Affiliate Rules & Terms", href: "/admin/affiliate/configs" },
+      { title: "Affiliate Users", href: "/admin/affiliate/users" },
+      { title: "Referral Links", href: "/admin/affiliate/referrals" },
+      { title: "Withdraw Requests", href: "/admin/affiliate/withdraw-requests" },
+      { title: "Commission Logs", href: "/admin/affiliate/logs" },
     ],
   },
   {
