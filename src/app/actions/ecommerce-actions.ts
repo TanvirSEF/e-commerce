@@ -1069,19 +1069,105 @@ export async function loginAction(data: {
   password: string
 }): Promise<AuthActionResult> {
   try {
+    const { db } = await import("@/db")
+    const { users, accounts, sessions } = await import("@/db/schema")
+    const { eq, or } = await import("drizzle-orm")
+    const { verifyPassword } = await import("better-auth/crypto")
+    const { headers, cookies } = await import("next/headers")
     const { auth } = await import("@/lib/auth/auth")
-    const res = await auth.api.signInEmail({
-      body: {
-        email: data.email.trim(),
-        password: data.password,
-      },
-    })
 
-    if (!res || !res.user) {
+    const identifier = data.email.trim()
+    const cleanPhone = identifier.replace(/[\s\-()]/g, "")
+
+    // 1. Dual Lookup: Match Email OR Phone (100% Laravel LoginController Parity)
+    const matchedUsers = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.email, identifier.toLowerCase()),
+          eq(users.phone, identifier),
+          eq(users.phone, cleanPhone),
+          eq(users.phone, `+${cleanPhone.replace(/^\+/, "")}`)
+        )
+      )
+      .limit(1)
+
+    if (!matchedUsers || matchedUsers.length === 0) {
       return { success: false, error: "Invalid email or password." }
     }
 
-    const u = res.user as any
+    const u = matchedUsers[0]
+
+    // 2. Fetch credential account
+    const matchedAccounts = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.userId, u.id))
+
+    const credAccount = matchedAccounts.find((a) => a.providerId === "credential")
+    if (!credAccount || !credAccount.password) {
+      return { success: false, error: "Invalid email or password." }
+    }
+
+    // 3. Verify Password Hash
+    const isPasswordValid = await verifyPassword({
+      hash: credAccount.password,
+      password: data.password,
+    })
+    if (!isPasswordValid) {
+      return { success: false, error: "Invalid email or password." }
+    }
+
+    // 4. Create / Refresh Better Auth Session & Cookies
+    let sessionToken = ""
+    try {
+      const h = await headers()
+      const signInRes = await auth.api.signInEmail({
+        body: {
+          email: u.email,
+          password: data.password,
+        },
+        headers: h,
+      })
+      if (signInRes && signInRes.token) {
+        sessionToken = signInRes.token
+      }
+    } catch {
+      // Fallback: If signInEmail fails due to proxy header checks in Server Action context
+    }
+
+    if (!sessionToken) {
+      const crypto = await import("crypto")
+      sessionToken = crypto.randomBytes(32).toString("hex")
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      await db.insert(sessions).values({
+        id: sessionToken,
+        userId: u.id,
+        token: sessionToken,
+        expiresAt,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    }
+
+    // Set Better Auth session cookie
+    try {
+      const cookieStore = await cookies()
+      cookieStore.set("better-auth.session_token", sessionToken, {
+        httpOnly: true,
+        secure:
+          process.env.NODE_ENV === "production" &&
+          Boolean(process.env.BETTER_AUTH_URL?.startsWith("https")),
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60,
+      })
+    } catch {
+      // safe fallback if invoked outside active request context
+    }
+
+    // 5. Role-based Redirection (1:1 Active eCommerce CMS parity)
     const role = u.role || "customer"
     let redirectTo = "/dashboard"
     if (role === "admin" || role === "staff") {
@@ -1104,8 +1190,7 @@ export async function loginAction(data: {
       redirectTo,
     }
   } catch (err: any) {
-    const message =
-      err.body?.message || err.message || "Invalid email or password."
+    const message = err.body?.message || err.message || "Invalid email or password."
     return { success: false, error: message }
   }
 }
@@ -1118,52 +1203,96 @@ export async function registerAction(data: {
   role?: string
 }): Promise<AuthActionResult> {
   try {
-    const { auth } = await import("@/lib/auth/auth")
     const { db } = await import("@/db")
-    const { users } = await import("@/db/schema")
+    const { users, accounts, sessions } = await import("@/db/schema")
     const { eq } = await import("drizzle-orm")
+    const { hashPassword } = await import("better-auth/crypto")
+    const { cookies } = await import("next/headers")
+    const crypto = await import("crypto")
 
-    const res = await auth.api.signUpEmail({
-      body: {
-        name: data.name.trim(),
-        email: data.email.trim().toLowerCase(),
-        password: data.password,
-      },
-    })
+    const email = data.email.trim().toLowerCase()
+    const name = data.name.trim()
+    const phone = data.phone?.trim() || null
+    const assignedRole = data.role || "customer"
 
-    if (!res || !res.user) {
-      return { success: false, error: "Registration failed. Please try again." }
+    // Check if email already exists
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1)
+
+    if (existing.length > 0) {
+      return { success: false, error: "Email already registered. Please log in." }
     }
 
-    const assignedRole = data.role || "customer"
-    await db
-      .update(users)
-      .set({
-        role: assignedRole,
-        phone: data.phone || null,
-        emailVerified: true,
-      })
-      .where(eq(users.id, res.user.id))
+    const userId = `usr_${crypto.randomBytes(16).toString("hex")}`
+    const hashedPassword = await hashPassword(data.password)
 
-    const redirectTo =
-      assignedRole === "seller" ? "/seller/dashboard" : "/dashboard"
+    // 1. Insert User
+    await db.insert(users).values({
+      id: userId,
+      name,
+      email,
+      phone,
+      role: assignedRole,
+      emailVerified: true,
+      balance: "0.00",
+    })
+
+    // 2. Insert Credential Account
+    await db.insert(accounts).values({
+      id: `acc_${userId}_credential`,
+      userId,
+      accountId: userId,
+      providerId: "credential",
+      password: hashedPassword,
+    })
+
+    // 3. Create Session & Set Cookie
+    const sessionToken = crypto.randomBytes(32).toString("hex")
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    await db.insert(sessions).values({
+      id: sessionToken,
+      userId,
+      token: sessionToken,
+      expiresAt,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    try {
+      const cookieStore = await cookies()
+      cookieStore.set("better-auth.session_token", sessionToken, {
+        httpOnly: true,
+        secure:
+          process.env.NODE_ENV === "production" &&
+          Boolean(process.env.BETTER_AUTH_URL?.startsWith("https")),
+        sameSite: "lax",
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60,
+      })
+    } catch {
+      // safe fallback if invoked outside active request context
+    }
+
+    const redirectTo = assignedRole === "seller" ? "/seller/dashboard" : "/dashboard"
 
     return {
       success: true,
       user: {
-        id: res.user.id,
-        name: data.name,
-        email: data.email,
+        id: userId,
+        name,
+        email,
         role: assignedRole,
-        phone: data.phone || null,
+        phone,
         balance: 0,
         avatar: "/assets/img/avatar-place.png",
       },
       redirectTo,
     }
   } catch (err: any) {
-    const message =
-      err.body?.message || err.message || "Registration failed. Please try again."
+    const message = err.body?.message || err.message || "Registration failed. Please try again."
     return { success: false, error: message }
   }
 }

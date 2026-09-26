@@ -91,6 +91,57 @@ export function LoginView() {
               <p className="text-xs text-gray-500 mt-1">Login to your account</p>
             </div>
 
+            {/* Quick Demo Autofill Buttons (Active eCommerce Style) */}
+            <div className="mb-4 p-2.5 rounded bg-gray-50 border border-gray-200">
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                Demo Accounts:
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("tanvir@example.com")
+                    setPassword("password123")
+                  }}
+                  className={`px-2 py-1.5 border rounded text-[11px] font-semibold transition-colors text-center ${
+                    email === "tanvir@example.com"
+                      ? "bg-red-50 border-[#d43533] text-[#d43533]"
+                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Customer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("seller@example.com")
+                    setPassword("password123")
+                  }}
+                  className={`px-2 py-1.5 border rounded text-[11px] font-semibold transition-colors text-center ${
+                    email === "seller@example.com"
+                      ? "bg-red-50 border-[#d43533] text-[#d43533]"
+                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Seller
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("admin@example.com")
+                    setPassword("password123")
+                  }}
+                  className={`px-2 py-1.5 border rounded text-[11px] font-semibold transition-colors text-center ${
+                    email === "admin@example.com"
+                      ? "bg-red-50 border-[#d43533] text-[#d43533]"
+                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Admin
+                </button>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {errorMessage && (
                 <div className="rounded border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700 flex items-center gap-2">
@@ -109,7 +160,7 @@ export function LoginView() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="johndoe@example.com"
+                    placeholder="Email or phone (e.g. +880 1712 345678)"
                     className="w-full rounded border border-gray-300 pl-9 pr-3 py-2.5 text-xs text-gray-800 placeholder-gray-400 focus:border-[#d43533] focus:outline-none"
                   />
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />

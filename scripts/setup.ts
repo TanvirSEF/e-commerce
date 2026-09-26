@@ -142,12 +142,16 @@ async function runSetup() {
       }
     }
 
-    // 8. Seed Default Administrator and Customer
+    // 8. Seed Default Administrator, Customer, and Seller
+    const { hashPassword } = await import("better-auth/crypto")
+    const defaultPasswordHash = await hashPassword("password123")
+
     const adminEmail = "admin@example.com"
+    const adminId = "usr_admin_default_01"
     const existingAdmin = await db.select().from(schema.users).where(eq(schema.users.email, adminEmail))
     if (existingAdmin.length === 0) {
       await db.insert(schema.users).values({
-        id: "usr_admin_default_01",
+        id: adminId,
         name: "Active eCommerce Admin",
         email: adminEmail,
         emailVerified: true,
@@ -156,13 +160,24 @@ async function runSetup() {
         balance: "50000.00",
       })
     }
-    console.log("[OK] Administrator created (admin@example.com)")
+    await db.insert(schema.accounts).values({
+      id: "acc_admin_default_credential",
+      userId: adminId,
+      accountId: adminId,
+      providerId: "credential",
+      password: defaultPasswordHash,
+    }).onConflictDoUpdate({
+      target: schema.accounts.id,
+      set: { password: defaultPasswordHash, accountId: adminId, userId: adminId, providerId: "credential" },
+    })
+    console.log("[OK] Administrator created (admin@example.com / password123)")
 
     const customerEmail = "tanvir@example.com"
+    const customerId = "usr_customer_default_01"
     const existingCustomer = await db.select().from(schema.users).where(eq(schema.users.email, customerEmail))
     if (existingCustomer.length === 0) {
       await db.insert(schema.users).values({
-        id: "usr_customer_default_01",
+        id: customerId,
         name: "Tanvir Ahmed",
         email: customerEmail,
         emailVerified: true,
@@ -171,7 +186,43 @@ async function runSetup() {
         balance: "2500.00",
       })
     }
-    console.log("[OK] Default customer created (tanvir@example.com)")
+    await db.insert(schema.accounts).values({
+      id: "acc_customer_default_credential",
+      userId: customerId,
+      accountId: customerId,
+      providerId: "credential",
+      password: defaultPasswordHash,
+    }).onConflictDoUpdate({
+      target: schema.accounts.id,
+      set: { password: defaultPasswordHash, accountId: customerId, userId: customerId, providerId: "credential" },
+    })
+    console.log("[OK] Default customer created (tanvir@example.com / password123)")
+
+    const sellerEmail = "seller@example.com"
+    const sellerId = "usr_seller_default_01"
+    const existingSeller = await db.select().from(schema.users).where(eq(schema.users.email, sellerEmail))
+    if (existingSeller.length === 0) {
+      await db.insert(schema.users).values({
+        id: sellerId,
+        name: "Demo Seller Store",
+        email: sellerEmail,
+        emailVerified: true,
+        role: "seller",
+        phone: "+880 1711 999888",
+        balance: "15000.00",
+      })
+    }
+    await db.insert(schema.accounts).values({
+      id: "acc_seller_default_credential",
+      userId: sellerId,
+      accountId: sellerId,
+      providerId: "credential",
+      password: defaultPasswordHash,
+    }).onConflictDoUpdate({
+      target: schema.accounts.id,
+      set: { password: defaultPasswordHash, accountId: sellerId, userId: sellerId, providerId: "credential" },
+    })
+    console.log("[OK] Default seller created (seller@example.com / password123)")
 
     // 9. Seed Shops
     for (const shop of SEED_SHOPS) {
