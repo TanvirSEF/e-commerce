@@ -18,6 +18,10 @@ interface PaymentStepProps {
 
 const PAYMENT_METHODS = [
   { id: "cash_on_delivery", label: "Cash on Delivery", image: "/assets/img/cards/cod.png" },
+  { id: "wallet", label: "Wallet Balance", image: "/assets/img/cards/wallet.png" },
+  { id: "stripe", label: "Debit / Credit Card (Stripe)", image: "/assets/img/cards/stripe.png" },
+  { id: "paypal", label: "PayPal", image: "/assets/img/cards/paypal.png" },
+  { id: "razorpay", label: "Razorpay", image: "/assets/img/cards/razorpay.png" },
   { id: "bkash", label: "bKash", image: "/assets/img/cards/bkash.png" },
   { id: "nagad", label: "Nagad", image: "/assets/img/cards/nagad.png" },
   { id: "uddoktapay", label: "UddoktaPay", image: "/assets/img/cards/uddoktapay.png" },

@@ -21,6 +21,8 @@ import {
   CalendarClock,
   Gavel,
   X,
+  Star,
+  HelpCircle,
 } from "lucide-react"
 
 interface NavItem {
@@ -51,6 +53,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "All Products", href: "/seller/products" },
       { title: "Add New Product", href: "/seller/products/create" },
+      { title: "Digital Products", href: "/seller/digital-products" },
       { title: "Wholesale Products", href: "/seller/wholesale-products" },
       { title: "Bulk Upload", href: "/seller/product-bulk-upload" },
     ],
@@ -116,6 +119,16 @@ const navItems: NavItem[] = [
     title: "Shop Verification",
     href: "/seller/verify",
     icon: ShieldCheck,
+  },
+  {
+    title: "Product Reviews",
+    href: "/seller/product-reviews",
+    icon: Star,
+  },
+  {
+    title: "Product Queries",
+    href: "/seller/product-queries",
+    icon: HelpCircle,
   },
   {
     title: "Support Tickets",
