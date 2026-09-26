@@ -968,4 +968,26 @@ export async function applyForAffiliateAction(data: {
   return await applyForAffiliate(data)
 }
 
+// Delivery Boy Actions
+export async function createDeliveryBoyAction(data: {
+  name: string
+  email: string
+  phone: string
+  zoneId?: number
+  zoneName?: string
+}) {
+  const { createDeliveryBoy } = await import("@/services/delivery-boy-service")
+  return await createDeliveryBoy(data)
+}
+
+export async function toggleDeliveryBoyBanAction(id: number) {
+  const { toggleDeliveryBoyBan } = await import("@/services/delivery-boy-service")
+  return await toggleDeliveryBoyBan(id)
+}
+
+export async function updateDeliveryBoyConfigAction(data: any) {
+  const { updateDeliveryBoyConfig } = await import("@/services/delivery-boy-service")
+  return await updateDeliveryBoyConfig(data)
+}
+
 

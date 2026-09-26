@@ -25,6 +25,8 @@ import {
   CalendarClock,
   Gavel,
   Share2,
+  Truck,
+  Blocks,
 } from "lucide-react"
 
 interface NavItem {
@@ -69,6 +71,7 @@ const navItems: NavItem[] = [
       { title: "Smart Bar", href: "/admin/products/smart-bar" },
       { title: "Bulk Upload", href: "/admin/product-bulk-upload" },
       { title: "Wholesale Products", href: "/admin/wholesale/all-products" },
+      { title: "Promotional Products Hub", href: "/admin/promotional-products-index" },
       { title: "Product Reviews", href: "/admin/reviews" },
       { title: "Product Queries (Q&A)", href: "/admin/product-queries" },
     ],
@@ -146,6 +149,18 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: "Delivery Boy System",
+    icon: Truck,
+    children: [
+      { title: "All Delivery Boys", href: "/admin/delivery-boys" },
+      { title: "Add Delivery Boy", href: "/admin/delivery-boys/create" },
+      { title: "Delivery Boy Configuration", href: "/admin/delivery-boy-configuration" },
+      { title: "Payment Histories", href: "/admin/delivery-boys-payment-histories" },
+      { title: "Collection Histories", href: "/admin/delivery-boys-collection-histories" },
+      { title: "Cancel Requests", href: "/admin/delivery-boy/cancel-requests" },
+    ],
+  },
+  {
     title: "Reports",
     icon: BarChart3,
     children: [
@@ -156,6 +171,9 @@ const navItems: NavItem[] = [
       { title: "User Searches", href: "/admin/reports/user-searches" },
       { title: "Product Wishlist", href: "/admin/reports/wishlist" },
       { title: "Wallet History", href: "/admin/reports/wallet-history" },
+      { title: "AI Token Usage", href: "/admin/reports/ai-token-usage" },
+      { title: "Commission History", href: "/admin/reports/commission-history" },
+      { title: "Earnings vs Payouts", href: "/admin/reports/earning-payout" },
     ],
   },
   {
@@ -199,6 +217,14 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: "Addon Manager",
+    icon: Blocks,
+    children: [
+      { title: "Installed Addons", href: "/admin/addons" },
+      { title: "Install / Upload Addon", href: "/admin/addons/create" },
+    ],
+  },
+  {
     title: "Setup & Settings",
     icon: Settings,
     children: [
@@ -228,6 +254,8 @@ const navItems: NavItem[] = [
       { title: "Global SEO", href: "/admin/settings/seo" },
       { title: "AI Writer Settings", href: "/admin/settings/ai-configuration" },
       { title: "SMTP Mail Settings", href: "/admin/settings/smtp" },
+      { title: "XML Sitemap Generator", href: "/admin/system/sitemap" },
+      { title: "Import Demo Data", href: "/admin/system/import-demo" },
       { title: "Server Status", href: "/admin/system/server-status" },
     ],
   },
