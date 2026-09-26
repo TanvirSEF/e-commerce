@@ -12,22 +12,35 @@ export function SellerLoginView() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError("")
 
-    // Demo merchant login
-    setTimeout(() => {
+    try {
+      const { loginAction } = await import("@/app/actions/ecommerce-actions")
+      const res = await loginAction({ email, password })
+      if (res.success) {
+        setSuccess(true)
+        setTimeout(() => {
+          router.push(res.redirectTo || "/seller/dashboard")
+          router.refresh()
+        }, 800)
+      } else {
+        setError(res.error || "Invalid seller credentials.")
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to sign in. Please try again.")
+    } finally {
       setLoading(false)
-      setSuccess(true)
-      setTimeout(() => router.push("/admin/products"), 1200)
-    }, 1000)
+    }
   }
 
   const fillDemoSeller = () => {
     setEmail("seller@example.com")
-    setPassword("123456")
+    setPassword("password123")
   }
 
   return (
@@ -88,6 +101,13 @@ export function SellerLoginView() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
+              <span className="font-bold">⚠</span>
+              {error}
+            </div>
+          )}
 
           {success && (
             <div className="flex items-center gap-2 rounded border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-semibold text-emerald-700">

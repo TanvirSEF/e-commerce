@@ -22,7 +22,7 @@ export function SellerRegisterView() {
     address: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     if (formData.password !== formData.passwordConfirmation) {
@@ -30,10 +30,32 @@ export function SellerRegisterView() {
       return
     }
 
-    setSubmitted(true)
-    setTimeout(() => {
-      router.push("/seller/login")
-    }, 1500)
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters.")
+      return
+    }
+
+    try {
+      const { registerAction } = await import("@/app/actions/ecommerce-actions")
+      const res = await registerAction({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        role: "seller",
+      })
+
+      if (res.success) {
+        setSubmitted(true)
+        setTimeout(() => {
+          router.push("/seller/login")
+        }, 1500)
+      } else {
+        setError(res.error || "Failed to register shop. Please try again.")
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during registration.")
+    }
   }
 
   return (

@@ -20,7 +20,7 @@ export function RegisterView() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
@@ -35,10 +35,19 @@ export function RegisterView() {
     }
 
     setIsSubmitting(true)
-    setTimeout(() => {
-      register(name, email, password, phone)
-      router.push("/dashboard")
-    }, 400)
+    try {
+      const res = await register(name, email, password, phone, "customer")
+      if (res.success) {
+        router.push(res.redirectTo || "/dashboard")
+        router.refresh()
+      } else {
+        setError(res.error || "Registration failed. Please try again.")
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during registration.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

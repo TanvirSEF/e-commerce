@@ -15,22 +15,41 @@ export function LoginView() {
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    setTimeout(() => {
-      login(email, password)
-      router.push("/dashboard")
-    }, 400)
+    setErrorMessage("")
+
+    try {
+      const res = await login(email, password)
+      if (res.success) {
+        router.push(res.redirectTo || "/dashboard")
+        router.refresh()
+      } else {
+        setErrorMessage(res.error || "Invalid email or password.")
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "An error occurred during login.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleSocialLogin = (provider: string) => {
+  const handleSocialLogin = async (provider: string) => {
     setIsSubmitting(true)
-    setTimeout(() => {
-      login(`${provider.toLowerCase()}@example.com`, "social-pass")
-      router.push("/dashboard")
-    }, 400)
+    setErrorMessage("")
+    try {
+      const res = await login(`${provider.toLowerCase()}@example.com`, "password123")
+      if (res.success) {
+        router.push(res.redirectTo || "/dashboard")
+      }
+    } catch {
+      setErrorMessage("Social authentication failed.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -73,6 +92,12 @@ export function LoginView() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="rounded border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700 flex items-center gap-2">
+                  <span className="font-bold">⚠</span>
+                  {errorMessage}
+                </div>
+              )}
               {/* Email */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">

@@ -1044,3 +1044,126 @@ export async function markNotificationsReadAction(ids?: string[]) {
   const { markNotificationsAsRead } = await import("@/services/notification-service")
   return await markNotificationsAsRead(ids)
 }
+
+// ==========================================
+// 100% REAL AUTHENTICATION ACTIONS (Better Auth + PostgreSQL)
+// ==========================================
+
+export interface AuthActionResult {
+  success: boolean
+  user?: {
+    id: string
+    name: string
+    email: string
+    role: string
+    phone?: string | null
+    balance: number
+    avatar: string
+  }
+  redirectTo?: string
+  error?: string
+}
+
+export async function loginAction(data: {
+  email: string
+  password: string
+}): Promise<AuthActionResult> {
+  try {
+    const { auth } = await import("@/lib/auth/auth")
+    const res = await auth.api.signInEmail({
+      body: {
+        email: data.email.trim(),
+        password: data.password,
+      },
+    })
+
+    if (!res || !res.user) {
+      return { success: false, error: "Invalid email or password." }
+    }
+
+    const u = res.user as any
+    const role = u.role || "customer"
+    let redirectTo = "/dashboard"
+    if (role === "admin" || role === "staff") {
+      redirectTo = "/admin/products"
+    } else if (role === "seller") {
+      redirectTo = "/seller/dashboard"
+    }
+
+    return {
+      success: true,
+      user: {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role || "customer",
+        phone: u.phone || null,
+        balance: Number(u.balance || 0),
+        avatar: u.image || "/assets/img/avatar-place.png",
+      },
+      redirectTo,
+    }
+  } catch (err: any) {
+    const message =
+      err.body?.message || err.message || "Invalid email or password."
+    return { success: false, error: message }
+  }
+}
+
+export async function registerAction(data: {
+  name: string
+  email: string
+  password: string
+  phone?: string
+  role?: string
+}): Promise<AuthActionResult> {
+  try {
+    const { auth } = await import("@/lib/auth/auth")
+    const { db } = await import("@/db")
+    const { users } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+
+    const res = await auth.api.signUpEmail({
+      body: {
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+      },
+    })
+
+    if (!res || !res.user) {
+      return { success: false, error: "Registration failed. Please try again." }
+    }
+
+    const assignedRole = data.role || "customer"
+    await db
+      .update(users)
+      .set({
+        role: assignedRole,
+        phone: data.phone || null,
+        emailVerified: true,
+      })
+      .where(eq(users.id, res.user.id))
+
+    const redirectTo =
+      assignedRole === "seller" ? "/seller/dashboard" : "/dashboard"
+
+    return {
+      success: true,
+      user: {
+        id: res.user.id,
+        name: data.name,
+        email: data.email,
+        role: assignedRole,
+        phone: data.phone || null,
+        balance: 0,
+        avatar: "/assets/img/avatar-place.png",
+      },
+      redirectTo,
+    }
+  } catch (err: any) {
+    const message =
+      err.body?.message || err.message || "Registration failed. Please try again."
+    return { success: false, error: message }
+  }
+}
