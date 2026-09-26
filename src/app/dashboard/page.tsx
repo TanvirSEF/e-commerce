@@ -1,21 +1,31 @@
 import { Metadata } from "next"
+import { headers } from "next/headers"
 import { DashboardOverview } from "./_components/dashboard-overview"
 import { getUserOrders } from "@/services/order-service"
 import { getWalletBalance, getClubPoints } from "@/services/wallet-service"
+import { auth } from "@/lib/auth/auth"
 
 export const metadata: Metadata = {
   title: "Customer Dashboard | Active eCommerce",
   description: "Manage your purchases, orders, profile, and rewards in one place.",
 }
 
-// TODO: Replace with session user ID once Better Auth session is wired
-const CURRENT_USER_ID = "usr_customer_default_01"
-
 export default async function DashboardPage() {
+  let currentUserId = "usr_customer_default_01"
+  try {
+    const h = await headers()
+    const session = await auth.api.getSession({ headers: h })
+    if (session?.user?.id) {
+      currentUserId = session.user.id
+    }
+  } catch {
+    // Fallback to default customer
+  }
+
   const [orders, walletBalance, clubPointsData] = await Promise.all([
-    getUserOrders(CURRENT_USER_ID),
-    getWalletBalance(CURRENT_USER_ID),
-    getClubPoints(CURRENT_USER_ID),
+    getUserOrders(currentUserId),
+    getWalletBalance(currentUserId),
+    getClubPoints(currentUserId),
   ])
 
   return (

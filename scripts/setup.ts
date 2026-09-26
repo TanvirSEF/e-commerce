@@ -224,6 +224,32 @@ async function runSetup() {
     })
     console.log("[OK] Default seller created (seller@example.com / password123)")
 
+    const deliveryBoyEmail = "deliveryboy@example.com"
+    const deliveryBoyId = "usr_deliveryboy_default_01"
+    const existingDeliveryBoy = await db.select().from(schema.users).where(eq(schema.users.email, deliveryBoyEmail))
+    if (existingDeliveryBoy.length === 0) {
+      await db.insert(schema.users).values({
+        id: deliveryBoyId,
+        name: "Express Delivery Boy",
+        email: deliveryBoyEmail,
+        emailVerified: true,
+        role: "delivery_boy",
+        phone: "+880 1722 111222",
+        balance: "500.00",
+      })
+    }
+    await db.insert(schema.accounts).values({
+      id: "acc_deliveryboy_default_credential",
+      userId: deliveryBoyId,
+      accountId: deliveryBoyId,
+      providerId: "credential",
+      password: defaultPasswordHash,
+    }).onConflictDoUpdate({
+      target: schema.accounts.id,
+      set: { password: defaultPasswordHash, accountId: deliveryBoyId, userId: deliveryBoyId, providerId: "credential" },
+    })
+    console.log("[OK] Default delivery boy created (deliveryboy@example.com / password123)")
+
     // 9. Seed Shops
     for (const shop of SEED_SHOPS) {
       const existing = await db.select().from(schema.shops).where(eq(schema.shops.slug, shop.slug))

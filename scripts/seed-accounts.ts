@@ -132,6 +132,44 @@ async function run() {
       })
     console.log("[OK] Seller account seeded: seller@example.com / password123")
 
+    // 4. Delivery Boy
+    const deliveryBoyId = "usr_deliveryboy_default_01"
+    await db
+      .insert(schema.users)
+      .values({
+        id: deliveryBoyId,
+        name: "Express Delivery Boy",
+        email: "deliveryboy@example.com",
+        emailVerified: true,
+        role: "delivery_boy",
+        phone: "+880 1722 111222",
+        balance: "500.00",
+      })
+      .onConflictDoUpdate({
+        target: schema.users.id,
+        set: { role: "delivery_boy", emailVerified: true, phone: "+880 1722 111222" },
+      })
+
+    await db
+      .insert(schema.accounts)
+      .values({
+        id: "acc_deliveryboy_default_credential",
+        userId: deliveryBoyId,
+        accountId: deliveryBoyId,
+        providerId: "credential",
+        password: hashedPassword,
+      })
+      .onConflictDoUpdate({
+        target: schema.accounts.id,
+        set: {
+          password: hashedPassword,
+          accountId: deliveryBoyId,
+          userId: deliveryBoyId,
+          providerId: "credential",
+        },
+      })
+    console.log("[OK] Delivery Boy account seeded: deliveryboy@example.com / password123")
+
     console.log("All accounts successfully verified and seeded!")
   } finally {
     await pool.end()

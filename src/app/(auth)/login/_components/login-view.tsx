@@ -204,9 +204,9 @@ export function LoginView() {
                   <span>Remember Me</span>
                 </label>
 
-                <a href="#forgot" className="text-xs font-semibold text-[#d43533] hover:underline">
+                <Link href="/forgot-password" className="text-xs font-semibold text-[#d43533] hover:underline">
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               {/* Submit */}
