@@ -25,6 +25,7 @@ import {
   HelpCircle,
   FileText,
   FolderOpen,
+  RotateCcw,
 } from "lucide-react"
 
 interface NavItem {
@@ -76,6 +77,11 @@ const navItems: NavItem[] = [
     title: "Orders",
     href: "/seller/orders",
     icon: ShoppingBag,
+  },
+  {
+    title: "Refund Requests",
+    href: "/seller/refund-requests",
+    icon: RotateCcw,
   },
   {
     title: "Pre-Orders",
