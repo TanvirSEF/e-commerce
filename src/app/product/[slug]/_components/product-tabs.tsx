@@ -73,8 +73,28 @@ export function ProductTabs({
     }
   }
 
+  React.useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === "#product_query" || window.location.hash === "#product-qa-section") {
+        setActiveTab("qa")
+      }
+    }
+    const handleCustom = () => {
+      setActiveTab("qa")
+    }
+    window.addEventListener("hashchange", handleHash)
+    window.addEventListener("open-product-qa", handleCustom)
+    if (window.location.hash === "#product_query" || window.location.hash === "#product-qa-section") {
+      setActiveTab("qa")
+    }
+    return () => {
+      window.removeEventListener("hashchange", handleHash)
+      window.removeEventListener("open-product-qa", handleCustom)
+    }
+  }, [])
+
   return (
-    <div className="mt-8 rounded-md border border-gray-100 bg-white shadow-sm">
+    <div className="mt-8 rounded-md border border-gray-100 bg-white shadow-sm" id="product-qa-section">
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-100 text-xs font-bold text-gray-600 sm:text-sm">
         <button

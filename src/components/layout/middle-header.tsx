@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Search, Heart, RefreshCw, Bell, User, Menu, X, LogOut, LayoutDashboard, ShoppingBag } from "lucide-react"
+import { Search, Heart, RefreshCw, Bell, User, Menu, X, LogOut, LayoutDashboard, ShoppingBag, Download, Wallet, LifeBuoy, MessageSquare } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { SearchDropdown } from "./search-dropdown"
@@ -223,6 +223,46 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
                         >
                           <ShoppingBag className="h-3.5 w-3.5" />
                           Purchase History
+                        </Link>
+                        <Link
+                          href="/dashboard/digital-purchases"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-xs text-gray-600 hover:bg-gray-50"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Downloads
+                        </Link>
+                        <Link
+                          href="/dashboard/wishlist"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-xs text-gray-600 hover:bg-gray-50"
+                        >
+                          <Heart className="h-3.5 w-3.5" />
+                          Wishlist
+                        </Link>
+                        <Link
+                          href="/dashboard/wallet"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-xs text-gray-600 hover:bg-gray-50"
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                          My Wallet
+                        </Link>
+                        <Link
+                          href="/dashboard/support-tickets"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-xs text-gray-600 hover:bg-gray-50"
+                        >
+                          <LifeBuoy className="h-3.5 w-3.5" />
+                          Support Ticket
+                        </Link>
+                        <Link
+                          href="/dashboard/conversations"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-xs text-gray-600 hover:bg-gray-50"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Conversations
                         </Link>
                         <Link
                           href="/dashboard/notifications"

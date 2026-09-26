@@ -13,10 +13,14 @@ import {
   ShoppingBag,
   Zap,
   Ruler,
+  HelpCircle,
+  Copy,
+  Check,
 } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
 import { useAuth } from "@/lib/context/auth-context"
 import { SizeGuideModal } from "./size-guide-modal"
+import { SocialShareModal } from "./social-share-modal"
 import { ProductSellerBox } from "./product-seller-box"
 import { ProductWarrantyBadges } from "./product-warranty-badges"
 import { ProductWholesaleBox } from "./product-wholesale-box"
@@ -56,6 +60,8 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
     product.sizes && product.sizes.length > 0 ? product.sizes[0] : ""
   )
   const [showSizeGuide, setShowSizeGuide] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [skuCopied, setSkuCopied] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const [isCopied, setIsCopied] = useState(false)
   const { toggleWishlist, isInWishlist } = useAuth()
@@ -118,11 +124,7 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
   }
 
   const handleShare = () => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href)
-      setIsCopied(true)
-      setTimeout(() => setIsCopied(false), 2000)
-    }
+    setShowShareModal(true)
   }
 
   const activeWholesaleTier = product.wholesaleTiers?.find(
@@ -160,7 +162,7 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
           className="flex items-center gap-1.5 transition-colors hover:text-[#d43533]"
         >
           <Share2 className="h-3.5 w-3.5" />
-          <span>{isCopied ? "Link Copied!" : "Share"}</span>
+          <span>Share</span>
         </button>
       </div>
 
@@ -172,7 +174,7 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
 
       {/* Brand & SKU */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {product.brandName && (
             <div>
               <span className="text-gray-400">Brand: </span>
@@ -185,10 +187,41 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
             </div>
           )}
           <span className="text-gray-300">|</span>
-          <div>
+          <div className="flex items-center gap-1.5">
             <span className="text-gray-400">SKU: </span>
             <span className="font-mono text-gray-700">{product.sku}</span>
+            <button
+              type="button"
+              title="Copy SKU"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  navigator.clipboard.writeText(product.sku)
+                  setSkuCopied(true)
+                  setTimeout(() => setSkuCopied(false), 2000)
+                }
+              }}
+              className="text-gray-400 hover:text-gray-700"
+            >
+              {skuCopied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+            </button>
           </div>
+          <span className="text-gray-300">|</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("open-product-qa"))
+              }
+              const el = document.getElementById("product-qa-section")
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth" })
+              }
+            }}
+            className="flex items-center gap-1 text-[#3490f3] hover:underline"
+          >
+            <HelpCircle className="h-3.5 w-3.5" />
+            <span>Ask about this product</span>
+          </button>
         </div>
 
         {/* Rating */}
@@ -373,6 +406,12 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
       <SizeGuideModal
         isOpen={showSizeGuide}
         onClose={() => setShowSizeGuide(false)}
+      />
+
+      <SocialShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        productName={product.name}
       />
     </div>
   )
