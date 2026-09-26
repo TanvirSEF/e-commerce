@@ -1,6 +1,6 @@
 "use server"
 
-import { createCoupon } from "@/services/coupon-service"
+import { createCoupon, validateCoupon } from "@/services/coupon-service"
 import { createFlashDeal } from "@/services/settings-service"
 import { rechargeWallet, convertClubPoints } from "@/services/wallet-service"
 import { createTicket } from "@/services/ticket-service"
@@ -17,6 +17,11 @@ export async function createCouponAction(data: {
 }) {
   return await createCoupon(data)
 }
+
+export async function validateCouponAction(code: string, cartTotal: number = 0) {
+  return await validateCoupon(code, cartTotal)
+}
+
 
 export async function createFlashDealAction(data: {
   title: string

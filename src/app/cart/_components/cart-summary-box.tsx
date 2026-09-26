@@ -23,10 +23,10 @@ export function CartSummaryBox() {
   const [couponCode, setCouponCode] = useState("")
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!couponCode.trim()) return
-    const res = applyCoupon(couponCode)
+    const res = await applyCoupon(couponCode)
     if (res.success) {
       setFeedback({ type: "success", text: res.message })
       setCouponCode("")
@@ -34,6 +34,7 @@ export function CartSummaryBox() {
       setFeedback({ type: "error", text: res.message })
     }
   }
+
 
   const handleRemoveCoupon = () => {
     removeCoupon()

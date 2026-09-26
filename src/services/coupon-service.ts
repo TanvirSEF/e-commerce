@@ -86,3 +86,77 @@ export async function createCoupon(data: {
     },
   }
 }
+
+export async function validateCoupon(
+  code: string,
+  cartTotal: number = 0
+): Promise<{
+  success: boolean
+  message: string
+  discount?: number
+  discountType?: "percent" | "amount"
+  maxDiscount?: number
+}> {
+  const clean = code.trim().toUpperCase()
+  if (!clean) {
+    return { success: false, message: "Please enter a coupon code." }
+  }
+
+  try {
+    const list = await getCoupons()
+    const found = list.find((c) => c.code.toUpperCase() === clean && c.status)
+    if (found) {
+      const now = Date.now()
+      if (found.startDate && now < found.startDate) {
+        return { success: false, message: "This coupon is not active yet." }
+      }
+      if (found.endDate && now > found.endDate) {
+        return { success: false, message: "This coupon has expired." }
+      }
+      if (found.minBuy && cartTotal > 0 && cartTotal < found.minBuy) {
+        return {
+          success: false,
+          message: `Minimum purchase of ৳${found.minBuy} required for this coupon.`,
+        }
+      }
+      return {
+        success: true,
+        message: `Coupon ${found.code} applied successfully!`,
+        discount: found.discount,
+        discountType: found.discountType,
+        maxDiscount: found.maxDiscount,
+      }
+    }
+  } catch (err) {
+    console.warn("Coupon validation error:", err)
+  }
+
+  // Canonical fallback demo coupons
+  if (clean === "WELCOME10") {
+    return {
+      success: true,
+      message: "Welcome coupon applied (10% OFF)!",
+      discount: 10,
+      discountType: "percent",
+    }
+  }
+  if (clean === "SAVE100") {
+    return {
+      success: true,
+      message: "Coupon applied! ৳100 discount added.",
+      discount: 100,
+      discountType: "amount",
+    }
+  }
+  if (clean === "HUI2026") {
+    return {
+      success: true,
+      message: "Special promo applied! 15% discount added.",
+      discount: 15,
+      discountType: "percent",
+    }
+  }
+
+  return { success: false, message: "Invalid or expired coupon code." }
+}
+

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -10,11 +10,30 @@ import { NotificationBell } from "@/components/layout/notification-bell"
 
 export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void }) {
   const router = useRouter()
-  const { user, isLoggedIn, logout } = useAuth()
+  const { user, isLoggedIn, logout, wishlist } = useAuth()
   const [keyword, setKeyword] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [compareCount, setCompareCount] = useState(0)
+
+  useEffect(() => {
+    const updateCompare = () => {
+      try {
+        const stored = localStorage.getItem("active_compare_list")
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          setCompareCount(Array.isArray(parsed) ? parsed.length : 0)
+        } else {
+          setCompareCount(0)
+        }
+      } catch {}
+    }
+    updateCompare()
+    window.addEventListener("storage", updateCompare)
+    return () => window.removeEventListener("storage", updateCompare)
+  }, [])
+
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -137,8 +156,8 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
           >
             <div className="relative">
               <RefreshCw className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
-              <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#d43533] text-[10px] font-bold text-white">
-                0
+              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d43533] px-1 text-[10px] font-bold text-white">
+                {compareCount}
               </span>
             </div>
             <span className="hidden text-xs font-medium xl:inline">Compare</span>
@@ -152,12 +171,13 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
           >
             <div className="relative">
               <Heart className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
-              <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#d43533] text-[10px] font-bold text-white">
-                0
+              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d43533] px-1 text-[10px] font-bold text-white">
+                {wishlist?.length || 0}
               </span>
             </div>
             <span className="hidden text-xs font-medium xl:inline">Wishlist</span>
           </Link>
+
 
           {/* Notifications (100% Real-time Dropdown + Polling) */}
           <div className="hidden items-center md:flex">

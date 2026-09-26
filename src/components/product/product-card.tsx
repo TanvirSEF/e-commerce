@@ -5,6 +5,8 @@ import Link from "next/link"
 import Image from "next/image"
 import { Star, Heart, Eye, ShoppingBag } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
+import { useAuth } from "@/lib/context/auth-context"
+
 
 export interface ProductCardProps {
   id: string
@@ -32,6 +34,9 @@ export function ProductCard({
   badge,
 }: ProductCardProps) {
   const { addItem } = useCart()
+  const { toggleWishlist, isInWishlist } = useAuth()
+  const inWishlist = isInWishlist(id)
+
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -81,17 +86,23 @@ export function ProductCard({
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              toggleWishlist(id)
             }}
-            title="Add to Wishlist"
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-600 shadow-md transition-colors hover:bg-[#d43533] hover:text-white"
+            title={inWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
+            className={`flex h-7 w-7 items-center justify-center rounded-full shadow-md transition-colors ${
+              inWishlist
+                ? "bg-[#d43533] text-white"
+                : "bg-white text-gray-600 hover:bg-[#d43533] hover:text-white"
+            }`}
           >
-            <Heart className="h-3.5 w-3.5" />
+            <Heart className={`h-3.5 w-3.5 ${inWishlist ? "fill-current" : ""}`} />
           </button>
           <button
             type="button"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              window.location.href = `/product/${slug}`
             }}
             title="Quick View"
             className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-gray-600 shadow-md transition-colors hover:bg-[#3490f3] hover:text-white"
@@ -99,6 +110,7 @@ export function ProductCard({
             <Eye className="h-3.5 w-3.5" />
           </button>
         </div>
+
       </Link>
 
       {/* Product Details */}

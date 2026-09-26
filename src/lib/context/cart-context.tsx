@@ -38,8 +38,9 @@ interface CartContextType {
   toggleSellerItems: (sellerName: string, selected: boolean) => void
   clearCart: () => void
   appliedCoupon: AppliedCoupon | null
-  applyCoupon: (code: string) => { success: boolean; message: string }
+  applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>
   removeCoupon: () => void
+
   totalCount: number
   selectedCount: number
   subtotal: number
@@ -201,11 +202,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setAppliedCoupon(null)
   }
 
-  const applyCoupon = (code: string) => {
+  const applyCoupon = async (code: string) => {
     const clean = code.trim().toUpperCase()
     if (!clean) {
       return { success: false, message: "Please enter a coupon code." }
     }
+
+    try {
+      const { validateCouponAction } = await import("@/app/actions/ecommerce-actions")
+      const res = await validateCouponAction(clean, selectedSubtotal || subtotal)
+      if (res.success && res.discount) {
+        setAppliedCoupon({
+          code: clean,
+          discount: res.discount,
+          discountType: res.discountType || "percent",
+        })
+        return { success: true, message: res.message }
+      } else if (!res.success && res.message) {
+        return { success: false, message: res.message }
+      }
+    } catch (err) {
+      console.warn("Coupon server validation fallback:", err)
+    }
+
     if (clean === "WELCOME10") {
       setAppliedCoupon({ code: clean, discount: 10, discountType: "percent" })
       return { success: true, message: "Welcome coupon applied successfully (10% OFF)!" }
@@ -220,6 +239,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     return { success: false, message: "Invalid or expired coupon code." }
   }
+
 
   const removeCoupon = () => {
     setAppliedCoupon(null)
