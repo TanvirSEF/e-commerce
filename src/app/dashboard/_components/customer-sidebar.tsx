@@ -19,12 +19,15 @@ import {
   Store,
   Download,
   Bell,
+  Trash2,
 } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
+import { AccountDeleteModal } from "./account-delete-modal"
 
 export function CustomerSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+  const [deleteModalOpen, setDeleteModalOpen] = React.useState(false)
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -85,12 +88,26 @@ export function CustomerSidebar() {
         <button
           type="button"
           onClick={logout}
-          className="flex w-full items-center gap-3 px-4 py-3 rounded text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors text-left"
+          className="flex w-full items-center gap-3 px-4 py-3 rounded text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors text-left"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-4 w-4 text-gray-500" />
           <span>Logout</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setDeleteModalOpen(true)}
+          className="flex w-full items-center gap-3 px-4 py-3 rounded text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors text-left"
+        >
+          <Trash2 className="h-4 w-4" />
+          <span>Delete Account</span>
+        </button>
       </nav>
+
+      <AccountDeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+      />
     </div>
   )
 }

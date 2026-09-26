@@ -28,6 +28,11 @@ const nextConfig: NextConfig = {
       { source: "/seller/money-withdraw-requests", destination: "/seller/payouts" },
       { source: "/seller/support_ticket", destination: "/seller/support" },
       { source: "/seller/shop/apply-for-verification", destination: "/seller/verify" },
+      { source: "/seller/categories-wise-product-discount", destination: "/seller/category-discount" },
+      { source: "/seller/category-wise-commission", destination: "/seller/category-commission" },
+      { source: "/seller/note/index", destination: "/seller/notes" },
+      { source: "/seller/note/create", destination: "/seller/notes" },
+      { source: "/seller/uploads", destination: "/seller/uploaded-files" },
     ]
   },
 }

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Search, ShoppingBag, FileText } from "lucide-react"
+import { Search, ShoppingBag, FileText, Eye } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
 import type { AdminOrderRow } from "@/services/order-service"
 
@@ -166,14 +166,23 @@ export function SellerOrdersView({ initialOrders }: SellerOrdersViewProps) {
                     {formatPrice(order.total)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <Link
-                      href={`/invoice/${order.code}`}
-                      target="_blank"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold rounded border border-slate-200 transition-colors"
-                    >
-                      <FileText className="w-3 h-3" />
-                      Invoice
-                    </Link>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Link
+                        href={`/seller/orders/${order.code}`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 hover:bg-[#d43533] text-[#d43533] hover:text-white text-[11px] font-semibold rounded border border-red-200 transition-colors"
+                      >
+                        <Eye className="w-3 h-3" />
+                        View
+                      </Link>
+                      <Link
+                        href={`/invoice/${order.code}`}
+                        target="_blank"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold rounded border border-slate-200 transition-colors"
+                      >
+                        <FileText className="w-3 h-3" />
+                        Invoice
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

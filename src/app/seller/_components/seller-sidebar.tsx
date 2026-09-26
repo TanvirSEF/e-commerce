@@ -23,6 +23,8 @@ import {
   X,
   Star,
   HelpCircle,
+  FileText,
+  FolderOpen,
 } from "lucide-react"
 
 interface NavItem {
@@ -55,8 +57,20 @@ const navItems: NavItem[] = [
       { title: "Add New Product", href: "/seller/products/create" },
       { title: "Digital Products", href: "/seller/digital-products" },
       { title: "Wholesale Products", href: "/seller/wholesale-products" },
+      { title: "Category Discount", href: "/seller/category-discount" },
+      { title: "Category Commission", href: "/seller/category-commission" },
       { title: "Bulk Upload", href: "/seller/product-bulk-upload" },
     ],
+  },
+  {
+    title: "Order Notes",
+    href: "/seller/notes",
+    icon: FileText,
+  },
+  {
+    title: "Uploaded Files",
+    href: "/seller/uploaded-files",
+    icon: FolderOpen,
   },
   {
     title: "Orders",
