@@ -65,6 +65,7 @@ const navItems: NavItem[] = [
       { title: "Size Charts", href: "/admin/products/size-charts" },
       { title: "Smart Bar", href: "/admin/products/smart-bar" },
       { title: "Bulk Upload", href: "/admin/product-bulk-upload" },
+      { title: "Wholesale Products", href: "/admin/wholesale/all-products" },
       { title: "Product Reviews", href: "/admin/reviews" },
       { title: "Product Queries (Q&A)", href: "/admin/product-queries" },
     ],

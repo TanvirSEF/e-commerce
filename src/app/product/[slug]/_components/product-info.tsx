@@ -38,6 +38,7 @@ export interface ProductDetailsData {
   clubPoints?: number
   sellerName?: string
   sellerSlug?: string
+  wholesaleTiers?: { minQty: number; maxQty: number; price: number }[]
 }
 
 export function ProductInfo({ product }: { product: ProductDetailsData }) {
@@ -69,7 +70,7 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
       name: product.name,
       slug: product.slug,
       thumbnail: product.thumbnail,
-      price: product.price,
+      price: effectivePrice,
       quantity,
       variation: variationString,
     })
@@ -87,6 +88,11 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
       setTimeout(() => setIsCopied(false), 2000)
     }
   }
+
+  const activeWholesaleTier = product.wholesaleTiers?.find(
+    (t) => quantity >= t.minQty && quantity <= t.maxQty
+  )
+  const effectivePrice = activeWholesaleTier ? activeWholesaleTier.price : product.price
 
   return (
     <div className="flex flex-col gap-4 text-xs">
@@ -164,19 +170,58 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
       <div className="rounded-md border border-gray-100 bg-gray-50/70 p-4">
         <div className="flex items-baseline gap-3">
           <span className="text-2xl font-extrabold text-[#d43533]">
-            ৳{product.price.toLocaleString("en-BD")}
+            ৳{effectivePrice.toLocaleString("en-BD")}
           </span>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-sm text-gray-400 line-through">
-              ৳{product.originalPrice.toLocaleString("en-BD")}
+          {activeWholesaleTier ? (
+            <span className="rounded bg-indigo-600 px-2 py-0.5 text-[11px] font-bold text-white">
+              Wholesale Tier Applied ({activeWholesaleTier.minQty}–{activeWholesaleTier.maxQty} pcs)
             </span>
-          )}
-          {product.discountPercent && product.discountPercent > 0 && (
-            <span className="rounded bg-[#d43533] px-2 py-0.5 text-[11px] font-bold text-white">
-              -{product.discountPercent}% OFF
-            </span>
+          ) : (
+            <>
+              {product.originalPrice && product.originalPrice > product.price && (
+                <span className="text-sm text-gray-400 line-through">
+                  ৳{product.originalPrice.toLocaleString("en-BD")}
+                </span>
+              )}
+              {product.discountPercent && product.discountPercent > 0 && (
+                <span className="rounded bg-[#d43533] px-2 py-0.5 text-[11px] font-bold text-white">
+                  -{product.discountPercent}% OFF
+                </span>
+              )}
+            </>
           )}
         </div>
+
+        {product.wholesaleTiers && product.wholesaleTiers.length > 0 && (
+          <div className="mt-3 rounded-lg border border-indigo-100 bg-white p-3">
+            <span className="text-xs font-bold text-indigo-900 block mb-2">
+              📦 Wholesale Volume Discount Tiers:
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {product.wholesaleTiers.map((tier, idx) => {
+                const isActive = quantity >= tier.minQty && quantity <= tier.maxQty
+                return (
+                  <div
+                    key={idx}
+                    className={`p-2 rounded-md border text-center transition-all ${
+                      isActive
+                        ? "border-indigo-600 bg-indigo-50 font-bold"
+                        : "border-gray-200 bg-gray-50/50"
+                    }`}
+                  >
+                    <span className="text-[11px] text-gray-500 block">
+                      {tier.minQty}–{tier.maxQty} pcs
+                    </span>
+                    <span className="text-xs font-bold text-indigo-700">
+                      ৳{tier.price} / pc
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {product.clubPoints && (
           <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-amber-700">
             <span>🪙 Earn {product.clubPoints} Club Points with this purchase</span>

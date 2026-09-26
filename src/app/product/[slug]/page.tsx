@@ -10,6 +10,7 @@ import { ProductSmartBar } from "./_components/product-smart-bar"
 import type { ProductCardProps } from "@/components/product/product-card"
 import { getProductBySlug } from "@/lib/data-service"
 import { getProductReviews } from "@/services/review-service"
+import { getWholesaleTiersForProduct } from "@/services/wholesale-service"
 
 interface ProductPageProps {
   params: Promise<{
@@ -201,6 +202,9 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
             : SAMPLE_PRODUCT_DATA.default.name,
       }
 
+  const wholesaleTiers = await getWholesaleTiersForProduct(product.id)
+  const productWithWholesale = { ...product, wholesaleTiers }
+
   return (
     <div className="bg-gray-50/40 py-5">
       <div className="mx-auto max-w-[1240px] px-4">
@@ -232,7 +236,7 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
 
             {/* Right: Info & Controls (7 Cols) */}
             <div className="lg:col-span-7">
-              <ProductInfo product={product} />
+              <ProductInfo product={productWithWholesale} />
             </div>
           </div>
         </div>

@@ -835,4 +835,20 @@ export async function toggleCustomerPackageStatusAction(id: number, status: bool
   return await toggleCustomerPackageStatus(id, status)
 }
 
+// Wholesale Actions
+export async function addWholesaleTierAction(data: {
+  productId: string | number
+  minQty: number
+  maxQty: number
+  price: number
+}) {
+  const { addWholesaleTier } = await import("@/services/wholesale-service")
+  return await addWholesaleTier(data)
+}
+
+export async function deleteWholesaleTierAction(id: number) {
+  const { deleteWholesaleTier } = await import("@/services/wholesale-service")
+  return await deleteWholesaleTier(id)
+}
+
 

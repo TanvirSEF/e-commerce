@@ -49,6 +49,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "All Products", href: "/seller/products" },
       { title: "Add New Product", href: "/seller/products/create" },
+      { title: "Wholesale Products", href: "/seller/wholesale-products" },
       { title: "Bulk Upload", href: "/seller/product-bulk-upload" },
     ],
   },
