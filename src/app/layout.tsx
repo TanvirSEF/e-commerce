@@ -11,6 +11,7 @@ import { CartDrawer } from "@/components/cart/cart-drawer"
 import { StorefrontSaleAlert } from "@/components/layout/storefront-sale-alert"
 import { StorefrontDynamicPopup } from "@/components/layout/storefront-dynamic-popup"
 import { FloatingButtons } from "@/components/layout/floating-buttons"
+import { CookieAlert } from "@/components/layout/cookie-alert"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
@@ -44,6 +45,7 @@ export default function RootLayout({
             <FloatingButtons />
             <StorefrontSaleAlert />
             <StorefrontDynamicPopup />
+            <CookieAlert />
           </CartProvider>
         </AuthProvider>
       </body>
