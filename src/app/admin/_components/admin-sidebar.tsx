@@ -88,6 +88,8 @@ const navItems: NavItem[] = [
       { title: "Seller Commission", href: "/admin/sellers/commission" },
       { title: "Category Commission", href: "/admin/sellers/category-commission" },
       { title: "Seller Commission Override", href: "/admin/sellers/seller-commission" },
+      { title: "Seller Packages", href: "/admin/seller-packages" },
+      { title: "Package Payments", href: "/admin/seller-packages/payments" },
     ],
   },
   {
@@ -140,6 +142,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "All Customers", href: "/admin/customers" },
       { title: "Classified Products", href: "/admin/customer-products" },
+      { title: "Classified Packages", href: "/admin/customer-packages" },
       { title: "Wallet Recharges", href: "/admin/wallet-recharges" },
     ],
   },

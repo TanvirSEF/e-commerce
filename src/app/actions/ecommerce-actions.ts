@@ -792,4 +792,47 @@ export async function updateGenericSettingAction(type: string, value: string) {
   return await updateSetting(type, value)
 }
 
+// Package Actions
+export async function createSellerPackageAction(data: {
+  name: string
+  amount: string
+  productUploadLimit: number
+  duration: number
+}) {
+  const { createSellerPackage } = await import("@/services/package-service")
+  return await createSellerPackage(data)
+}
+
+export async function updateSellerPackageAction(
+  id: number,
+  data: { name?: string; amount?: string; productUploadLimit?: number; duration?: number }
+) {
+  const { updateSellerPackage } = await import("@/services/package-service")
+  return await updateSellerPackage(id, data)
+}
+
+export async function toggleSellerPackageStatusAction(id: number, status: boolean) {
+  const { toggleSellerPackageStatus } = await import("@/services/package-service")
+  return await toggleSellerPackageStatus(id, status)
+}
+
+export async function purchaseSellerPackageAction(data: any) {
+  const { purchaseSellerPackage } = await import("@/services/package-service")
+  return await purchaseSellerPackage(data)
+}
+
+export async function createCustomerPackageAction(data: {
+  name: string
+  amount: string
+  productUpload: number
+}) {
+  const { createCustomerPackage } = await import("@/services/package-service")
+  return await createCustomerPackage(data)
+}
+
+export async function toggleCustomerPackageStatusAction(id: number, status: boolean) {
+  const { toggleCustomerPackageStatus } = await import("@/services/package-service")
+  return await toggleCustomerPackageStatus(id, status)
+}
+
 

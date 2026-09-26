@@ -17,6 +17,7 @@ import {
   MessageSquare,
   ShieldCheck,
   Receipt,
+  PackageCheck,
   X,
 } from "lucide-react"
 
@@ -74,6 +75,16 @@ const navItems: NavItem[] = [
   {
     title: "Payout Requests",
     href: "/seller/payouts",
+    icon: DollarSign,
+  },
+  {
+    title: "Premium Packages",
+    href: "/seller/packages",
+    icon: PackageCheck,
+  },
+  {
+    title: "Package Payments",
+    href: "/seller/packages-payment-list",
     icon: DollarSign,
   },
   {
