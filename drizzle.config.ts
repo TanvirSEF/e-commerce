@@ -1,4 +1,7 @@
 import { defineConfig } from "drizzle-kit"
+import dotenv from "dotenv"
+
+dotenv.config({ path: ".env.local" })
 
 export default defineConfig({
   schema: "./src/db/schema/index.ts",
@@ -8,5 +11,5 @@ export default defineConfig({
     url: process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/ecommerce",
   },
   verbose: true,
-  strict: true,
+  strict: false,
 })
