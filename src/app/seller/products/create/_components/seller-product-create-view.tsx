@@ -66,13 +66,39 @@ export function SellerProductCreateView({ categories, brands }: SellerProductCre
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 600))
-    setSuccess(true)
-    setTimeout(() => {
-      setSuccess(false)
-      setForm(initialForm)
-    }, 2000)
-    setIsSubmitting(false)
+
+    try {
+      const { createProductAction } = await import("@/app/actions/ecommerce-actions")
+      const res = await createProductAction({
+        name: form.name,
+        categoryId: form.categoryId || undefined,
+        brandId: form.brandId || undefined,
+        unit: form.unit,
+        unitPrice: parseFloat(form.unitPrice) || 0,
+        purchasePrice: parseFloat(form.purchasePrice) || parseFloat(form.unitPrice) || 0,
+        discount: parseFloat(form.discount) || 0,
+        discountType: form.discountType,
+        currentStock: parseInt(form.currentStock, 10) || 10,
+        sku: form.sku || `SKU-${Date.now().toString().slice(-6)}`,
+        description: form.description,
+        thumbnailImg: form.thumbnailImg || "/assets/img/placeholder.jpg",
+      })
+
+      if (res) {
+        setSuccess(true)
+        setTimeout(() => {
+          setSuccess(false)
+          setForm(initialForm)
+        }, 2000)
+      } else {
+        alert("Failed to save product.")
+      }
+    } catch (err) {
+      console.error("Seller product create failed:", err)
+      alert("Error saving product.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

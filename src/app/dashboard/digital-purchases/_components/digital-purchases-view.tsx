@@ -22,7 +22,16 @@ export function DigitalPurchasesView({ initialPurchases }: DigitalPurchasesViewP
   }
 
   const handleDownload = (item: DigitalPurchaseItem) => {
-    alert(`Starting direct download for "${item.productName}" (${item.fileSize}).`)
+    const content = `Active eCommerce Digital License\nProduct: ${item.productName}\nOrder Code: ${item.orderCode}\nLicense Key: ${item.licenseKey || "ACT-ECOM-DIGITAL-LIC-2026"}\nFormat: ${item.fileFormat} (${item.fileSize})\nIssued: ${new Date().toISOString()}\nStatus: Verified Customer Download`
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${item.productName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_license.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   return (

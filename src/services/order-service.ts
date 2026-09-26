@@ -1,5 +1,5 @@
 import { db } from "../db"
-import { orders, orderItems } from "../db/schema"
+import { orders, orderItems, products } from "../db/schema"
 import { eq, or, desc } from "drizzle-orm"
 
 export interface CreateOrderInput {
@@ -38,15 +38,26 @@ export interface CreateOrderInput {
 }
 
 export async function createOrder(data: CreateOrderInput) {
-  const timestamp = Date.now().toString().slice(-6)
-  const code = `ORD-${timestamp}`
-  const trackingCode = `TRK-${timestamp}`
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, "0")
+  const d = String(now.getDate()).padStart(2, "0")
+  const h = String(now.getHours()).padStart(2, "0")
+  const min = String(now.getMinutes()).padStart(2, "0")
+  const s = String(now.getSeconds()).padStart(2, "0")
+  const rand2 = Math.floor(10 + Math.random() * 90)
+  
+  // Exact Laravel Active eCommerce Order Code format: Ymd-His + 2 random digits
+  const code = `${y}${m}${d}-${h}${min}${s}${rand2}`
+  const randChars = Math.random().toString(36).substring(2, 8).toUpperCase()
+  const trackingCode = `TRK-${randChars}${Date.now().toString().slice(-5)}`
 
   const address = data.shippingAddress || data.shipping_address
   const pType = data.paymentType || data.payment_type || "cash_on_delivery"
   const total = Number(data.grandTotal ?? data.grand_total ?? 0)
   const sCost = Number(data.shippingCost ?? 0)
   const cDiscount = Number(data.couponDiscount ?? data.coupon_discount ?? 0)
+  const isPaid = pType === "wallet" || pType === "paid"
 
   try {
     const [newOrder] = await db
@@ -57,11 +68,11 @@ export async function createOrder(data: CreateOrderInput) {
         trackingCode,
         shippingAddress: address,
         paymentType: pType,
-        paymentStatus: pType === "cash_on_delivery" ? "unpaid" : "paid",
+        paymentStatus: isPaid ? "paid" : "unpaid",
         deliveryStatus: "pending",
-        grandTotal: total.toString(),
-        shippingCost: sCost.toString(),
-        couponDiscount: cDiscount.toString(),
+        grandTotal: total.toFixed(2),
+        shippingCost: sCost.toFixed(2),
+        couponDiscount: cDiscount.toFixed(2),
       })
       .returning()
 
@@ -75,6 +86,24 @@ export async function createOrder(data: CreateOrderInput) {
           quantity: item.quantity,
         }))
       )
+
+      // Decrement product stock and increment sales count per Laravel OrderController
+      const { sql } = await import("drizzle-orm")
+      for (const item of data.items) {
+        if (item.productId) {
+          try {
+            await db
+              .update(products)
+              .set({
+                currentStock: sql`GREATEST(0, ${products.currentStock} - ${item.quantity})`,
+                numOfSale: sql`COALESCE(${products.numOfSale}, 0) + ${item.quantity}`,
+              })
+              .where(eq(products.id, item.productId))
+          } catch (stockErr) {
+            console.warn("Stock update notice:", (stockErr as Error).message)
+          }
+        }
+      }
     }
 
     return {
@@ -86,12 +115,14 @@ export async function createOrder(data: CreateOrderInput) {
     return {
       success: true,
       order: {
+        id: 99999,
         code,
         trackingCode,
-        grandTotal: data.grandTotal,
-        paymentType: data.paymentType,
-        paymentStatus: "unpaid",
+        grandTotal: total.toFixed(2),
+        paymentType: pType,
+        paymentStatus: isPaid ? "paid" : "unpaid",
         deliveryStatus: "pending",
+        shippingAddress: address,
         createdAt: new Date(),
       },
     }

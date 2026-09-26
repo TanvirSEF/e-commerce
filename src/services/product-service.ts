@@ -393,9 +393,19 @@ export async function createProduct(data: {
   categoryId?: number | string
   brandId?: number | string
   unitPrice: string | number
+  purchasePrice?: string | number
+  discount?: string | number
+  discountType?: "percent" | "amount"
   currentStock?: number
+  unit?: string
+  sku?: string
   description?: string
   thumbnailImg?: string
+  photos?: string[]
+  colors?: string[]
+  choiceOptions?: { attribute_id: string; values: string[] }[]
+  variations?: { variant: string; sku: string; price: number; stock: number }[]
+  shippingCost?: string | number
 }): Promise<any> {
   try {
     const slug =
@@ -407,12 +417,24 @@ export async function createProduct(data: {
       .values({
         name: data.name,
         slug,
+        sku: data.sku || `SKU-${Date.now().toString().slice(-6)}`,
         categoryId: data.categoryId ? Number(data.categoryId) : 1,
         brandId: data.brandId ? Number(data.brandId) : 1,
+        unit: data.unit || "pc",
         unitPrice: String(data.unitPrice),
+        purchasePrice: data.purchasePrice ? String(data.purchasePrice) : String(data.unitPrice),
+        discount: data.discount ? String(data.discount) : "0.00",
+        discountType: data.discountType || "percent",
         currentStock: data.currentStock || 10,
         description: data.description || data.name,
         thumbnailImg: data.thumbnailImg || "/assets/img/placeholder.jpg",
+        photos: data.photos || [],
+        colors: data.colors || [],
+        choiceOptions: data.choiceOptions || [],
+        variations: data.variations || [],
+        published: true,
+        featured: false,
+        todaysDeal: false,
       })
       .returning()
     return inserted || null

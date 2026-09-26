@@ -990,4 +990,49 @@ export async function updateDeliveryBoyConfigAction(data: any) {
   return await updateDeliveryBoyConfig(data)
 }
 
+// Order Placement Action (100% Laravel Faithful DB Persistence)
+export async function placeOrderAction(data: {
+  userId?: string
+  shippingAddress: any
+  billingAddress?: any
+  paymentType: string
+  items: {
+    productId?: number
+    variation?: string
+    price: number
+    quantity: number
+  }[]
+  grandTotal: number
+  shippingCost?: number
+  couponDiscount?: number
+}) {
+  const { createOrder } = await import("@/services/order-service")
+  return await createOrder(data)
+}
+
+// Product Creation Action (100% Laravel Faithful Product and Variant Matrix Insertion)
+export async function createProductAction(data: {
+  name: string
+  categoryId?: number | string
+  brandId?: number | string
+  unitPrice: string | number
+  purchasePrice?: string | number
+  discount?: string | number
+  discountType?: "percent" | "amount"
+  currentStock?: number
+  unit?: string
+  sku?: string
+  description?: string
+  thumbnailImg?: string
+  photos?: string[]
+  colors?: string[]
+  choiceOptions?: { attribute_id: string; values: string[] }[]
+  variations?: { variant: string; sku: string; price: number; stock: number }[]
+  shippingCost?: string | number
+}) {
+  const { createProduct } = await import("@/services/product-service")
+  return await createProduct(data)
+}
+
+
 

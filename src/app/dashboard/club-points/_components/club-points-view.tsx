@@ -21,6 +21,7 @@ export function ClubPointsView({
   const [showModal, setShowModal] = useState(false)
   const [pointsToConvert, setPointsToConvert] = useState<number | "">("")
   const [submitting, setSubmitting] = useState(false)
+  const [successMsg, setSuccessMsg] = useState("")
 
   // 100 points = 10 BDT (0.1 BDT per point)
   const calculatedBDT = typeof pointsToConvert === "number" ? Math.floor(pointsToConvert * (convertRate / 100)) : 0
@@ -42,7 +43,8 @@ export function ClubPointsView({
     setSubmitting(false)
     setShowModal(false)
     setPointsToConvert("")
-    alert(`Successfully converted ${pts} Points into ৳${calculatedBDT} Wallet Balance!`)
+    setSuccessMsg(`Successfully converted ${pts} Points into ৳${calculatedBDT} Wallet Balance!`)
+    setTimeout(() => setSuccessMsg(""), 5000)
   }
 
   return (
@@ -54,6 +56,13 @@ export function ClubPointsView({
           Earn points when purchasing items and convert them directly into your wallet balance.
         </p>
       </div>
+
+      {successMsg && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded text-xs font-semibold flex items-center justify-between">
+          <span>{successMsg}</span>
+          <button type="button" onClick={() => setSuccessMsg("")} className="text-emerald-600 hover:text-emerald-900">✕</button>
+        </div>
+      )}
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

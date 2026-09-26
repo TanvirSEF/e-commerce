@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createOrder, getOrderByCode } from "@/lib/data-service"
+import { createOrder, getOrderByCode } from "@/services/order-service"
 
 export async function POST(request: NextRequest) {
   try {

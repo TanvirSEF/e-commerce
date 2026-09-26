@@ -4,15 +4,17 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, Save, UploadCloud } from "lucide-react"
+import { createProductAction } from "@/app/actions/ecommerce-actions"
+import { ProductVariationMatrix, VariantItem } from "./product-variation-matrix"
 
 interface CategoryOption {
-  id: string
+  id: string | number
   name: string
   slug: string
 }
 
 interface BrandOption {
-  id: string
+  id: string | number
   name: string
   slug: string
 }
@@ -27,20 +29,24 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
-    categorySlug: categories[0]?.slug || "",
-    brandSlug: brands[0]?.slug || "",
+    categoryId: categories[0]?.id || 1,
+    brandId: brands[0]?.id || 1,
     unit: "pc",
     unitPrice: "",
     purchasePrice: "",
     discount: "0",
-    discountType: "percent",
+    discountType: "percent" as "percent" | "amount",
     stock: "20",
     sku: "",
     description: "",
     thumbnail: "/assets/img/placeholder.jpg",
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const [variations, setVariations] = useState<VariantItem[]>([])
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
@@ -49,12 +55,40 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate saving product
-    setTimeout(() => {
+    try {
+      const payload = {
+        name: formData.name,
+        categoryId: formData.categoryId,
+        brandId: formData.brandId,
+        unit: formData.unit,
+        unitPrice: parseFloat(formData.unitPrice) || 0,
+        purchasePrice: parseFloat(formData.purchasePrice) || parseFloat(formData.unitPrice) || 0,
+        discount: parseFloat(formData.discount) || 0,
+        discountType: formData.discountType,
+        currentStock: parseInt(formData.stock, 10) || 10,
+        sku: formData.sku || `SKU-${Date.now().toString().slice(-6)}`,
+        description: formData.description,
+        thumbnailImg: formData.thumbnail,
+        variations: variations.map((v) => ({
+          variant: v.variant,
+          sku: v.sku,
+          price: v.price,
+          stock: v.stock,
+        })),
+      }
+
+      const res = await createProductAction(payload)
+      if (res) {
+        router.push("/admin/products")
+      } else {
+        alert("Failed to save product to database.")
+      }
+    } catch (err) {
+      console.error("Error creating product:", err)
+      alert("An error occurred while saving the product.")
+    } finally {
       setIsSubmitting(false)
-      alert("Product saved successfully!")
-      router.push("/admin/products")
-    }, 600)
+    }
   }
 
   return (
@@ -70,7 +104,9 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
           </Link>
           <div>
             <h1 className="text-xl font-bold text-slate-800">Add New Product</h1>
-            <p className="text-xs text-slate-500">Fill in the required information to publish to catalog</p>
+            <p className="text-xs text-slate-500">
+              Fill in the required information to publish to catalog (Laravel 1:1)
+            </p>
           </div>
         </div>
 
@@ -111,13 +147,13 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
               Category <span className="text-red-500">*</span>
             </label>
             <select
-              name="categorySlug"
-              value={formData.categorySlug}
+              name="categoryId"
+              value={formData.categoryId}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 bg-white focus:outline-none focus:border-[#d43533]"
             >
               {categories.map((c) => (
-                <option key={c.slug} value={c.slug}>
+                <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
@@ -127,13 +163,13 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">Brand</label>
             <select
-              name="brandSlug"
-              value={formData.brandSlug}
+              name="brandId"
+              value={formData.brandId}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 bg-white focus:outline-none focus:border-[#d43533]"
             >
               {brands.map((b) => (
-                <option key={b.slug} value={b.slug}>
+                <option key={b.id} value={b.id}>
                   {b.name}
                 </option>
               ))}
@@ -197,13 +233,13 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
               className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 bg-white focus:outline-none focus:border-[#d43533]"
             >
               <option value="percent">Percent (%)</option>
-              <option value="flat">Flat (৳)</option>
+              <option value="amount">Flat (৳)</option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Quantity / Stock <span className="text-red-500">*</span>
+              Total Stock Quantity <span className="text-red-500">*</span>
             </label>
             <input
               type="number"
@@ -217,7 +253,7 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">SKU</label>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Base SKU</label>
           <input
             type="text"
             name="sku"
@@ -229,7 +265,19 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
         </div>
       </div>
 
-      {/* 3. Product Description */}
+      {/* 3. Product Variations & SKU Combination Matrix (Laravel 1:1) */}
+      <div className="bg-white border border-slate-200 rounded-sm shadow-xs p-6 space-y-4">
+        <h2 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">
+          Product Variations & Attribute Matrix
+        </h2>
+        <ProductVariationMatrix
+          basePrice={parseFloat(formData.unitPrice) || 0}
+          baseSku={formData.sku || formData.name.slice(0, 4).toUpperCase()}
+          onVariantsChange={setVariations}
+        />
+      </div>
+
+      {/* 4. Product Description */}
       <div className="bg-white border border-slate-200 rounded-sm shadow-xs p-6 space-y-4">
         <h2 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">
           Description & Details

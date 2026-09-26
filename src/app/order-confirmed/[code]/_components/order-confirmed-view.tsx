@@ -42,10 +42,36 @@ export interface ConfirmedOrder {
 
 interface OrderConfirmedViewProps {
   code: string
+  dbOrder?: any
 }
 
-export function OrderConfirmedView({ code }: OrderConfirmedViewProps) {
+export function OrderConfirmedView({ code, dbOrder }: OrderConfirmedViewProps) {
   const [currentOrder] = useState<ConfirmedOrder>(() => {
+    if (dbOrder) {
+      return {
+        code: dbOrder.code,
+        date: new Date(dbOrder.date).getTime() || Date.now(),
+        delivery_status: dbOrder.status || "pending",
+        payment_type: dbOrder.paymentMethod || "Cash on Delivery",
+        shipping_type: "Home Delivery",
+        shipping_address: {
+          name: dbOrder.customerName || "Valued Customer",
+          email: "customer@example.com",
+          address: dbOrder.shippingAddress || "Dhaka, Bangladesh",
+          city: "Dhaka",
+          country: "Bangladesh",
+          phone: dbOrder.customerPhone || "",
+        },
+        grand_total: dbOrder.total,
+        items: (dbOrder.items || []).map((it: any) => ({
+          id: String(it.id),
+          name: it.name,
+          quantity: it.quantity,
+          price: it.price,
+          thumbnail: "/assets/img/placeholder.jpg",
+        })),
+      }
+    }
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(`order_${code}`) || localStorage.getItem("active_ecom_last_order")
       if (stored) {

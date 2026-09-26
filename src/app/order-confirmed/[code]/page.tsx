@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import { OrderConfirmedView } from "./_components/order-confirmed-view"
+import { getOrderByCode } from "@/services/order-service"
 
 interface PageProps {
   params: Promise<{ code: string }>
@@ -15,5 +16,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function OrderConfirmedPage({ params }: PageProps) {
   const { code } = await params
-  return <OrderConfirmedView code={code} />
+  const dbOrder = await getOrderByCode(code)
+  return <OrderConfirmedView code={code} dbOrder={dbOrder} />
 }
+

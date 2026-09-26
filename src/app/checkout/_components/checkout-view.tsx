@@ -8,6 +8,7 @@ import { formatPrice } from "@/lib/utils"
 import { ShippingStep, AddressData } from "./shipping-step"
 import { DeliveryStep } from "./delivery-step"
 import { PaymentStep } from "./payment-step"
+import { placeOrderAction } from "@/app/actions/ecommerce-actions"
 import { ChevronRight, MapPin, Truck, CreditCard, ChevronDown } from "lucide-react"
 
 const DEFAULT_ADDRESSES: AddressData[] = [
@@ -88,40 +89,77 @@ export function CheckoutView() {
     if (!agreed) return
     setIsSubmitting(true)
 
-    // Simulate submission delay
-    await new Promise((resolve) => setTimeout(resolve, 800))
+    try {
+      const orderPayload = {
+        userId: "usr_customer_default_01",
+        shippingAddress: {
+          name: selectedAddress.name,
+          email: selectedAddress.email,
+          phone: selectedAddress.phone,
+          address: selectedAddress.address,
+          city: selectedAddress.city,
+          country: selectedAddress.country,
+          postal_code: selectedAddress.postalCode,
+        },
+        billingAddress: {
+          name: selectedAddress.name,
+          email: selectedAddress.email,
+          phone: selectedAddress.phone,
+          address: selectedAddress.address,
+          city: selectedAddress.city,
+          country: selectedAddress.country,
+          postal_code: selectedAddress.postalCode,
+        },
+        paymentType: paymentOption,
+        items: selectedItems.map((item) => ({
+          productId: Number(item.productId || item.id) || undefined,
+          variation: item.variation || undefined,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+        grandTotal: grandTotal,
+        shippingCost: shippingTotal,
+        couponDiscount: couponDiscount,
+      }
 
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000)
-    const orderCode = `20260923-${randomSuffix}`
+      const res = await placeOrderAction(orderPayload)
+      const orderCode = res?.order?.code || `20260926-${Math.floor(100000 + Math.random() * 900000)}`
 
-    const orderData = {
-      code: orderCode,
-      date: Date.now(),
-      status: "pending",
-      delivery_status: "pending",
-      payment_type: paymentOption,
-      payment_status: paymentOption === "cash_on_delivery" ? "unpaid" : "paid",
-      shipping_type: deliveryType,
-      carrier: deliveryType === "carrier" ? carrier : undefined,
-      pickup_point: deliveryType === "pickup_point" ? pickupPoint : undefined,
-      shipping_address: selectedAddress,
-      billing_address: selectedAddress,
-      notes: additionalNotes,
-      grand_total: grandTotal,
-      subtotal: selectedSubtotal,
-      shipping_cost: shippingTotal,
-      tax: taxTotal,
-      discount: couponDiscount,
-      items: selectedItems,
+      const orderData = {
+        code: orderCode,
+        tracking_code: res?.order?.trackingCode,
+        date: Date.now(),
+        status: "pending",
+        delivery_status: "pending",
+        payment_type: paymentOption,
+        payment_status: paymentOption === "cash_on_delivery" ? "unpaid" : "paid",
+        shipping_type: deliveryType,
+        carrier: deliveryType === "carrier" ? carrier : undefined,
+        pickup_point: deliveryType === "pickup_point" ? pickupPoint : undefined,
+        shipping_address: selectedAddress,
+        billing_address: selectedAddress,
+        notes: additionalNotes,
+        grand_total: grandTotal,
+        subtotal: selectedSubtotal,
+        shipping_cost: shippingTotal,
+        tax: taxTotal,
+        discount: couponDiscount,
+        items: selectedItems,
+      }
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem(`order_${orderCode}`, JSON.stringify(orderData))
+        localStorage.setItem("active_ecom_last_order", JSON.stringify(orderData))
+      }
+
+      clearCart()
+      router.push(`/order-confirmed/${orderCode}`)
+    } catch (err) {
+      console.error("Order submission failed:", err)
+      alert("Failed to submit order. Please try again.")
+    } finally {
+      setIsSubmitting(false)
     }
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem(`order_${orderCode}`, JSON.stringify(orderData))
-      localStorage.setItem("active_ecom_last_order", JSON.stringify(orderData))
-    }
-
-    clearCart()
-    router.push(`/order-confirmed/${orderCode}`)
   }
 
   if (selectedItems.length === 0) {
