@@ -851,4 +851,52 @@ export async function deleteWholesaleTierAction(id: number) {
   return await deleteWholesaleTier(id)
 }
 
+// Preorder Actions
+export async function createPreorderProductAction(data: {
+  name: string
+  price: string
+  prepaymentAmount: string
+  releaseDate: Date
+  preorderBatchLimit: number
+  sku?: string
+  sellerSlug?: string
+}) {
+  const { createPreorderProduct } = await import("@/services/preorder-service")
+  return await createPreorderProduct(data)
+}
+
+export async function togglePreorderPublishedAction(id: number, status: boolean) {
+  const { togglePreorderPublished } = await import("@/services/preorder-service")
+  return await togglePreorderPublished(id, status)
+}
+
+export async function togglePreorderFeaturedAction(id: number, featured: boolean) {
+  const { togglePreorderFeatured } = await import("@/services/preorder-service")
+  return await togglePreorderFeatured(id, featured)
+}
+
+export async function createPreorderOrderAction(data: {
+  productId: number
+  productName: string
+  customerName: string
+  customerEmail: string
+  quantity: number
+  totalPrice: string
+  prepaymentPaid: string
+  remainingDue: string
+}) {
+  const { createPreorderOrder } = await import("@/services/preorder-service")
+  return await createPreorderOrder(data)
+}
+
+export async function updatePreorderOrderStatusAction(id: number, status: string) {
+  const { updatePreorderOrderStatus } = await import("@/services/preorder-service")
+  return await updatePreorderOrderStatus(id, status)
+}
+
+export async function updatePreorderSettingsAction(data: any) {
+  const { updatePreorderSettings } = await import("@/services/preorder-service")
+  return await updatePreorderSettings(data)
+}
+
 

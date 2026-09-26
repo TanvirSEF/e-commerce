@@ -22,6 +22,7 @@ import {
   UploadCloud,
   Receipt,
   MessageSquare,
+  CalendarClock,
 } from "lucide-react"
 
 interface NavItem {
@@ -77,6 +78,16 @@ const navItems: NavItem[] = [
       { title: "All Orders", href: "/admin/orders" },
       { title: "Offline Payments", href: "/admin/orders/offline-payments" },
       { title: "Refund Requests", href: "/admin/refund-requests" },
+    ],
+  },
+  {
+    title: "Pre-Order System",
+    icon: CalendarClock,
+    children: [
+      { title: "Pre-Order Products", href: "/admin/preorder/products" },
+      { title: "Add Pre-Order Product", href: "/admin/preorder/products/create" },
+      { title: "Pre-Order Orders", href: "/admin/preorder/orders" },
+      { title: "Pre-Order Settings", href: "/admin/preorder/settings" },
     ],
   },
   {

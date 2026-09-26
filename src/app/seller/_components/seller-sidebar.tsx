@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Receipt,
   PackageCheck,
+  CalendarClock,
   X,
 } from "lucide-react"
 
@@ -57,6 +58,14 @@ const navItems: NavItem[] = [
     title: "Orders",
     href: "/seller/orders",
     icon: ShoppingBag,
+  },
+  {
+    title: "Pre-Orders",
+    icon: CalendarClock,
+    children: [
+      { title: "Pre-Order Products", href: "/seller/preorder/products" },
+      { title: "Pre-Order Orders", href: "/seller/preorder/orders" },
+    ],
   },
   {
     title: "Custom Labels",
