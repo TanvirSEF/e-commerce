@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Grid, ShoppingBag, Bell, User } from "lucide-react"
@@ -9,6 +9,22 @@ import { useCart } from "@/lib/context/cart-context"
 export function MobileBottomNav() {
   const pathname = usePathname()
   const { totalCount, toggleCart } = useCart()
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0)
+
+  useEffect(() => {
+    const fetchUnread = () => {
+      fetch("/api/notifications")
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success) setUnreadNotifCount(d.unreadCount || 0)
+        })
+        .catch(() => {})
+    }
+    fetchUnread()
+    const timer = setInterval(fetchUnread, 30000)
+    return () => clearInterval(timer)
+  }, [])
+
 
   if (pathname.startsWith("/admin")) {
     return null
@@ -68,9 +84,20 @@ export function MobileBottomNav() {
                 isActive ? "text-[#d43533]" : "text-gray-600 hover:text-[#d43533]"
               }`}
             >
-              <Icon className="h-5 w-5" />
+              <div className="relative">
+                <Icon className="h-5 w-5" />
+                {item.label === "Alerts" && unreadNotifCount > 0 && (
+                  <span
+                    suppressHydrationWarning
+                    className="absolute -top-1 -right-2 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-[#d43533] text-[9px] font-bold text-white shadow-xs"
+                  >
+                    {unreadNotifCount > 99 ? "99+" : unreadNotifCount}
+                  </span>
+                )}
+              </div>
               <span className="mt-0.5 text-[10px] font-medium">{item.label}</span>
             </Link>
+
           )
         })}
       </div>

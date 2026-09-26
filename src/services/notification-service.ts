@@ -1,6 +1,12 @@
 import { db } from "../db"
-import { customNotifications, type CustomNotification } from "../db/schema"
-import { desc } from "drizzle-orm"
+import {
+  customNotifications,
+  notificationReads,
+  notificationDeletes,
+  type CustomNotification,
+} from "../db/schema"
+import { desc, eq } from "drizzle-orm"
+
 
 const SEED_NOTIFICATIONS: CustomNotification[] = [
   {
@@ -78,7 +84,7 @@ export interface CustomerNotificationItem {
   isRead: boolean
 }
 
-// In-memory deleted IDs store for user sessions (or DB backing)
+// In-memory fallback caches
 const deletedNotificationIds = new Set<string>()
 const readNotificationIds = new Set<string>()
 
@@ -86,6 +92,26 @@ export async function getUserNotifications(
   userId: string = "usr_customer_default_01"
 ): Promise<CustomerNotificationItem[]> {
   const items: CustomerNotificationItem[] = []
+
+  // Track persistent read & deleted IDs for this user
+  const userReadIds = new Set<string>(readNotificationIds)
+  const userDeletedIds = new Set<string>(deletedNotificationIds)
+
+  try {
+    const reads = await db
+      .select({ notificationId: notificationReads.notificationId })
+      .from(notificationReads)
+      .where(eq(notificationReads.userId, userId))
+    reads.forEach((r) => userReadIds.add(r.notificationId))
+
+    const dels = await db
+      .select({ notificationId: notificationDeletes.notificationId })
+      .from(notificationDeletes)
+      .where(eq(notificationDeletes.userId, userId))
+    dels.forEach((d) => userDeletedIds.add(d.notificationId))
+  } catch (err) {
+    console.warn("Notification read/delete DB lookup fallback:", err)
+  }
 
   // 1. Fetch real customer orders to generate Laravel-exact Order Notifications
   try {
@@ -189,25 +215,38 @@ export async function getUserNotifications(
 
   // Filter out any deleted notifications and apply read status
   return items
-    .filter((it) => !deletedNotificationIds.has(it.id))
+    .filter((it) => !userDeletedIds.has(it.id))
     .map((it) => ({
       ...it,
-      isRead: it.isRead || readNotificationIds.has(it.id),
+      isRead: it.isRead || userReadIds.has(it.id),
     }))
 }
 
-export async function deleteUserNotifications(ids: string[]): Promise<{ success: boolean }> {
+export async function deleteUserNotifications(
+  ids: string[],
+  userId: string = "usr_customer_default_01"
+): Promise<{ success: boolean }> {
   for (const id of ids) {
     deletedNotificationIds.add(id)
+    try {
+      await db.insert(notificationDeletes).values({ userId, notificationId: id }).catch(() => {})
+    } catch {}
   }
   return { success: true }
 }
 
-export async function markNotificationsAsRead(ids?: string[]): Promise<{ success: boolean }> {
+export async function markNotificationsAsRead(
+  ids?: string[],
+  userId: string = "usr_customer_default_01"
+): Promise<{ success: boolean }> {
   if (ids && ids.length > 0) {
     for (const id of ids) {
       readNotificationIds.add(id)
+      try {
+        await db.insert(notificationReads).values({ userId, notificationId: id }).catch(() => {})
+      } catch {}
     }
   }
   return { success: true }
 }
+

@@ -4,6 +4,8 @@ import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Menu, Globe, Bell, LogOut, User, ShieldCheck } from "lucide-react"
+import { NotificationBell } from "@/components/layout/notification-bell"
+
 
 interface AdminHeaderProps {
   onToggleSidebar: () => void
@@ -44,17 +46,11 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
           <span>Browse Website</span>
         </Link>
 
-        {/* Notifications */}
+        {/* Real-time Notifications */}
         <div className="relative">
-          <Link
-            href="/admin/notifications"
-            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors relative block"
-            title="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#d43533]"></span>
-          </Link>
+          <NotificationBell variant="admin" align="right" />
         </div>
+
 
         {/* Admin Profile Dropdown */}
         <div className="relative">

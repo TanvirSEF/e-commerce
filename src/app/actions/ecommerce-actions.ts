@@ -1037,13 +1037,28 @@ export async function createProductAction(data: {
 // Notification Actions (Customer & Admin Bulk Delete & Mark As Read)
 export async function deleteNotificationsAction(ids: string[]) {
   const { deleteUserNotifications } = await import("@/services/notification-service")
-  return await deleteUserNotifications(ids)
+  let userId = "usr_customer_default_01"
+  try {
+    const { auth } = await import("@/lib/auth/auth")
+    const { headers } = await import("next/headers")
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (session?.user?.id) userId = session.user.id
+  } catch {}
+  return await deleteUserNotifications(ids, userId)
 }
 
 export async function markNotificationsReadAction(ids?: string[]) {
   const { markNotificationsAsRead } = await import("@/services/notification-service")
-  return await markNotificationsAsRead(ids)
+  let userId = "usr_customer_default_01"
+  try {
+    const { auth } = await import("@/lib/auth/auth")
+    const { headers } = await import("next/headers")
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (session?.user?.id) userId = session.user.id
+  } catch {}
+  return await markNotificationsAsRead(ids, userId)
 }
+
 
 // ==========================================
 // 100% REAL AUTHENTICATION ACTIONS (Better Auth + PostgreSQL)

@@ -17,5 +17,22 @@ export const customNotifications = pgTable("custom_notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
+export const notificationReads = pgTable("notification_reads", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  notificationId: varchar("notification_id", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export const notificationDeletes = pgTable("notification_deletes", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  notificationId: varchar("notification_id", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
 export type CustomNotification = typeof customNotifications.$inferSelect
 export type NewCustomNotification = typeof customNotifications.$inferInsert
+export type NotificationRead = typeof notificationReads.$inferSelect
+export type NotificationDelete = typeof notificationDeletes.$inferSelect
+

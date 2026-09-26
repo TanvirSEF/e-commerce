@@ -11,6 +11,8 @@ import {
   Store,
   ExternalLink,
 } from "lucide-react"
+import { NotificationBell } from "@/components/layout/notification-bell"
+
 
 interface SellerHeaderProps {
   onToggleSidebar: () => void
@@ -50,15 +52,11 @@ export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
           My Store
         </Link>
 
-        {/* Notifications */}
-        <Link
-          href="/seller/notifications"
-          className="relative p-2 rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-          title="Notifications"
-        >
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-[#d43533] rounded-full" />
-        </Link>
+        {/* Real-time Notifications */}
+        <div className="relative">
+          <NotificationBell variant="seller" align="right" />
+        </div>
+
 
         {/* Profile Dropdown */}
         <div className="relative">

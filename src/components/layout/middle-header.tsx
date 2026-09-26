@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Search, Heart, RefreshCw, Bell, User, Menu, X, LogOut, LayoutDashboard, ShoppingBag } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
+import { NotificationBell } from "@/components/layout/notification-bell"
 
 export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void }) {
   const router = useRouter()
@@ -158,19 +159,11 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
             <span className="hidden text-xs font-medium xl:inline">Wishlist</span>
           </Link>
 
-          {/* Notifications */}
-          <Link
-            href="/dashboard/notifications"
-            className="group relative hidden items-center text-[#292933] transition-colors hover:text-[#d43533] md:flex"
-            title="Notifications"
-          >
-            <div className="relative">
-              <Bell className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
-              <span className="absolute -top-1.5 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-[#d43533] text-[10px] font-bold text-white">
-                0
-              </span>
-            </div>
-          </Link>
+          {/* Notifications (100% Real-time Dropdown + Polling) */}
+          <div className="hidden items-center md:flex">
+            <NotificationBell variant="storefront" align="right" />
+          </div>
+
 
           {/* User Account / Auth (100% Laravel Active eCommerce logic) */}
           <div className="relative">
