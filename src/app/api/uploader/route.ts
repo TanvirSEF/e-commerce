@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { uploadToCloudinary, deleteFromCloudinary, isCloudinaryConfigured } from "@/lib/cloudinary"
 import { createUploadRecord, getAllUploads, deleteUploadRecord } from "@/services/upload-service"
+import { revalidatePath } from "next/cache"
+import fs from "fs"
+import path from "path"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60 // 60s max execution for large uploads
@@ -13,7 +16,14 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get("sort") || undefined
 
     const files = await getAllUploads({ search, type, sort })
-    return NextResponse.json({ success: true, files })
+    return NextResponse.json(
+      { success: true, files },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    )
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Failed to fetch uploads" },
@@ -85,9 +95,22 @@ export async function POST(request: NextRequest) {
         fileUrl = cloudResult.secureUrl
         publicId = cloudResult.publicId
       } else {
-        // Fallback placeholder URL if Cloudinary is not configured
-        fileUrl = `https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800`
-        publicId = `local-${Date.now()}`
+        // Local storage matching Laravel public/uploads/all/
+        try {
+          const uploadsDir = path.join(process.cwd(), "public", "uploads", "all")
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true })
+          }
+          const safeName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`
+          const filePath = path.join(uploadsDir, safeName)
+          await fs.promises.writeFile(filePath, buffer)
+          fileUrl = `/uploads/all/${safeName}`
+          publicId = `uploads/all/${safeName}`
+        } catch (fsErr) {
+          console.warn("Local storage write failed, fallback to CDN url:", fsErr)
+          fileUrl = `https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800`
+          publicId = `local-${Date.now()}`
+        }
       }
 
       const record = await createUploadRecord({
@@ -101,6 +124,15 @@ export async function POST(request: NextRequest) {
       })
 
       results.push(record)
+    }
+
+    // Revalidate paths for server rendering
+    try {
+      revalidatePath("/admin/uploaded-files")
+      revalidatePath("/seller/uploaded-files")
+      revalidatePath("/seller/uploads")
+    } catch (e) {
+      console.warn("Revalidation warning:", e)
     }
 
     return NextResponse.json({
@@ -140,6 +172,15 @@ export async function DELETE(request: NextRequest) {
 
     const id = parseInt(idParam, 10)
     await deleteUploadRecord(id)
+
+    // Revalidate paths for server rendering
+    try {
+      revalidatePath("/admin/uploaded-files")
+      revalidatePath("/seller/uploaded-files")
+      revalidatePath("/seller/uploads")
+    } catch (e) {
+      console.warn("Revalidation warning:", e)
+    }
 
     return NextResponse.json({ success: true, message: "File deleted successfully" })
   } catch (error: any) {

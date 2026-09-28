@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createCoupon, validateCoupon } from "@/services/coupon-service"
 import { createFlashDeal } from "@/services/settings-service"
 import { rechargeWallet, convertClubPoints } from "@/services/wallet-service"
@@ -627,7 +628,15 @@ export async function createUploadRecordAction(data: {
   externalLink?: string
 }) {
   const { createUploadRecord } = await import("@/services/upload-service")
-  return await createUploadRecord(data)
+  const created = await createUploadRecord(data)
+  try {
+    revalidatePath("/admin/uploaded-files")
+    revalidatePath("/seller/uploaded-files")
+    revalidatePath("/seller/uploads")
+  } catch (e) {
+    console.warn("Revalidation warning:", e)
+  }
+  return created
 }
 
 export async function uploadFileToCloudinaryAction(formData: FormData) {
@@ -671,7 +680,7 @@ export async function uploadFileToCloudinaryAction(formData: FormData) {
 
   const userId = (formData.get("userId") as string) || "admin"
 
-  return await createUploadRecord({
+  const record = await createUploadRecord({
     fileOriginalName: file.name,
     fileName: publicId || file.name,
     fileSize: file.size,
@@ -680,6 +689,16 @@ export async function uploadFileToCloudinaryAction(formData: FormData) {
     externalLink: fileUrl,
     userId,
   })
+
+  try {
+    revalidatePath("/admin/uploaded-files")
+    revalidatePath("/seller/uploaded-files")
+    revalidatePath("/seller/uploads")
+  } catch (e) {
+    console.warn("Revalidation warning:", e)
+  }
+
+  return record
 }
 
 export async function deleteUploadRecordAction(id: number, publicId?: string) {
@@ -694,12 +713,28 @@ export async function deleteUploadRecordAction(id: number, publicId?: string) {
     }
   }
   const { deleteUploadRecord } = await import("@/services/upload-service")
-  return await deleteUploadRecord(id)
+  const result = await deleteUploadRecord(id)
+  try {
+    revalidatePath("/admin/uploaded-files")
+    revalidatePath("/seller/uploaded-files")
+    revalidatePath("/seller/uploads")
+  } catch (e) {
+    console.warn("Revalidation warning:", e)
+  }
+  return result
 }
 
 export async function bulkDeleteUploadRecordsAction(ids: number[]) {
   const { bulkDeleteUploadRecords } = await import("@/services/upload-service")
-  return await bulkDeleteUploadRecords(ids)
+  const result = await bulkDeleteUploadRecords(ids)
+  try {
+    revalidatePath("/admin/uploaded-files")
+    revalidatePath("/seller/uploaded-files")
+    revalidatePath("/seller/uploads")
+  } catch (e) {
+    console.warn("Revalidation warning:", e)
+  }
+  return result
 }
 
 export async function createDigitalProductAction(data: {

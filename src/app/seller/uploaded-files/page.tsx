@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Uploaded Files | Seller Portal",
 }
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default async function SellerUploadedFilesPage() {
   const initialFiles = await getAllUploads()
 

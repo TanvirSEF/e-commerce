@@ -1,1 +1,1 @@
-export { default, metadata } from "../uploaded-files/page"
+export { default, metadata, dynamic } from "../uploaded-files/page"

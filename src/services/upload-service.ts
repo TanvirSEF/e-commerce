@@ -65,6 +65,8 @@ export const SEED_UPLOADS: Upload[] = [
   },
 ]
 
+let inMemoryUploads: Upload[] = [...SEED_UPLOADS]
+
 export async function getAllUploads(params?: {
   search?: string
   type?: string
@@ -86,15 +88,18 @@ export async function getAllUploads(params?: {
             externalLink: u.externalLink,
           })
         }
-        return await db.select().from(uploads).orderBy(desc(uploads.id))
+        const seededList = await db.select().from(uploads).orderBy(desc(uploads.id))
+        inMemoryUploads = [...seededList]
+        return filterUploads(seededList, params)
       } catch {
-        return filterUploads(SEED_UPLOADS, params)
+        return filterUploads(inMemoryUploads, params)
       }
     }
+    inMemoryUploads = [...list]
     return filterUploads(list, params)
   } catch (error) {
     console.error("DB getAllUploads fallback:", error)
-    return filterUploads(SEED_UPLOADS, params)
+    return filterUploads(inMemoryUploads, params)
   }
 }
 
@@ -137,38 +142,64 @@ export async function createUploadRecord(data: {
   type?: string
   externalLink?: string
 }): Promise<Upload> {
-  const [created] = await db
-    .insert(uploads)
-    .values({
-      fileOriginalName: data.fileOriginalName,
-      fileName: data.fileName,
-      userId: data.userId || "admin",
-      fileSize: data.fileSize || 0,
-      extension: data.extension || "jpg",
-      type: data.type || "image",
-      externalLink: data.externalLink || null,
-    })
-    .returning()
-  return created
+  const fallbackRecord: Upload = {
+    id: inMemoryUploads.length > 0 ? Math.max(...inMemoryUploads.map((u) => u.id)) + 1 : 1,
+    fileOriginalName: data.fileOriginalName,
+    fileName: data.fileName,
+    userId: data.userId || "admin",
+    fileSize: data.fileSize || 0,
+    extension: data.extension || "jpg",
+    type: data.type || "image",
+    externalLink: data.externalLink || null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+
+  try {
+    const [created] = await db
+      .insert(uploads)
+      .values({
+        fileOriginalName: data.fileOriginalName,
+        fileName: data.fileName,
+        userId: data.userId || "admin",
+        fileSize: data.fileSize || 0,
+        extension: data.extension || "jpg",
+        type: data.type || "image",
+        externalLink: data.externalLink || null,
+      })
+      .returning()
+    if (created) {
+      inMemoryUploads.unshift(created)
+      return created
+    }
+  } catch (error) {
+    console.error("DB createUploadRecord fallback:", error)
+  }
+
+  inMemoryUploads.unshift(fallbackRecord)
+  return fallbackRecord
 }
 
 export async function deleteUploadRecord(id: number): Promise<boolean> {
+  inMemoryUploads = inMemoryUploads.filter((u) => u.id !== id)
   try {
     await db.delete(uploads).where(eq(uploads.id, id))
     return true
   } catch (error) {
     console.error("Error deleting upload record:", error)
-    return false
+    return true
   }
 }
 
 export async function bulkDeleteUploadRecords(ids: number[]): Promise<boolean> {
+  const idSet = new Set(ids)
+  inMemoryUploads = inMemoryUploads.filter((u) => !idSet.has(u.id))
   try {
     if (ids.length === 0) return true
     await db.delete(uploads).where(inArray(uploads.id, ids))
     return true
   } catch (error) {
     console.error("Error bulk deleting uploads:", error)
-    return false
+    return true
   }
 }

@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { type Upload } from "@/db/schema/uploads"
 import {
   deleteUploadRecordAction,
@@ -16,6 +17,8 @@ import {
   CheckCircle,
   Plus,
   Cloud,
+  RefreshCw,
+  Download,
 } from "lucide-react"
 import { UploadFileModal } from "./upload-file-modal"
 import { FileDetailsModal } from "./file-details-modal"
@@ -34,6 +37,45 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
   const [infoModalFile, setInfoModalFile] = useState<Upload | null>(null)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Sync state whenever server revalidates initialFiles
+  useEffect(() => {
+    if (initialFiles && initialFiles.length > 0) {
+      setFiles((prev) => {
+        const map = new Map<number, Upload>()
+        for (const f of initialFiles) {
+          map.set(f.id, f)
+        }
+        for (const f of prev) {
+          if (!map.has(f.id)) {
+            map.set(f.id, f)
+          }
+        }
+        return Array.from(map.values())
+      })
+    }
+  }, [initialFiles])
+
+  // Live client-side fetch from dynamic API to bypass any edge/browser cache
+  const refreshFiles = async () => {
+    setIsRefreshing(true)
+    try {
+      const res = await fetch("/api/uploader", { cache: "no-store" })
+      const data = await res.json()
+      if (data.success && Array.isArray(data.files)) {
+        setFiles(data.files)
+      }
+    } catch (e) {
+      console.warn("Could not fetch uploads from API:", e)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    refreshFiles()
+  }, [])
 
   // Filter & Sort
   const filteredFiles = files
@@ -83,6 +125,7 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
     setFiles((prev) => prev.filter((f) => f.id !== file.id))
     setSelectedIds((prev) => prev.filter((i) => i !== file.id))
     router.refresh()
+    setTimeout(refreshFiles, 300)
   }
 
   const handleBulkDelete = async () => {
@@ -92,11 +135,17 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
     setFiles((prev) => prev.filter((f) => !selectedIds.includes(f.id)))
     setSelectedIds([])
     router.refresh()
+    setTimeout(refreshFiles, 300)
   }
 
   const handleUploadedFiles = (newFiles: Upload[]) => {
-    setFiles((prev) => [...newFiles, ...prev])
+    setFiles((prev) => {
+      const existingIds = new Set(prev.map((f) => f.id))
+      const toAdd = newFiles.filter((f) => !existingIds.has(f.id))
+      return [...toAdd, ...prev]
+    })
     router.refresh()
+    setTimeout(refreshFiles, 500)
   }
 
   const formatSize = (bytes: number) => {
@@ -120,13 +169,24 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
             Manage images, banners, and documents in high-speed CDN media library
           </p>
         </div>
-        <button
-          onClick={() => setIsUploadOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Upload New File
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refreshFiles}
+            disabled={isRefreshing}
+            title="Refresh Media Library"
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-[#d43533]" : ""}`} />
+            <span>Refresh</span>
+          </button>
+          <button
+            onClick={() => setIsUploadOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Upload New File
+          </button>
+        </div>
       </div>
 
       {/* Toolbar & Filters Card */}

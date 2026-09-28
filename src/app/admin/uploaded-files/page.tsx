@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Uploaded Files Library | Active eCommerce Admin",
 }
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default async function AdminUploadedFilesPage() {
   const initialFiles = await getAllUploads()
 
