@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { UploadFileModal } from "./upload-file-modal"
 import { FileDetailsModal } from "./file-details-modal"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 interface UploadedFilesViewProps {
   initialFiles: Upload[]
@@ -38,6 +39,9 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [deleteTargetFile, setDeleteTargetFile] = useState<Upload | null>(null)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Sync state whenever server revalidates initialFiles
   useEffect(() => {
@@ -119,23 +123,38 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const handleDelete = async (file: Upload) => {
-    if (!confirm("Are you sure you want to delete this file from storage and database?")) return
-    await deleteUploadRecordAction(file.id, file.fileName)
-    setFiles((prev) => prev.filter((f) => f.id !== file.id))
-    setSelectedIds((prev) => prev.filter((i) => i !== file.id))
-    router.refresh()
-    setTimeout(refreshFiles, 300)
+  const confirmSingleDelete = async () => {
+    if (!deleteTargetFile) return
+    setIsDeleting(true)
+    try {
+      await deleteUploadRecordAction(deleteTargetFile.id, deleteTargetFile.fileName)
+      setFiles((prev) => prev.filter((f) => f.id !== deleteTargetFile.id))
+      setSelectedIds((prev) => prev.filter((i) => i !== deleteTargetFile.id))
+      setDeleteTargetFile(null)
+      router.refresh()
+      setTimeout(refreshFiles, 300)
+    } catch (err) {
+      console.error("Failed to delete file:", err)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
-  const handleBulkDelete = async () => {
+  const confirmBulkDelete = async () => {
     if (selectedIds.length === 0) return
-    if (!confirm(`Delete ${selectedIds.length} selected files?`)) return
-    await bulkDeleteUploadRecordsAction(selectedIds)
-    setFiles((prev) => prev.filter((f) => !selectedIds.includes(f.id)))
-    setSelectedIds([])
-    router.refresh()
-    setTimeout(refreshFiles, 300)
+    setIsDeleting(true)
+    try {
+      await bulkDeleteUploadRecordsAction(selectedIds)
+      setFiles((prev) => prev.filter((f) => !selectedIds.includes(f.id)))
+      setSelectedIds([])
+      setIsBulkDeleteOpen(false)
+      router.refresh()
+      setTimeout(refreshFiles, 300)
+    } catch (err) {
+      console.error("Failed to bulk delete files:", err)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleUploadedFiles = (newFiles: Upload[]) => {
@@ -196,7 +215,7 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
             <span className="text-xs font-bold text-gray-700">All Files ({filteredFiles.length})</span>
             {selectedIds.length > 0 && (
               <button
-                onClick={handleBulkDelete}
+                onClick={() => setIsBulkDeleteOpen(true)}
                 className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded-md text-xs font-semibold hover:bg-red-100 transition-colors flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -298,7 +317,7 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
                     <Info className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(file)}
+                    onClick={() => setDeleteTargetFile(file)}
                     title="Delete"
                     className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                   >
@@ -351,6 +370,26 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
       <FileDetailsModal
         file={infoModalFile}
         onClose={() => setInfoModalFile(null)}
+      />
+
+      {/* Active eCommerce 1:1 Single Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={!!deleteTargetFile}
+        onClose={() => setDeleteTargetFile(null)}
+        onConfirm={confirmSingleDelete}
+        isDeleting={isDeleting}
+        title="Confirmation"
+      />
+
+      {/* Active eCommerce 1:1 Bulk Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isBulkDeleteOpen}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={confirmBulkDelete}
+        isDeleting={isDeleting}
+        isBulk={true}
+        title="Confirmation"
+        message={`Are you sure to delete those (${selectedIds.length} files)?`}
       />
     </div>
   )
