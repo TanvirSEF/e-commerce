@@ -1,5 +1,6 @@
 import pg from "pg"
 import { drizzle } from "drizzle-orm/node-postgres"
+import { migrate } from "drizzle-orm/node-postgres/migrator"
 import * as schema from "../src/db/schema/index.js"
 import { SEED_CATEGORIES, SEED_BRANDS, SEED_PRODUCTS, SEED_FLASH_DEALS, SEED_SHOPS, SEED_COUPONS } from "../src/db/seed/data.js"
 import { eq } from "drizzle-orm"
@@ -30,6 +31,15 @@ async function runSetup() {
   const db = drizzle(pool, { schema })
 
   try {
+    // 2.5 Run database migrations
+    console.log("[...] Applying database schema migrations...")
+    try {
+      await migrate(db, { migrationsFolder: "./src/db/migrations" })
+      console.log("[OK] Database schema migrated successfully")
+    } catch (migErr) {
+      console.warn("⚠️ Migration notice:", (migErr as Error).message)
+    }
+
     // 3. Seed Default Business Settings
     const defaultSettings = [
       { type: "site_name", value: "Active eCommerce CMS" },
