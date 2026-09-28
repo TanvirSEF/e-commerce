@@ -2,123 +2,68 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Blocks, Plus, CheckCircle, UploadCloud } from "lucide-react"
+import { Blocks, Plus, CheckCircle, ExternalLink, ShieldCheck, Loader2, Sparkles } from "lucide-react"
+import { type AddonItem } from "@/services/addon-service"
+import { toggleAddonAction } from "@/app/actions/addon-actions"
 
-interface Addon {
-  id: string
-  name: string
-  version: string
-  description: string
-  image: string
-  installed: boolean
-  activated: boolean
-  purchaseCode?: string
+interface AdminAddonsViewProps {
+  initialAddons: AddonItem[]
 }
 
-const DEFAULT_ADDONS: Addon[] = [
-  {
-    id: "club_points",
-    name: "Club Point System",
-    version: "2.4",
-    description: "Reward shoppers with points for purchases, exchangeable for wallet money and coupon vouchers.",
-    image: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "pos_system",
-    name: "POS (Point of Sale) System",
-    version: "3.1",
-    description: "Complete in-store checkout terminal with barcode scanner, thermal receipt printing, and live stock sync.",
-    image: "https://images.unsplash.com/photo-1556742049-0a67e5572248?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "otp_system",
-    name: "OTP & SMS Notifications",
-    version: "2.8",
-    description: "Mobile number authentication via Twilio, Fast2SMS, Nexmo, and SMS order alerts.",
-    image: "https://images.unsplash.com/photo-1577563908411-5077b6dc7624?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "wholesale_system",
-    name: "Wholesale Tiered Pricing",
-    version: "2.0",
-    description: "Multi-tier bulk discount price brackets based on purchase quantity brackets.",
-    image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "preorder_system",
-    name: "Pre-Order System",
-    version: "1.9",
-    description: "Accept partial deposits or full pre-orders on unreleased and scheduled batch products.",
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "auction_system",
-    name: "Auction & Bidding System",
-    version: "2.2",
-    description: "Real-time competitive bidding countdown lots for luxury timepieces and rare merchandise.",
-    image: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "affiliate_system",
-    name: "Affiliate Partner Program",
-    version: "2.5",
-    description: "Multi-tier influencer referral links, cookie attribution tracking, and automated payout requests.",
-    image: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "delivery_boy_system",
-    name: "Delivery Boy Management",
-    version: "3.0",
-    description: "Dedicated courier dispatch portal with COD collections, zone assignments, and commission payouts.",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "refund_system",
-    name: "Refund & Return Management",
-    version: "2.1",
-    description: "Buyer dispute desk with return reason workflows and automated wallet credits.",
-    image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-  {
-    id: "offline_payments",
-    name: "Manual & Offline Payments",
-    version: "2.0",
-    description: "Support manual bank transfers, bKash, Nagad, and cheque receipts with admin verification.",
-    image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400&auto=format&fit=crop&q=80",
-    installed: true,
-    activated: true,
-  },
-]
+export function AdminAddonsView({ initialAddons }: AdminAddonsViewProps) {
+  const [addons, setAddons] = useState<AddonItem[]>(initialAddons)
+  const [activeTab, setActiveTab] = useState<"installed" | "available">("installed")
+  const [loadingId, setLoadingId] = useState<number | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-export function AdminAddonsView() {
-  const [addons, setAddons] = useState(DEFAULT_ADDONS)
+  const showToast = (msg: string) => {
+    setToastMessage(msg)
+    setTimeout(() => setToastMessage(null), 3000)
+  }
 
-  const toggleActivate = (id: string) => {
+  const handleToggle = async (addon: AddonItem) => {
+    const nextState = !addon.activated
+    setLoadingId(addon.id)
+
+    // Optimistic UI update
     setAddons((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, activated: !a.activated } : a))
+      prev.map((a) => (a.id === addon.id ? { ...a, activated: nextState } : a))
     )
+
+    try {
+      const res = await toggleAddonAction(addon.id, nextState)
+      if (res.success) {
+        showToast(
+          `Module "${addon.name}" is now ${nextState ? "ACTIVATED" : "DEACTIVATED"} in database.`
+        )
+      } else {
+        // Revert on failure
+        setAddons((prev) =>
+          prev.map((a) => (a.id === addon.id ? { ...a, activated: addon.activated } : a))
+        )
+        showToast(`Failed to update ${addon.name}. Please try again.`)
+      }
+    } catch {
+      setAddons((prev) =>
+        prev.map((a) => (a.id === addon.id ? { ...a, activated: addon.activated } : a))
+      )
+      showToast("Network error while connecting to database.")
+    } finally {
+      setLoadingId(null)
+    }
   }
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-lg shadow-xl border border-slate-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
@@ -126,57 +71,136 @@ export function AdminAddonsView() {
             Installed Addons & Modules
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Supervise Active eCommerce CMS CodeCanyon extensions, feature packs, and licensing
+            Supervise Active eCommerce CMS CodeCanyon extensions, feature packs, and licensing (Database Persistent)
           </p>
         </div>
-        <Link
-          href="/admin/addons/create"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#d43533] hover:bg-red-700 text-white font-medium text-sm rounded-lg transition-colors shadow-sm self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Install New Addon
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {addons.map((a) => (
-          <div
-            key={a.id}
-            className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between"
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/addons/create"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#d43533] hover:bg-red-700 text-white font-medium text-sm rounded-lg transition-colors shadow-sm"
           >
-            <div className="p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                  v{a.version}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  <CheckCircle className="w-3 h-3" /> Licensed
-                </span>
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">{a.name}</h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">{a.description}</p>
-              </div>
-            </div>
-
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-600">
-                {a.activated ? "Module Enabled" : "Module Disabled"}
-              </span>
-              <button
-                onClick={() => toggleActivate(a.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  a.activated
-                    ? "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700"
-                }`}
-              >
-                {a.activated ? "Deactivate" : "Activate"}
-              </button>
-            </div>
-          </div>
-        ))}
+            <Plus className="w-4 h-4" />
+            Install / Upload Addon
+          </Link>
+        </div>
       </div>
+
+      {/* Tabs (Installed vs Available - matching Laravel 1:1) */}
+      <div className="flex border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab("installed")}
+          className={`py-3 px-5 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === "installed"
+              ? "border-[#d43533] text-[#d43533]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Installed Addons ({addons.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("available")}
+          className={`py-3 px-5 text-sm font-bold border-b-2 transition-colors ${
+            activeTab === "available"
+              ? "border-[#d43533] text-[#d43533]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Available Official Addons
+        </button>
+      </div>
+
+      {activeTab === "installed" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {addons.map((a) => {
+            const isLoading = loadingId === a.id
+            return (
+              <div
+                key={a.id}
+                className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow"
+              >
+                <div className="p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                      v{a.version}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Licensed
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">{a.name}</h3>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                      {a.description}
+                    </p>
+                  </div>
+                  {a.purchaseCode && (
+                    <div className="text-[11px] font-mono text-slate-400 bg-slate-50 px-2.5 py-1 rounded border border-slate-100 truncate">
+                      Code: {a.purchaseCode.substring(0, 10)}••••••••
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                  <span
+                    className={`text-xs font-semibold flex items-center gap-1.5 ${
+                      a.activated ? "text-emerald-700" : "text-slate-500"
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        a.activated ? "bg-emerald-500" : "bg-slate-300"
+                      }`}
+                    />
+                    {a.activated ? "Module Enabled" : "Module Disabled"}
+                  </span>
+
+                  <button
+                    onClick={() => handleToggle(a)}
+                    disabled={isLoading}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-60 ${
+                      a.activated
+                        ? "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                        : "bg-emerald-600 text-white hover:bg-emerald-700"
+                    }`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Saving...
+                      </>
+                    ) : a.activated ? (
+                      "Deactivate"
+                    ) : (
+                      "Activate"
+                    )}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-4">
+          <div className="w-12 h-12 bg-red-50 text-[#d43533] rounded-full flex items-center justify-center mx-auto">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div className="max-w-md mx-auto">
+            <h3 className="text-base font-bold text-slate-900">Active eCommerce Addon Marketplace</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Browse official Active eCommerce CMS extensions on CodeCanyon to expand your marketplace capabilities.
+            </p>
+          </div>
+          <a
+            href="https://codecanyon.net/user/activeitzone/portfolio"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#d43533] hover:underline"
+          >
+            Visit Official ActiveItZone Portfolio
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+      )}
     </div>
   )
 }

@@ -40,6 +40,22 @@ async function runSetup() {
       console.warn("⚠️ Migration notice:", (migErr as Error).message)
     }
 
+    // 2.6 Ensure Addons Table Exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS addons (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        unique_identifier VARCHAR(100) NOT NULL UNIQUE,
+        version VARCHAR(50) NOT NULL DEFAULT '1.0',
+        activated BOOLEAN NOT NULL DEFAULT true,
+        image TEXT,
+        purchase_code VARCHAR(255),
+        description TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `)
+
     // 3. Seed Default Business Settings
     const defaultSettings = [
       { type: "site_name", value: "Active eCommerce CMS" },
@@ -301,6 +317,109 @@ async function runSetup() {
       }
     }
     console.log("[OK] Coupons seeded")
+
+    // 11. Seed Canonical Addons
+    const CANONICAL_ADDONS_SEED = [
+      {
+        uniqueIdentifier: "pos_system",
+        name: "POS (Point of Sale) System",
+        version: "3.1",
+        description: "Complete in-store checkout terminal with barcode scanner, thermal receipt printing, and live stock sync.",
+        image: "https://images.unsplash.com/photo-1556742049-0a67e5572248?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-pos-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "club_points",
+        name: "Club Point System",
+        version: "2.4",
+        description: "Reward shoppers with points for purchases, exchangeable for wallet money and coupon vouchers.",
+        image: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-clubpoints-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "otp_system",
+        name: "OTP & SMS Notifications",
+        version: "2.8",
+        description: "Mobile number authentication via Twilio, Fast2SMS, Nexmo, and SMS order alerts.",
+        image: "https://images.unsplash.com/photo-1577563908411-5077b6dc7624?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-otp-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "wholesale_system",
+        name: "Wholesale Tiered Pricing",
+        version: "2.0",
+        description: "Multi-tier bulk discount price brackets based on purchase quantity brackets.",
+        image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-wholesale-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "preorder_system",
+        name: "Pre-Order System",
+        version: "1.9",
+        description: "Accept partial deposits or full pre-orders on unreleased and scheduled batch products.",
+        image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-preorder-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "auction_system",
+        name: "Auction & Bidding System",
+        version: "2.2",
+        description: "Real-time competitive bidding countdown lots for luxury timepieces and rare merchandise.",
+        image: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-auction-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "affiliate_system",
+        name: "Affiliate Partner Program",
+        version: "2.5",
+        description: "Multi-tier influencer referral links, cookie attribution tracking, and automated payout requests.",
+        image: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-affiliate-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "delivery_boy_system",
+        name: "Delivery Boy Management",
+        version: "3.0",
+        description: "Dedicated courier dispatch portal with COD collections, zone assignments, and commission payouts.",
+        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-deliveryboy-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "refund_system",
+        name: "Refund & Return Management",
+        version: "2.1",
+        description: "Buyer dispute desk with return reason workflows and automated wallet credits.",
+        image: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-refund-live-licensed-2026",
+      },
+      {
+        uniqueIdentifier: "offline_payments",
+        name: "Manual & Offline Payments",
+        version: "2.0",
+        description: "Support manual bank transfers, bKash, Nagad, and cheque receipts with admin verification.",
+        image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400&auto=format&fit=crop&q=80",
+        purchaseCode: "aec-offlinepay-live-licensed-2026",
+      },
+    ]
+
+    for (const addon of CANONICAL_ADDONS_SEED) {
+      const existing = await db
+        .select()
+        .from(schema.addons)
+        .where(eq(schema.addons.uniqueIdentifier, addon.uniqueIdentifier))
+      if (existing.length === 0) {
+        await db.insert(schema.addons).values({
+          name: addon.name,
+          uniqueIdentifier: addon.uniqueIdentifier,
+          version: addon.version,
+          description: addon.description,
+          image: addon.image,
+          purchaseCode: addon.purchaseCode,
+          activated: true,
+        })
+      }
+    }
+    console.log("[OK] Canonical Addons seeded")
 
     console.log("==================================================")
     console.log("[OK] Installation completed")

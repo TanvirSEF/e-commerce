@@ -1,0 +1,275 @@
+import React from "react"
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingBag,
+  Zap,
+  Users,
+  Settings,
+  Store,
+  LifeBuoy,
+  BarChart3,
+  BookOpen,
+  ShieldCheck,
+  UploadCloud,
+  Receipt,
+  MessageSquare,
+  CalendarClock,
+  Gavel,
+  Share2,
+  Truck,
+  Blocks,
+} from "lucide-react"
+
+export interface NavChildItem {
+  title: string
+  href: string
+  addonKey?: string
+}
+
+export interface NavItem {
+  title: string
+  href?: string
+  icon: React.ElementType
+  badge?: string
+  addonKey?: string
+  children?: NavChildItem[]
+}
+
+export const adminNavItems: NavItem[] = [
+  {
+    title: "Dashboard",
+    href: "/admin",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "POS System",
+    icon: Receipt,
+    addonKey: "pos_system",
+    children: [
+      { title: "POS Manager", href: "/admin/pos" },
+      { title: "POS Configuration", href: "/admin/pos-activation" },
+      { title: "POS Orders", href: "/admin/pos-orders" },
+    ],
+  },
+  {
+    title: "Products",
+    icon: Package,
+    children: [
+      { title: "All Products", href: "/admin/products" },
+      { title: "Add New Product", href: "/admin/products/create" },
+      { title: "Digital Products", href: "/admin/digital-products" },
+      { title: "Add Digital Product", href: "/admin/digital-products/create" },
+      { title: "Categories", href: "/admin/categories" },
+      { title: "Brands", href: "/admin/brands" },
+      { title: "Attributes", href: "/admin/products/attributes" },
+      { title: "Colors", href: "/admin/products/colors" },
+      { title: "Warranties", href: "/admin/products/warranties" },
+      { title: "Custom Labels", href: "/admin/custom-labels" },
+      { title: "Category Discount", href: "/admin/products/category-discount" },
+      { title: "Size Charts", href: "/admin/products/size-charts" },
+      { title: "Smart Bar", href: "/admin/products/smart-bar" },
+      { title: "Bulk Upload", href: "/admin/product-bulk-upload" },
+      { title: "Wholesale Products", href: "/admin/wholesale/all-products", addonKey: "wholesale_system" },
+      { title: "Promotional Products Hub", href: "/admin/promotional-products-index" },
+      { title: "Product Reviews", href: "/admin/reviews" },
+      { title: "Product Queries (Q&A)", href: "/admin/product-queries" },
+    ],
+  },
+  {
+    title: "Sales",
+    icon: ShoppingBag,
+    children: [
+      { title: "All Orders", href: "/admin/orders" },
+      { title: "Offline Payments", href: "/admin/orders/offline-payments", addonKey: "offline_payments" },
+      { title: "Refund Requests", href: "/admin/refund-requests", addonKey: "refund_system" },
+    ],
+  },
+  {
+    title: "Pre-Order System",
+    icon: CalendarClock,
+    addonKey: "preorder_system",
+    children: [
+      { title: "Pre-Order Products", href: "/admin/preorder/products" },
+      { title: "Add Pre-Order Product", href: "/admin/preorder/products/create" },
+      { title: "Pre-Order Orders", href: "/admin/preorder/orders" },
+      { title: "Pre-Order Settings", href: "/admin/preorder/settings" },
+    ],
+  },
+  {
+    title: "Auction System",
+    icon: Gavel,
+    addonKey: "auction_system",
+    children: [
+      { title: "All Auction Products", href: "/admin/auction/all-products" },
+      { title: "Inhouse Auction Products", href: "/admin/auction/inhouse-products" },
+      { title: "Seller Auction Products", href: "/admin/auction/seller-products" },
+      { title: "Add Auction Product", href: "/admin/auction/products/create" },
+      { title: "Auction Orders & Sales", href: "/admin/auction/orders" },
+    ],
+  },
+  {
+    title: "Sellers",
+    icon: Store,
+    children: [
+      { title: "All Sellers", href: "/admin/sellers" },
+      { title: "Payout Requests", href: "/admin/sellers/payout-requests" },
+      { title: "Verification Desk", href: "/admin/sellers/verification" },
+      { title: "Seller Commission", href: "/admin/sellers/commission" },
+      { title: "Category Commission", href: "/admin/sellers/category-commission" },
+      { title: "Seller Commission Override", href: "/admin/sellers/seller-commission" },
+      { title: "Seller Packages", href: "/admin/seller-packages" },
+      { title: "Package Payments", href: "/admin/seller-packages/payments" },
+    ],
+  },
+  {
+    title: "Marketing",
+    icon: Zap,
+    children: [
+      { title: "Flash Deals", href: "/admin/flash-deals" },
+      { title: "Coupons", href: "/admin/coupons" },
+      { title: "Dynamic Popups", href: "/admin/marketing/dynamic-popups" },
+      { title: "Custom Alerts", href: "/admin/marketing/custom-alerts" },
+      { title: "Sale Alerts", href: "/admin/marketing/custom-sale-alerts" },
+      { title: "Custom Product Visitors", href: "/admin/marketing/custom-product-visitors" },
+      { title: "Push Notifications", href: "/admin/notifications" },
+      { title: "Subscribers", href: "/admin/subscribers" },
+      { title: "Newsletters", href: "/admin/newsletter" },
+      { title: "Club Points Setup", href: "/admin/club-points", addonKey: "club_points" },
+      { title: "Marketing Analytics", href: "/admin/marketing/analytics" },
+    ],
+  },
+  {
+    title: "Affiliate System",
+    icon: Share2,
+    addonKey: "affiliate_system",
+    children: [
+      { title: "Affiliate Configurations", href: "/admin/affiliate" },
+      { title: "Affiliate Rules & Terms", href: "/admin/affiliate/configs" },
+      { title: "Affiliate Users", href: "/admin/affiliate/users" },
+      { title: "Referral Links", href: "/admin/affiliate/referrals" },
+      { title: "Withdraw Requests", href: "/admin/affiliate/withdraw-requests" },
+      { title: "Commission Logs", href: "/admin/affiliate/logs" },
+    ],
+  },
+  {
+    title: "Delivery Boy System",
+    icon: Truck,
+    addonKey: "delivery_boy_system",
+    children: [
+      { title: "All Delivery Boys", href: "/admin/delivery-boys" },
+      { title: "Add Delivery Boy", href: "/admin/delivery-boys/create" },
+      { title: "Delivery Boy Configuration", href: "/admin/delivery-boy-configuration" },
+      { title: "Payment Histories", href: "/admin/delivery-boys-payment-histories" },
+      { title: "Collection Histories", href: "/admin/delivery-boys-collection-histories" },
+      { title: "Cancel Requests", href: "/admin/delivery-boy/cancel-requests" },
+    ],
+  },
+  {
+    title: "Reports",
+    icon: BarChart3,
+    children: [
+      { title: "Sales Report", href: "/admin/reports/sales" },
+      { title: "In-House Sales", href: "/admin/reports/in-house-sales" },
+      { title: "Seller Sales", href: "/admin/reports/seller-sales" },
+      { title: "Stock Alert", href: "/admin/reports/stock" },
+      { title: "User Searches", href: "/admin/reports/user-searches" },
+      { title: "Product Wishlist", href: "/admin/reports/wishlist" },
+      { title: "Wallet History", href: "/admin/reports/wallet-history" },
+      { title: "AI Token Usage", href: "/admin/reports/ai-token-usage" },
+      { title: "Commission History", href: "/admin/reports/commission-history" },
+      { title: "Earnings vs Payouts", href: "/admin/reports/earning-payout" },
+    ],
+  },
+  {
+    title: "Uploaded Files",
+    href: "/admin/uploaded-files",
+    icon: UploadCloud,
+  },
+  {
+    title: "Support Tickets",
+    href: "/admin/support-tickets",
+    icon: LifeBuoy,
+  },
+  {
+    title: "Blog System",
+    href: "/admin/blogs",
+    icon: BookOpen,
+  },
+  {
+    title: "Customers",
+    icon: Users,
+    children: [
+      { title: "All Customers", href: "/admin/customers" },
+      { title: "Classified Products", href: "/admin/customer-products" },
+      { title: "Classified Packages", href: "/admin/customer-packages" },
+      { title: "Wallet Recharges", href: "/admin/wallet-recharges" },
+    ],
+  },
+  {
+    title: "Staffs & Roles",
+    href: "/admin/staffs",
+    icon: ShieldCheck,
+  },
+  {
+    title: "OTP & SMS System",
+    icon: MessageSquare,
+    addonKey: "otp_system",
+    children: [
+      { title: "OTP Configuration", href: "/admin/otp-configuration" },
+      { title: "OTP Login Configuration", href: "/admin/otp-login-configuration" },
+      { title: "Bulk SMS", href: "/admin/sms" },
+      { title: "SMS Templates", href: "/admin/sms-templates" },
+    ],
+  },
+  {
+    title: "Addon Manager",
+    icon: Blocks,
+    children: [
+      { title: "Installed Addons", href: "/admin/addons" },
+      { title: "Install / Upload Addon", href: "/admin/addons/create" },
+    ],
+  },
+  {
+    title: "Setup & Settings",
+    icon: Settings,
+    children: [
+      { title: "General Settings", href: "/admin/settings" },
+      { title: "Languages & Translations", href: "/admin/languages" },
+      { title: "Email Templates", href: "/admin/email-templates" },
+      { title: "Features Activation", href: "/admin/features-activation" },
+      { title: "Appearance & Layout", href: "/admin/settings/appearance" },
+      { title: "Banners & Sliders", href: "/admin/website-settings/banners-sliders" },
+      { title: "Authentication Layout", href: "/admin/website-settings/authentication-layout" },
+      { title: "Website Pages", href: "/admin/website-settings/pages" },
+      { title: "Payment Methods", href: "/admin/settings/payments" },
+      { title: "Tax & VAT Desk", href: "/admin/taxes" },
+      { title: "Currencies & Rates", href: "/admin/settings/currencies" },
+      { title: "Shipping Configuration", href: "/admin/settings/shipping" },
+      { title: "Shipping Carriers", href: "/admin/carriers" },
+      { title: "Shipping Zones", href: "/admin/zones" },
+      { title: "Countries", href: "/admin/countries" },
+      { title: "States & Divisions", href: "/admin/states" },
+      { title: "Shipping Cities", href: "/admin/shipping/cities" },
+      { title: "Shipping Areas", href: "/admin/areas" },
+      { title: "Shipping Label", href: "/admin/settings/shipping-label" },
+      { title: "Packaging Box Sizes", href: "/admin/settings/box-sizes" },
+      { title: "Pick-up Points", href: "/admin/pickup-points" },
+      { title: "Order Configuration", href: "/admin/settings/order-configuration" },
+      { title: "Order Notes", href: "/admin/settings/order-notes" },
+      { title: "Thermal Printer", href: "/admin/settings/thermal-printer" },
+      { title: "File System & Storage", href: "/admin/settings/file-system" },
+      { title: "Couriers Integration", href: "/admin/settings/couriers" },
+      { title: "Social Media Login", href: "/admin/settings/social-login" },
+      { title: "Third-Party & Analytics", href: "/admin/settings/third-party" },
+      { title: "Live Chat Widgets", href: "/admin/settings/chat-widgets" },
+      { title: "Custom Scripts & Analytics", href: "/admin/settings/custom-scripts" },
+      { title: "Global SEO", href: "/admin/settings/seo" },
+      { title: "AI Writer Settings", href: "/admin/settings/ai-configuration" },
+      { title: "SMTP Mail Settings", href: "/admin/settings/smtp" },
+      { title: "XML Sitemap Generator", href: "/admin/system/sitemap" },
+      { title: "Import Demo Data", href: "/admin/system/import-demo" },
+      { title: "Server Status", href: "/admin/system/server-status" },
+    ],
+  },
+]
