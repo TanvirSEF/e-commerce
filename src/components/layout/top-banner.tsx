@@ -2,50 +2,34 @@
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { X, Sparkles } from "lucide-react"
+import { X } from "lucide-react"
 
-const BANNERS = [
-  {
-    id: 1,
-    text: "⚡ Flash Deal Live! Enjoy up to 50% discount on flagship smartphones & accessories.",
-    link: "/flash-deals",
-    cta: "Shop Now",
-  },
-  {
-    id: 2,
-    text: "🚚 Free Shipping on all orders above $50! Use code FREESHIP at checkout.",
-    link: "/coupons",
-    cta: "Claim Coupon",
-  },
-  {
-    id: 3,
-    text: "🎉 New Seller Onboarding: Join 10,000+ merchants and launch your digital store today.",
-    link: "/seller/register",
-    cta: "Become a Seller",
-  },
-]
+interface TopBannerProps {
+  banners?: { id: number; text: string; link?: string }[]
+  backgroundColor?: string
+  textColor?: string
+}
 
-export function TopBanner() {
+export function TopBanner({
+  banners = [],
+  backgroundColor = "#d43533",
+  textColor = "#ffffff",
+}: TopBannerProps) {
   const [visible, setVisible] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [activeBanners, setActiveBanners] = useState(banners)
 
   useEffect(() => {
-    // Check if dismissed in this session
+    // Only show if banners actually exist and not dismissed in session
     const dismissed = sessionStorage.getItem("top_banner_dismissed")
-    if (!dismissed) {
+    if (!dismissed && banners.length > 0) {
       setVisible(true)
+      setActiveBanners(banners)
+    } else {
+      setVisible(false)
     }
+  }, [banners])
 
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % BANNERS.length)
-    }, 6000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  if (!visible) return null
-
-  const banner = BANNERS[currentIndex]
+  if (!visible || activeBanners.length === 0) return null
 
   const handleDismiss = () => {
     setVisible(false)
@@ -53,21 +37,28 @@ export function TopBanner() {
   }
 
   return (
-    <div className="relative z-50 bg-[#d43533] text-white text-[12px] font-medium leading-none">
+    <div
+      className="relative z-50 text-[12px] font-medium leading-none"
+      style={{ backgroundColor }}
+    >
       <div className="mx-auto flex h-[36px] max-w-[1240px] items-center justify-between px-4">
-        {/* Animated Banner Content */}
-        <div className="flex-1 flex items-center justify-center gap-2 overflow-hidden text-center">
-          <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse hidden sm:inline shrink-0" />
-          <p className="truncate text-white transition-opacity duration-300">
-            {banner.text}
-          </p>
-          {banner.link && (
-            <Link
-              href={banner.link}
-              className="ml-2 inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold text-white hover:bg-white hover:text-[#d43533] transition-colors shrink-0"
-            >
-              {banner.cta} →
-            </Link>
+        {/* Banner Content (Active eCommerce CMS 1:1) */}
+        <div className="flex-1 flex items-center justify-center overflow-hidden text-center">
+          {activeBanners.map((b) =>
+            b.link ? (
+              <Link
+                key={b.id}
+                href={b.link}
+                style={{ color: textColor }}
+                className="hover:underline truncate"
+              >
+                {b.text}
+              </Link>
+            ) : (
+              <span key={b.id} style={{ color: textColor }} className="truncate">
+                {b.text}
+              </span>
+            )
           )}
         </div>
 
