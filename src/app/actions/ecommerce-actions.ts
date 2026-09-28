@@ -1884,3 +1884,38 @@ export async function resetPasswordWithCodeAction(data: {
     return { success: false, message: err.message || "Failed to reset password." }
   }
 }
+
+export async function updateCustomProductVisitorsAction(data: {
+  showCustomProductVisitors: boolean
+  minCustomProductVisitors: number
+  maxCustomProductVisitors: number
+}) {
+  const { updateCustomProductVisitorsSettings } = await import("@/services/settings-service")
+  const res = await updateCustomProductVisitorsSettings(data)
+  revalidatePath("/admin/marketing/custom-product-visitors")
+  revalidatePath("/product")
+  return res
+}
+
+export async function updateBannersAndSlidersAction(data: {
+  flashDealBannerLarge: string
+  flashDealBannerSmall: string
+  flashDealBannerLink: string
+}) {
+  const { updateBannersAndSlidersSettings } = await import("@/services/settings-service")
+  const res = await updateBannersAndSlidersSettings(data)
+  revalidatePath("/admin/website-settings/banners-sliders")
+  revalidatePath("/flash-deals")
+  revalidatePath("/")
+  return res
+}
+
+export async function updateAuthLayoutAction(data: { layout: "boxed" | "free" | "focused" | "split" }) {
+  const { updateAuthLayoutSettings } = await import("@/services/settings-service")
+  const res = await updateAuthLayoutSettings(data)
+  revalidatePath("/admin/website-settings/authentication-layout")
+  revalidatePath("/login")
+  revalidatePath("/register")
+  return res
+}
+

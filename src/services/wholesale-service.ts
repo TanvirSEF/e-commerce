@@ -24,6 +24,38 @@ export const SEED_WHOLESALE_TIERS: WholesaleTier[] = [
 let inMemoryTiers: WholesaleTier[] = [...SEED_WHOLESALE_TIERS]
 
 export async function getAllWholesaleProducts(filter: "all" | "inhouse" | "seller" = "all") {
+  try {
+    const dbTiers = await db.select().from(wholesalePrices)
+    const activeTiers: WholesaleTier[] =
+      dbTiers.length > 0
+        ? dbTiers.map((t) => ({
+            id: t.id,
+            productId: t.productId,
+            minQty: t.minQty,
+            maxQty: t.maxQty,
+            price: Number(t.price),
+          }))
+        : inMemoryTiers
+
+    const wholesaleProductIds = Array.from(
+      new Set(activeTiers.map((t) => String(t.productId)))
+    )
+    let list = SEED_PRODUCTS.filter((p) => wholesaleProductIds.includes(String(p.id)))
+
+    if (filter === "inhouse") {
+      list = list.filter((p) => p.sellerSlug === "inhouse" || !p.sellerSlug)
+    } else if (filter === "seller") {
+      list = list.filter((p) => p.sellerSlug && p.sellerSlug !== "inhouse")
+    }
+
+    return list.map((p) => ({
+      ...p,
+      tiers: activeTiers.filter((t) => String(t.productId) === String(p.id)),
+    }))
+  } catch (err) {
+    console.warn("getAllWholesaleProducts DB query fallback:", err)
+  }
+
   const wholesaleProductIds = Array.from(new Set(inMemoryTiers.map((t) => String(t.productId))))
   let list = SEED_PRODUCTS.filter((p) => wholesaleProductIds.includes(String(p.id)))
 

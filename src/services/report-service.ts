@@ -163,6 +163,18 @@ function filterSellerSales(items: SellerSaleReportItem[], filter?: string): Sell
 }
 
 export async function getUserSearchReport(): Promise<UserSearchReportItem[]> {
+  try {
+    const { getSetting } = await import("@/services/settings-service")
+    const raw = await getSetting("user_search_logs")
+    if (raw) {
+      const logs = JSON.parse(raw) as { query: string; count: number }[]
+      if (Array.isArray(logs) && logs.length > 0) {
+        return logs.map((l, idx) => ({ id: idx + 1, query: l.query, count: l.count }))
+      }
+    }
+  } catch (err) {
+    console.warn("getUserSearchReport DB fallback:", err)
+  }
   return SEED_SEARCHES
 }
 

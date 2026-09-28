@@ -23,6 +23,7 @@ import { SizeGuideModal } from "./size-guide-modal"
 import { SocialShareModal } from "./social-share-modal"
 import { ProductSellerBox } from "./product-seller-box"
 import { ProductWarrantyBadges } from "./product-warranty-badges"
+import { ProductVisitorsBadge } from "./product-visitors-badge"
 import { ProductWholesaleBox } from "./product-wholesale-box"
 
 
@@ -49,7 +50,17 @@ export interface ProductDetailsData {
   wholesaleTiers?: { minQty: number; maxQty: number; price: number }[]
 }
 
-export function ProductInfo({ product }: { product: ProductDetailsData }) {
+export function ProductInfo({
+  product,
+  visitorsConfig,
+}: {
+  product: ProductDetailsData
+  visitorsConfig?: {
+    showCustomProductVisitors: boolean
+    minCustomProductVisitors: number
+    maxCustomProductVisitors: number
+  }
+}) {
   const router = useRouter()
   const { addItem } = useCart()
 
@@ -241,6 +252,13 @@ export function ProductInfo({ product }: { product: ProductDetailsData }) {
           <span className="font-bold text-gray-700">({product.reviewCount} reviews)</span>
         </div>
       </div>
+
+      {/* Live Visitors Pulse Badge (Active eCommerce 1:1) */}
+      <ProductVisitorsBadge
+        show={visitorsConfig?.showCustomProductVisitors}
+        min={visitorsConfig?.minCustomProductVisitors}
+        max={visitorsConfig?.maxCustomProductVisitors}
+      />
 
       {/* Price Box */}
       <div className="rounded-md border border-gray-100 bg-gray-50/70 p-4">

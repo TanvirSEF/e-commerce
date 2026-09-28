@@ -11,6 +11,7 @@ import type { ProductCardProps } from "@/components/product/product-card"
 import { getProductBySlug } from "@/lib/data-service"
 import { getProductReviews } from "@/services/review-service"
 import { getWholesaleTiersForProduct } from "@/services/wholesale-service"
+import { getCustomProductVisitorsSettings } from "@/services/settings-service"
 
 interface ProductPageProps {
   params: Promise<{
@@ -202,7 +203,10 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
             : SAMPLE_PRODUCT_DATA.default.name,
       }
 
-  const wholesaleTiers = await getWholesaleTiersForProduct(product.id)
+  const [wholesaleTiers, visitorsConfig] = await Promise.all([
+    getWholesaleTiersForProduct(product.id),
+    getCustomProductVisitorsSettings(),
+  ])
   const productWithWholesale = { ...product, wholesaleTiers }
 
   return (
@@ -236,7 +240,10 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
 
             {/* Right: Info & Controls (7 Cols) */}
             <div className="lg:col-span-7">
-              <ProductInfo product={productWithWholesale} />
+              <ProductInfo
+                product={productWithWholesale}
+                visitorsConfig={visitorsConfig}
+              />
             </div>
           </div>
         </div>

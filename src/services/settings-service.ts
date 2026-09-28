@@ -1228,3 +1228,92 @@ export async function updateBoxSizesSettings(sizes: BoxSizeItem[]) {
   return { success: true, updated: sizes }
 }
 
+// ----------------------------------------------------------------------------
+// Custom Product Visitors Settings (Laravel 1:1)
+// ----------------------------------------------------------------------------
+export interface CustomProductVisitorsSettings {
+  showCustomProductVisitors: boolean
+  minCustomProductVisitors: number
+  maxCustomProductVisitors: number
+}
+
+export const DEFAULT_CUSTOM_PRODUCT_VISITORS: CustomProductVisitorsSettings = {
+  showCustomProductVisitors: true,
+  minCustomProductVisitors: 5,
+  maxCustomProductVisitors: 25,
+}
+
+export async function getCustomProductVisitorsSettings(): Promise<CustomProductVisitorsSettings> {
+  try {
+    const raw = await getSetting("custom_product_visitors")
+    if (raw) return { ...DEFAULT_CUSTOM_PRODUCT_VISITORS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getCustomProductVisitorsSettings fallback:", err)
+  }
+  return DEFAULT_CUSTOM_PRODUCT_VISITORS
+}
+
+export async function updateCustomProductVisitorsSettings(settings: CustomProductVisitorsSettings) {
+  await updateSetting("custom_product_visitors", JSON.stringify(settings))
+  return { success: true, settings }
+}
+
+// ----------------------------------------------------------------------------
+// Banners & Sliders Settings (Laravel 1:1)
+// ----------------------------------------------------------------------------
+export interface BannersAndSlidersSettings {
+  flashDealBannerLarge: string
+  flashDealBannerSmall: string
+  flashDealBannerLink: string
+}
+
+export const DEFAULT_BANNERS_SLIDERS_SETTINGS: BannersAndSlidersSettings = {
+  flashDealBannerLarge: "/assets/img/placeholder-rect.jpg",
+  flashDealBannerSmall: "/assets/img/placeholder-rect.jpg",
+  flashDealBannerLink: "/flash-deals",
+}
+
+export async function getBannersAndSlidersSettings(): Promise<BannersAndSlidersSettings> {
+  try {
+    const raw = await getSetting("banners_and_sliders_settings")
+    if (raw) return { ...DEFAULT_BANNERS_SLIDERS_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getBannersAndSlidersSettings fallback:", err)
+  }
+  return DEFAULT_BANNERS_SLIDERS_SETTINGS
+}
+
+export async function updateBannersAndSlidersSettings(settings: BannersAndSlidersSettings) {
+  await updateSetting("banners_and_sliders_settings", JSON.stringify(settings))
+  return { success: true, settings }
+}
+
+// ----------------------------------------------------------------------------
+// Authentication Page Layout Settings (Laravel 1:1)
+// ----------------------------------------------------------------------------
+export type AuthLayoutType = "boxed" | "free" | "focused" | "split"
+
+export interface AuthLayoutSettings {
+  layout: AuthLayoutType
+}
+
+export const DEFAULT_AUTH_LAYOUT_SETTINGS: AuthLayoutSettings = {
+  layout: "boxed",
+}
+
+export async function getAuthLayoutSettings(): Promise<AuthLayoutSettings> {
+  try {
+    const raw = await getSetting("authentication_layout_settings")
+    if (raw) return { ...DEFAULT_AUTH_LAYOUT_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getAuthLayoutSettings fallback:", err)
+  }
+  return DEFAULT_AUTH_LAYOUT_SETTINGS
+}
+
+export async function updateAuthLayoutSettings(settings: AuthLayoutSettings) {
+  await updateSetting("authentication_layout_settings", JSON.stringify(settings))
+  return { success: true, settings }
+}
+
+

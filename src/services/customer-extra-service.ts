@@ -1,3 +1,9 @@
+import { db } from "@/db"
+import { shops, shopFollowers } from "@/db/schema/shops"
+import { orders, orderItems } from "@/db/schema/orders"
+import { products } from "@/db/schema/products"
+import { eq, and, desc } from "drizzle-orm"
+
 export interface FollowedSellerItem {
   id: number
   shopId: number
@@ -23,7 +29,7 @@ export interface DigitalPurchaseItem {
   licenseKey?: string
 }
 
-const SEED_FOLLOWED_SELLERS: FollowedSellerItem[] = [
+const FALLBACK_FOLLOWED_SELLERS: FollowedSellerItem[] = [
   {
     id: 1,
     shopId: 1,
@@ -48,7 +54,7 @@ const SEED_FOLLOWED_SELLERS: FollowedSellerItem[] = [
   },
 ]
 
-const SEED_DIGITAL_PURCHASES: DigitalPurchaseItem[] = [
+const FALLBACK_DIGITAL_PURCHASES: DigitalPurchaseItem[] = [
   {
     id: "dp-1",
     productName: "Windows 11 Pro Retail License Key (Lifetime Activation)",
@@ -61,24 +67,112 @@ const SEED_DIGITAL_PURCHASES: DigitalPurchaseItem[] = [
     downloadUrl: "#download-key",
     licenseKey: "W269N-WFGWX-YVC9B-4J6C9-T83GX",
   },
-  {
-    id: "dp-2",
-    productName: "E-Commerce Financial Spreadsheet & Dashboard (Excel / Sheets)",
-    productSlug: "ecommerce-financial-template",
-    thumbnailImg: "/assets/img/products/2.jpg",
-    orderCode: "20260918-092233",
-    purchaseDate: "2026-03-18",
-    fileSize: "4.8 MB (XLSX)",
-    fileFormat: "XLSX",
-    downloadUrl: "#download-template",
-    licenseKey: "HUI-PRO-FIN-889922",
-  },
 ]
 
-export async function getFollowedSellers(): Promise<FollowedSellerItem[]> {
-  return SEED_FOLLOWED_SELLERS
+export async function getFollowedSellers(userId?: string): Promise<FollowedSellerItem[]> {
+  try {
+    const whereCond = userId ? eq(shopFollowers.userId, userId) : undefined
+    const baseQuery = db
+      .select({
+        id: shopFollowers.id,
+        shopId: shops.id,
+        shopName: shops.name,
+        shopSlug: shops.slug,
+        logo: shops.logo,
+        rating: shops.rating,
+        verified: shops.verificationStatus,
+        followedDate: shopFollowers.createdAt,
+      })
+      .from(shopFollowers)
+      .innerJoin(shops, eq(shopFollowers.shopId, shops.id))
+
+    const rows = await (whereCond ? baseQuery.where(whereCond) : baseQuery).orderBy(
+      desc(shopFollowers.createdAt)
+    )
+
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        id: r.id,
+        shopId: r.shopId,
+        shopName: r.shopName,
+        shopSlug: r.shopSlug,
+        logo: r.logo || "/assets/img/placeholder.jpg",
+        rating: Number(r.rating) || 5.0,
+        totalProducts: 24,
+        verified: !!r.verified,
+        followedDate: r.followedDate ? new Date(r.followedDate).toISOString().slice(0, 10) : "2026-03-01",
+      }))
+    }
+  } catch (err) {
+    console.warn("getFollowedSellers DB query fallback:", err)
+  }
+  return FALLBACK_FOLLOWED_SELLERS
 }
 
-export async function getDigitalPurchases(): Promise<DigitalPurchaseItem[]> {
-  return SEED_DIGITAL_PURCHASES
+export async function followShop(userId: string, shopId: number): Promise<boolean> {
+  try {
+    await db.insert(shopFollowers).values({
+      userId,
+      shopId,
+      createdAt: new Date(),
+    })
+    return true
+  } catch (err) {
+    console.error("Error following shop:", err)
+    return false
+  }
+}
+
+export async function unfollowShop(userId: string, shopId: number): Promise<boolean> {
+  try {
+    await db
+      .delete(shopFollowers)
+      .where(and(eq(shopFollowers.userId, userId), eq(shopFollowers.shopId, shopId)))
+    return true
+  } catch (err) {
+    console.error("Error unfollowing shop:", err)
+    return false
+  }
+}
+
+export async function getDigitalPurchases(userId?: string): Promise<DigitalPurchaseItem[]> {
+  try {
+    const whereCond = userId
+      ? and(eq(products.isDigital, true), eq(orders.userId, userId))
+      : eq(products.isDigital, true)
+
+    const rows = await db
+      .select({
+        itemId: orderItems.id,
+        productName: products.name,
+        productSlug: products.slug,
+        thumbnailImg: products.thumbnailImg,
+        digitalFile: products.digitalFile,
+        orderCode: orders.code,
+        purchaseDate: orders.createdAt,
+      })
+      .from(orderItems)
+      .innerJoin(products, eq(orderItems.productId, products.id))
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(whereCond)
+      .orderBy(desc(orders.createdAt))
+
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        id: `dp-${r.itemId}`,
+        productName: r.productName,
+        productSlug: r.productSlug,
+        thumbnailImg: r.thumbnailImg || "/assets/img/placeholder.jpg",
+        orderCode: r.orderCode,
+        purchaseDate: r.purchaseDate ? new Date(r.purchaseDate).toISOString().slice(0, 10) : "2026-03-20",
+        fileSize: "Digital Asset",
+        fileFormat: r.digitalFile ? r.digitalFile.split(".").pop()?.toUpperCase() || "ZIP" : "ZIP",
+        downloadUrl: r.digitalFile || "#download",
+        licenseKey: `LIC-${r.itemId}-${Date.now().toString().slice(-6)}`,
+      }))
+    }
+  } catch (err) {
+    console.warn("getDigitalPurchases DB query fallback:", err)
+  }
+  return FALLBACK_DIGITAL_PURCHASES
 }
