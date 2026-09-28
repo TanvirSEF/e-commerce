@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   integer,
+  boolean,
   timestamp,
 } from "drizzle-orm/pg-core"
 
@@ -21,5 +22,17 @@ export const newsletterBroadcasts = pgTable("newsletter_broadcasts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
+export const topBanners = pgTable("top_banners", {
+  id: serial("id").primaryKey(),
+  text: varchar("text", { length: 500 }).notNull(),
+  link: varchar("link", { length: 500 }),
+  status: boolean("status").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
 export type Subscriber = typeof subscribers.$inferSelect
 export type NewsletterBroadcast = typeof newsletterBroadcasts.$inferSelect
+export type TopBanner = typeof topBanners.$inferSelect
+export type NewTopBanner = typeof topBanners.$inferInsert
+

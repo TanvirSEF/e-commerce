@@ -21,3 +21,19 @@ export const shippingCities = pgTable("shipping_cities", {
 
 export type ShippingCity = typeof shippingCities.$inferSelect
 export type NewShippingCity = typeof shippingCities.$inferInsert
+
+export const pickupAddresses = pgTable("pickup_addresses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  courierType: varchar("courier_type", { length: 100 }).notNull().default("internal"), // 'shiprocket' | 'pathao' | 'redx' | 'steadfast' | 'internal'
+  addressNickname: varchar("address_nickname", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  address: varchar("address", { length: 500 }),
+  status: boolean("status").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
+export type PickupAddress = typeof pickupAddresses.$inferSelect
+export type NewPickupAddress = typeof pickupAddresses.$inferInsert
+

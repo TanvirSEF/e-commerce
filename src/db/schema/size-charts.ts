@@ -32,3 +32,14 @@ export const sizeCharts = pgTable("size_charts", {
 
 export type SizeChart = typeof sizeCharts.$inferSelect
 export type NewSizeChart = typeof sizeCharts.$inferInsert
+
+export const measurementPoints = pgTable("measurement_points", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
+export type MeasurementPoint = typeof measurementPoints.$inferSelect
+export type NewMeasurementPoint = typeof measurementPoints.$inferInsert
+
