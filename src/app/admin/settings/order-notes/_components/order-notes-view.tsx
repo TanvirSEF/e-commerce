@@ -15,6 +15,7 @@ import {
   createOrderNoteAction,
   deleteOrderNoteAction,
 } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { OrderNote } from "@/db/schema"
 
 interface OrderNotesViewProps {
@@ -26,6 +27,9 @@ export function OrderNotesView({ initialNotes }: OrderNotesViewProps) {
   const [search, setSearch] = useState("")
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [noteToDelete, setNoteToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // New Note State
   const [title, setTitle] = useState("")
@@ -58,18 +62,28 @@ export function OrderNotesView({ initialNotes }: OrderNotesViewProps) {
     })
   }
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Are you sure you want to delete this preset order note?")) return
-    startTransition(async () => {
-      const success = await deleteOrderNoteAction(id)
+  const handleDeleteClick = (id: number) => {
+    setNoteToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!noteToDelete) return
+    setIsDeleting(true)
+    try {
+      const success = await deleteOrderNoteAction(noteToDelete)
       if (success) {
-        setNotes((prev) => prev.filter((n) => n.id !== id))
+        setNotes((prev) => prev.filter((n) => n.id !== noteToDelete))
         setFeedback({ type: "success", text: "Order note removed" })
       } else {
         setFeedback({ type: "error", text: "Failed to delete order note" })
       }
       setTimeout(() => setFeedback(null), 3000)
-    })
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setNoteToDelete(null)
+    }
   }
 
   return (
@@ -145,9 +159,9 @@ export function OrderNotesView({ initialNotes }: OrderNotesViewProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleDelete(note.id)}
-                    disabled={isPending}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition shrink-0"
+                    onClick={() => handleDeleteClick(note.id)}
+                    disabled={isDeleting && noteToDelete === note.id}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition shrink-0 disabled:opacity-50"
                     title="Delete Note"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -223,6 +237,20 @@ export function OrderNotesView({ initialNotes }: OrderNotesViewProps) {
           </form>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setNoteToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Order Note"
+        description="Are you sure you want to delete this preset order note? This action cannot be undone."
+      />
     </div>
   )
 }

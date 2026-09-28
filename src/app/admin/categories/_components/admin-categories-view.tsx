@@ -2,7 +2,13 @@
 
 import React, { useState } from "react"
 import Image from "next/image"
-import { Search, Plus, Trash2, CheckCircle2, XCircle } from "lucide-react"
+import { Search, Plus, Trash2, CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import {
+  createCategoryAction,
+  deleteCategoryAction,
+  toggleCategoryFeaturedAction,
+} from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 export interface AdminCategoryItem {
   id: string
@@ -21,35 +27,71 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
   const [categories, setCategories] = useState<AdminCategoryItem[]>(initialCategories)
   const [searchQuery, setSearchQuery] = useState("")
   const [newCatName, setNewCatName] = useState("")
+  const [orderLevel, setOrderLevel] = useState<number>(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [catToDelete, setCatToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const toggleFeatured = (id: string) => {
+  const toggleFeatured = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
     setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, featured: !c.featured } : c))
+      prev.map((c) => (c.id === id ? { ...c, featured: nextStatus } : c))
     )
+    await toggleCategoryFeaturedAction(id, nextStatus)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this category?")) {
-      setCategories((prev) => prev.filter((c) => c.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setCatToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!catToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteCategoryAction(catToDelete)
+      setCategories((prev) => prev.filter((c) => c.id !== catToDelete))
+    } catch (err) {
+      console.error("Error deleting category:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setCatToDelete(null)
     }
   }
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newCatName) return
+    if (!newCatName.trim()) return
 
-    const slug = newCatName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-    const newCat: AdminCategoryItem = {
-      id: `cat-${Date.now()}`,
-      name: newCatName,
-      slug,
-      icon: "/assets/img/placeholder.jpg",
-      featured: false,
-      orderLevel: categories.length + 1,
+    setIsSubmitting(true)
+    try {
+      const res = await createCategoryAction({
+        name: newCatName.trim(),
+        orderLevel: orderLevel || 0,
+        featured: false,
+      })
+      if (res.success && res.category) {
+        setCategories((prev) => [
+          {
+            id: res.category!.id,
+            name: res.category!.name,
+            slug: res.category!.slug,
+            icon: res.category!.icon || "/assets/img/placeholder.jpg",
+            featured: res.category!.featured || false,
+            orderLevel: res.category!.orderLevel || 0,
+          },
+          ...prev,
+        ])
+        setNewCatName("")
+        setOrderLevel(0)
+      }
+    } catch (err) {
+      console.error("Error creating category:", err)
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setCategories((prev) => [newCat, ...prev])
-    setNewCatName("")
   }
 
   const filtered = categories.filter((c) =>
@@ -115,7 +157,7 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
                     <td className="py-3.5 px-4 text-center">
                       <button
                         type="button"
-                        onClick={() => toggleFeatured(cat.id)}
+                        onClick={() => toggleFeatured(cat.id, cat.featured)}
                         className="cursor-pointer"
                         title="Toggle featured"
                       >
@@ -132,7 +174,7 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
                     <td className="py-3.5 px-4 text-right">
                       <button
                         type="button"
-                        onClick={() => handleDelete(cat.id)}
+                        onClick={() => handleDeleteClick(cat.id)}
                         className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer"
                         title="Delete category"
                       >
@@ -171,7 +213,8 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
               <label className="block text-xs font-bold text-slate-700 mb-1">Order Level</label>
               <input
                 type="number"
-                defaultValue={0}
+                value={orderLevel}
+                onChange={(e) => setOrderLevel(parseInt(e.target.value, 10) || 0)}
                 className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
               />
             </div>
@@ -179,20 +222,44 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Category Banner</label>
               <div className="border border-dashed border-slate-300 rounded p-4 text-center bg-slate-50 text-xs text-slate-500">
-                Choose banner (200x200)
+                Default category banner will be assigned
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-[#d43533] text-white text-xs font-bold rounded shadow-xs hover:bg-[#b82a28] transition-colors flex items-center justify-center space-x-1"
+              disabled={isSubmitting}
+              className="w-full py-2.5 bg-[#d43533] text-white text-xs font-bold rounded shadow-xs hover:bg-[#b82a28] transition-colors flex items-center justify-center space-x-1 cursor-pointer disabled:opacity-60"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Save Category</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Save Category</span>
+                </>
+              )}
             </button>
           </form>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setCatToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to delete this category? Products belonging to this category will need re-categorization."
+      />
     </div>
   )
 }

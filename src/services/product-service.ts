@@ -524,3 +524,148 @@ export async function createProduct(data: {
   }
 }
 
+export async function deleteProduct(id: number | string): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.delete(products).where(eq(products.id, numericId))
+    return true
+  } catch (error) {
+    console.error("Error deleting product:", error)
+    return false
+  }
+}
+
+export async function toggleProductPublished(id: number | string, published: boolean): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.update(products).set({ published, updatedAt: new Date() }).where(eq(products.id, numericId))
+    return true
+  } catch (error) {
+    console.error("Error updating product published:", error)
+    return false
+  }
+}
+
+export async function toggleProductFeatured(id: number | string, featured: boolean): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.update(products).set({ featured, updatedAt: new Date() }).where(eq(products.id, numericId))
+    return true
+  } catch (error) {
+    console.error("Error updating product featured:", error)
+    return false
+  }
+}
+
+export interface ProductEditInitial {
+  id: number
+  name: string
+  categoryId: number | null
+  brandId: number | null
+  unit: string
+  unitPrice: string
+  purchasePrice: string
+  discount: string
+  discountType: string
+  currentStock: number
+  sku: string
+  description: string
+  thumbnailImg: string
+  variations: {
+    variant: string
+    sku: string
+    price: number
+    stock: number
+  }[]
+}
+
+export async function updateProduct(
+  id: number | string,
+  data: Partial<{
+    name: string
+    categoryId: number
+    brandId: number
+    unit: string
+    sku: string
+    variations: any[]
+    unitPrice: string | number
+    purchasePrice: string | number
+    discount: string | number
+    discountType: string
+    currentStock: number
+    description: string
+    thumbnailImg: string
+    photos: string[]
+    colors: string[]
+    published: boolean
+    featured: boolean
+  }>
+): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    const updateData: Record<string, any> = { updatedAt: new Date() }
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.categoryId !== undefined) updateData.categoryId = Number(data.categoryId)
+    if (data.brandId !== undefined) updateData.brandId = Number(data.brandId)
+    if (data.unitPrice !== undefined) updateData.unitPrice = String(data.unitPrice)
+    if (data.purchasePrice !== undefined) updateData.purchasePrice = String(data.purchasePrice)
+    if (data.discount !== undefined) updateData.discount = String(data.discount)
+    if (data.discountType !== undefined) updateData.discountType = data.discountType
+    if (data.currentStock !== undefined) updateData.currentStock = Number(data.currentStock)
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.sku !== undefined) updateData.sku = data.sku
+    if (data.unit !== undefined) updateData.unit = data.unit
+    if (data.variations !== undefined) updateData.variations = data.variations
+    if (data.thumbnailImg !== undefined) updateData.thumbnailImg = data.thumbnailImg
+    if (data.photos !== undefined) updateData.photos = data.photos
+    if (data.colors !== undefined) updateData.colors = data.colors
+    if (data.published !== undefined) updateData.published = data.published
+    if (data.featured !== undefined) updateData.featured = data.featured
+
+    await db.update(products).set(updateData).where(eq(products.id, numericId))
+    return true
+  } catch (error) {
+    console.error("Error updating product:", error)
+    return false
+  }
+}
+
+export async function getProductForEdit(id: number | string): Promise<ProductEditInitial | null> {
+
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return null
+  try {
+    const [row] = await db
+      .select()
+      .from(products)
+      .where(eq(products.id, numericId))
+      .limit(1)
+
+    if (row) {
+      return {
+        id: row.id,
+        name: row.name,
+        categoryId: row.categoryId || 1,
+        brandId: row.brandId || 1,
+        unit: row.unit || "pc",
+        unitPrice: String(row.unitPrice || "0"),
+        purchasePrice: String(row.purchasePrice || row.unitPrice || "0"),
+        discount: String(row.discount || "0"),
+        discountType: (row.discountType as "percent" | "amount") || "percent",
+        currentStock: row.currentStock || 0,
+        sku: row.sku || "",
+        description: row.description || "",
+        thumbnailImg: row.thumbnailImg || "/assets/img/placeholder.jpg",
+        variations: (row.variations as any[]) || [],
+      }
+    }
+  } catch (error) {
+    console.warn("DB getProductForEdit error:", error)
+  }
+  return null
+}
+

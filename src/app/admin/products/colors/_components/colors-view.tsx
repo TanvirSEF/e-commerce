@@ -3,6 +3,7 @@
 import React, { useState } from "react"
 import { Palette, Plus, Trash2, Search, CheckCircle2, Sliders } from "lucide-react"
 import { createColorAction, deleteColorAction } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { ColorData } from "@/services/color-service"
 
 interface ColorsViewProps {
@@ -18,7 +19,9 @@ export function ColorsView({ initialColors }: ColorsViewProps) {
   const [newName, setNewName] = useState("")
   const [newCode, setNewCode] = useState("#000000")
   const [saving, setSaving] = useState(false)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [colorToDelete, setColorToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [successMsg, setSuccessMsg] = useState("")
 
   const filtered = colorsList.filter(
@@ -43,12 +46,24 @@ export function ColorsView({ initialColors }: ColorsViewProps) {
     setSaving(false)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this color?")) return
-    setDeletingId(id)
-    await deleteColorAction(id)
-    setColorsList((prev) => prev.filter((c) => c.id !== id))
-    setDeletingId(null)
+  const handleDeleteClick = (id: number) => {
+    setColorToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!colorToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteColorAction(colorToDelete)
+      setColorsList((prev) => prev.filter((c) => c.id !== colorToDelete))
+    } catch (err) {
+      console.error("Error deleting color:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setColorToDelete(null)
+    }
   }
 
   return (
@@ -136,9 +151,8 @@ export function ColorsView({ initialColors }: ColorsViewProps) {
                     <td className="py-2.5 px-3 text-right">
                       <button
                         type="button"
-                        onClick={() => handleDelete(c.id)}
-                        disabled={deletingId === c.id}
-                        className="p-1 text-red-500 hover:text-red-700 disabled:opacity-50"
+                        onClick={() => handleDeleteClick(c.id)}
+                        className="p-1 text-red-500 hover:text-red-700 cursor-pointer"
                         title="Delete color"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -208,6 +222,20 @@ export function ColorsView({ initialColors }: ColorsViewProps) {
           </form>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setColorToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to delete this color? Products using this color attribute will retain raw hex values."
+      />
     </div>
   )
 }

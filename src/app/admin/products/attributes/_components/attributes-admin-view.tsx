@@ -13,9 +13,10 @@ import {
 } from "lucide-react"
 import {
   createAttributeAction,
-  updateAttributeAction,
   deleteAttributeAction,
 } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { EditAttributeModal } from "./edit-attribute-modal"
 import type { AttributeItem } from "@/services/attribute-service"
 
 interface AttributesAdminViewProps {
@@ -33,11 +34,11 @@ export function AttributesAdminView({
   const [newValuesStr, setNewValuesStr] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Edit Attribute Modal
+  // Edit Attribute Modal & Delete Modal
   const [editingAttr, setEditingAttr] = useState<AttributeItem | null>(null)
-  const [editName, setEditName] = useState("")
-  const [editValues, setEditValues] = useState<string[]>([])
-  const [valInput, setValInput] = useState("")
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [attrToDelete, setAttrToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = attributes.filter(
     (a) =>
@@ -74,47 +75,30 @@ export function AttributesAdminView({
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this attribute and its values?")) return
-    await deleteAttributeAction(id)
-    setAttributes((prev) => prev.filter((a) => a.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setAttrToDelete(id)
+    setDeleteModalOpen(true)
   }
 
-  const handleOpenEdit = (attr: AttributeItem) => {
-    setEditingAttr(attr)
-    setEditName(attr.name)
-    setEditValues([...attr.values])
-    setValInput("")
-  }
-
-  const handleAddValue = () => {
-    if (!valInput.trim()) return
-    if (!editValues.includes(valInput.trim())) {
-      setEditValues((prev) => [...prev, valInput.trim()])
+  const handleConfirmDelete = async () => {
+    if (!attrToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteAttributeAction(attrToDelete)
+      setAttributes((prev) => prev.filter((a) => a.id !== attrToDelete))
+    } catch (err) {
+      console.error("Error deleting attribute:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setAttrToDelete(null)
     }
-    setValInput("")
   }
 
-  const handleRemoveValue = (val: string) => {
-    setEditValues((prev) => prev.filter((v) => v !== val))
-  }
-
-  const handleSaveEdit = async () => {
-    if (!editingAttr || !editName.trim()) return
-
-    await updateAttributeAction(editingAttr.id, {
-      name: editName.trim(),
-      values: editValues,
-    })
-
+  const handleSavedAttribute = (updated: AttributeItem) => {
     setAttributes((prev) =>
-      prev.map((a) =>
-        a.id === editingAttr.id
-          ? { ...a, name: editName.trim(), values: editValues }
-          : a
-      )
+      prev.map((a) => (a.id === updated.id ? updated : a))
     )
-    setEditingAttr(null)
   }
 
   return (
@@ -190,7 +174,7 @@ export function AttributesAdminView({
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              onClick={() => handleOpenEdit(item)}
+                              onClick={() => setEditingAttr(item)}
                               className="p-1.5 rounded text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               title="Edit Attribute & Values"
                             >
@@ -198,8 +182,8 @@ export function AttributesAdminView({
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDelete(item.id)}
-                              className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteClick(item.id)}
+                              className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
                               title="Delete Attribute"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -268,108 +252,25 @@ export function AttributesAdminView({
         </div>
       </div>
 
-      {/* Edit Values Modal */}
-      {editingAttr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Tag className="w-4 h-4 text-[#d43533]" />
-                Edit Attribute: {editingAttr.name}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setEditingAttr(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
+      <EditAttributeModal
+        attr={editingAttr}
+        onClose={() => setEditingAttr(null)}
+        onSave={handleSavedAttribute}
+      />
 
-            <div className="p-5 space-y-4 text-xs">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Attribute Name
-                </label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:border-[#d43533] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Add New Value
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter value (e.g. XXL)"
-                    value={valInput}
-                    onChange={(e) => setValInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        handleAddValue()
-                      }
-                    }}
-                    className="flex-1 text-xs px-3 py-1.5 border border-slate-300 rounded focus:border-[#d43533] focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddValue}
-                    className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs font-bold hover:bg-slate-700"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Current Values ({editValues.length})
-                </label>
-                <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded min-h-[80px]">
-                  {editValues.map((v) => (
-                    <span
-                      key={v}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white text-slate-800 font-semibold border border-slate-300 text-xs shadow-xs"
-                    >
-                      {v}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveValue(v)}
-                        className="text-slate-400 hover:text-red-500 font-bold"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingAttr(null)}
-                className="px-4 py-2 border border-slate-300 rounded text-xs font-semibold text-slate-600 hover:bg-slate-100"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                className="px-5 py-2 bg-[#d43533] text-white rounded text-xs font-bold hover:bg-[#b82a28]"
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setAttrToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to delete this product attribute and all its option values? Products configured with these variants may lose option mapping."
+      />
     </div>
   )
 }

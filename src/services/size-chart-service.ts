@@ -1,6 +1,6 @@
 import { db } from "../db"
-import { sizeCharts, type SizeChart, type SizeMeasurementRow } from "../db/schema"
-import { eq, desc } from "drizzle-orm"
+import { sizeCharts, measurementPoints, type SizeChart, type SizeMeasurementRow, type MeasurementPoint } from "../db/schema"
+import { eq, desc, asc } from "drizzle-orm"
 
 const SEED_SIZE_CHARTS: SizeChart[] = [
   {
@@ -96,6 +96,76 @@ export async function deleteSizeChart(id: number): Promise<boolean> {
     return true
   } catch (error) {
     console.error("Failed to delete size chart:", error)
+    return false
+  }
+}
+
+const SEED_MEASUREMENT_POINTS: MeasurementPoint[] = [
+  { id: 1, name: "Chest", createdAt: new Date("2024-01-15"), updatedAt: new Date("2024-01-15") },
+  { id: 2, name: "Waist", createdAt: new Date("2024-01-15"), updatedAt: new Date("2024-01-15") },
+  { id: 3, name: "Hips", createdAt: new Date("2024-01-15"), updatedAt: new Date("2024-01-15") },
+  { id: 4, name: "Length", createdAt: new Date("2024-01-16"), updatedAt: new Date("2024-01-16") },
+  { id: 5, name: "Shoulder", createdAt: new Date("2024-01-16"), updatedAt: new Date("2024-01-16") },
+  { id: 6, name: "Inseam", createdAt: new Date("2024-01-18"), updatedAt: new Date("2024-01-18") },
+  { id: 7, name: "Sleeve Length", createdAt: new Date("2024-01-20"), updatedAt: new Date("2024-01-20") },
+  { id: 8, name: "Collar / Neck", createdAt: new Date("2024-01-22"), updatedAt: new Date("2024-01-22") },
+]
+
+export async function getAllMeasurementPoints(): Promise<MeasurementPoint[]> {
+  try {
+    const list = await db.select().from(measurementPoints).orderBy(desc(measurementPoints.id))
+    if (!list || list.length === 0) {
+      // Seed default measurement points
+      for (const p of SEED_MEASUREMENT_POINTS) {
+        await db.insert(measurementPoints).values({ name: p.name }).onConflictDoNothing()
+      }
+      const seeded = await db.select().from(measurementPoints).orderBy(desc(measurementPoints.id))
+      return seeded.length > 0 ? seeded : SEED_MEASUREMENT_POINTS
+    }
+    return list
+  } catch (error) {
+    console.warn("DB getAllMeasurementPoints fallback:", error)
+    return SEED_MEASUREMENT_POINTS
+  }
+}
+
+export async function createMeasurementPoint(name: string): Promise<MeasurementPoint | null> {
+  try {
+    const [inserted] = await db
+      .insert(measurementPoints)
+      .values({ name })
+      .returning()
+    return inserted || null
+  } catch (error) {
+    console.error("Failed to create measurement point:", error)
+    return {
+      id: Date.now(),
+      name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  }
+}
+
+export async function updateMeasurementPoint(id: number, name: string): Promise<boolean> {
+  try {
+    await db
+      .update(measurementPoints)
+      .set({ name, updatedAt: new Date() })
+      .where(eq(measurementPoints.id, id))
+    return true
+  } catch (error) {
+    console.error("Failed to update measurement point:", error)
+    return false
+  }
+}
+
+export async function deleteMeasurementPoint(id: number): Promise<boolean> {
+  try {
+    await db.delete(measurementPoints).where(eq(measurementPoints.id, id))
+    return true
+  } catch (error) {
+    console.error("Failed to delete measurement point:", error)
     return false
   }
 }

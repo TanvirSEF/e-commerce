@@ -3,7 +3,8 @@
 import React, { useState } from "react"
 import { Tag, Plus, X, Trash2 } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
-import { createCouponAction } from "@/app/actions/ecommerce-actions"
+import { createCouponAction, deleteCouponAction } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { SeedCoupon } from "@/db/seed/data"
 
 interface SellerCouponsViewProps {
@@ -17,12 +18,15 @@ export function SellerCouponsView({ initialCoupons }: SellerCouponsViewProps) {
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ code: "", type: "cart_base" as const, discount: "", discountType: "percent" as const, minBuy: "0", maxDiscount: "9999" })
   const [isCreating, setIsCreating] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [couponToDelete, setCouponToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsCreating(true)
     try {
-      await createCouponAction({
+      const res = await createCouponAction({
         code: form.code.toUpperCase(),
         type: form.type,
         discount: parseFloat(form.discount),
@@ -32,7 +36,7 @@ export function SellerCouponsView({ initialCoupons }: SellerCouponsViewProps) {
         startDate: Date.now(),
         endDate: Date.now() + 30 * 24 * 60 * 60 * 1000,
       })
-      const newCoupon: SeedCoupon = {
+      const newCoupon: SeedCoupon = res.coupon || {
         id: `c-${Date.now()}`,
         code: form.code.toUpperCase(),
         type: form.type,
@@ -53,9 +57,24 @@ export function SellerCouponsView({ initialCoupons }: SellerCouponsViewProps) {
     }
   }
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Delete this coupon?")) return
-    setCoupons((prev) => prev.filter((c) => c.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setCouponToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!couponToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteCouponAction(couponToDelete)
+      setCoupons((prev) => prev.filter((c) => c.id !== couponToDelete))
+    } catch (err) {
+      console.error("Error deleting coupon:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setCouponToDelete(null)
+    }
   }
 
   return (
@@ -107,7 +126,7 @@ export function SellerCouponsView({ initialCoupons }: SellerCouponsViewProps) {
                   <td className="py-3.5 px-4 text-slate-500 text-[11px]">{typeof c.startDate === "number" ? new Date(c.startDate).toISOString().slice(0, 10) : c.startDate}</td>
                   <td className="py-3.5 px-4 text-slate-500 text-[11px]">{typeof c.endDate === "number" ? new Date(c.endDate).toISOString().slice(0, 10) : c.endDate}</td>
                   <td className="py-3.5 px-4 text-right">
-                    <button onClick={() => handleDelete(c.id)} className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors" title="Delete">
+                    <button onClick={() => handleDeleteClick(c.id)} className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors cursor-pointer" title="Delete">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </td>
@@ -164,6 +183,20 @@ export function SellerCouponsView({ initialCoupons }: SellerCouponsViewProps) {
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setCouponToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to remove this coupon? Any active orders using this coupon will retain their historical discount."
+      />
     </div>
   )
 }

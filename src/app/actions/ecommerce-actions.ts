@@ -30,7 +30,34 @@ export async function createFlashDealAction(data: {
   startDate: number
   endDate: number
 }) {
-  return await createFlashDeal(data)
+  const res = await createFlashDeal(data)
+  revalidatePath("/admin/flash-deals")
+  revalidatePath("/")
+  return res
+}
+
+export async function deleteFlashDealAction(id: number | string) {
+  const { deleteFlashDeal } = await import("@/services/settings-service")
+  const success = await deleteFlashDeal(id)
+  revalidatePath("/admin/flash-deals")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function toggleFlashDealStatusAction(id: number | string, status: boolean) {
+  const { toggleFlashDealStatus } = await import("@/services/settings-service")
+  const success = await toggleFlashDealStatus(id, status)
+  revalidatePath("/admin/flash-deals")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function toggleFlashDealFeaturedAction(id: number | string, featured: boolean) {
+  const { toggleFlashDealFeatured } = await import("@/services/settings-service")
+  const success = await toggleFlashDealFeatured(id, featured)
+  revalidatePath("/admin/flash-deals")
+  revalidatePath("/")
+  return { success }
 }
 
 export async function rechargeWalletAction(data: {
@@ -234,17 +261,23 @@ export async function createStaffAction(data: {
   roleId?: number
 }) {
   const { createStaff } = await import("@/services/staff-service")
-  return await createStaff(data)
+  const result = await createStaff(data)
+  revalidatePath("/admin/staffs")
+  return result
 }
 
 export async function updateStaffStatusAction(id: number, isActive: boolean) {
   const { updateStaffStatus } = await import("@/services/staff-service")
-  return await updateStaffStatus(id, isActive)
+  const result = await updateStaffStatus(id, isActive)
+  revalidatePath("/admin/staffs")
+  return result
 }
 
 export async function deleteStaffAction(id: number) {
   const { deleteStaff } = await import("@/services/staff-service")
-  return await deleteStaff(id)
+  const result = await deleteStaff(id)
+  revalidatePath("/admin/staffs")
+  return result
 }
 
 export async function updateSellerCommissionAction(data: {
@@ -576,12 +609,16 @@ export async function deleteColorAction(id: number) {
 
 export async function createWarrantyAction(data: { text: string; logo?: string; duration?: string }) {
   const { createWarranty } = await import("@/services/warranty-service")
-  return await createWarranty(data)
+  const result = await createWarranty(data)
+  revalidatePath("/admin/products/warranties")
+  return result
 }
 
 export async function deleteWarrantyAction(id: number) {
   const { deleteWarranty } = await import("@/services/warranty-service")
-  return await deleteWarranty(id)
+  const result = await deleteWarranty(id)
+  revalidatePath("/admin/products/warranties")
+  return result
 }
 
 export async function createCustomPageAction(data: {
@@ -885,27 +922,58 @@ export async function updateSaleAlertSettingsAction(data: any) {
 
 export async function createSizeChartAction(data: any) {
   const { createSizeChart } = await import("@/services/size-chart-service")
-  return await createSizeChart(data)
+  const result = await createSizeChart(data)
+  revalidatePath("/admin/products/size-charts")
+  return result
 }
 
 export async function deleteSizeChartAction(id: number) {
   const { deleteSizeChart } = await import("@/services/size-chart-service")
-  return await deleteSizeChart(id)
+  const result = await deleteSizeChart(id)
+  revalidatePath("/admin/products/size-charts")
+  return result
+}
+
+export async function createMeasurementPointAction(name: string) {
+  const { createMeasurementPoint } = await import("@/services/size-chart-service")
+  const result = await createMeasurementPoint(name)
+  revalidatePath("/admin/products/measurement-points")
+  return result
+}
+
+export async function updateMeasurementPointAction(id: number, name: string) {
+  const { updateMeasurementPoint } = await import("@/services/size-chart-service")
+  const result = await updateMeasurementPoint(id, name)
+  revalidatePath("/admin/products/measurement-points")
+  return result
+}
+
+export async function deleteMeasurementPointAction(id: number) {
+  const { deleteMeasurementPoint } = await import("@/services/size-chart-service")
+  const result = await deleteMeasurementPoint(id)
+  revalidatePath("/admin/products/measurement-points")
+  return result
 }
 
 export async function createDynamicPopupAction(data: any) {
   const { createDynamicPopup } = await import("@/services/dynamic-popup-service")
-  return await createDynamicPopup(data)
+  const result = await createDynamicPopup(data)
+  revalidatePath("/admin/marketing/dynamic-popups")
+  return result
 }
 
 export async function toggleDynamicPopupStatusAction(id: number, status: boolean) {
   const { toggleDynamicPopupStatus } = await import("@/services/dynamic-popup-service")
-  return await toggleDynamicPopupStatus(id, status)
+  const result = await toggleDynamicPopupStatus(id, status)
+  revalidatePath("/admin/marketing/dynamic-popups")
+  return result
 }
 
 export async function deleteDynamicPopupAction(id: number) {
   const { deleteDynamicPopup } = await import("@/services/dynamic-popup-service")
-  return await deleteDynamicPopup(id)
+  const result = await deleteDynamicPopup(id)
+  revalidatePath("/admin/marketing/dynamic-popups")
+  return result
 }
 
 export async function toggleCityDeliveryStatusAction(id: number, status: boolean) {
@@ -925,12 +993,16 @@ export async function updateOrderRulesAction(data: any) {
 
 export async function createOrderNoteAction(data: any) {
   const { createOrderNote } = await import("@/services/order-rules-service")
-  return await createOrderNote(data)
+  const result = await createOrderNote(data)
+  revalidatePath("/admin/settings/order-notes")
+  return result
 }
 
 export async function deleteOrderNoteAction(id: number) {
   const { deleteOrderNote } = await import("@/services/order-rules-service")
-  return await deleteOrderNote(id)
+  const result = await deleteOrderNote(id)
+  revalidatePath("/admin/settings/order-notes")
+  return result
 }
 
 export async function updateCategoryCommissionsAction(data: any) {
@@ -1295,7 +1367,135 @@ export async function createProductAction(data: {
   shippingCost?: string | number
 }) {
   const { createProduct } = await import("@/services/product-service")
-  return await createProduct(data)
+  const res = await createProduct(data)
+  revalidatePath("/admin/products")
+  revalidatePath("/seller/products")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
+}
+
+export async function deleteProductAction(id: number | string) {
+  const { deleteProduct } = await import("@/services/product-service")
+  const success = await deleteProduct(id)
+  revalidatePath("/admin/products")
+  revalidatePath("/seller/products")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function toggleProductPublishedAction(id: number | string, published: boolean) {
+  const { toggleProductPublished } = await import("@/services/product-service")
+  const success = await toggleProductPublished(id, published)
+  revalidatePath("/admin/products")
+  revalidatePath("/seller/products")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function toggleProductFeaturedAction(id: number | string, featured: boolean) {
+  const { toggleProductFeatured } = await import("@/services/product-service")
+  const success = await toggleProductFeatured(id, featured)
+  revalidatePath("/admin/products")
+  revalidatePath("/seller/products")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function updateProductAction(id: number | string, data: any) {
+  const { updateProduct } = await import("@/services/product-service")
+  const success = await updateProduct(id, data)
+  revalidatePath("/admin/products")
+  revalidatePath("/seller/products")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function createCategoryAction(data: {
+  name: string
+  slug?: string
+  icon?: string
+  banner?: string
+  parentId?: number
+  featured?: boolean
+  orderLevel?: number
+}) {
+  const { createCategory } = await import("@/services/category-service")
+  const category = await createCategory(data)
+  revalidatePath("/admin/categories")
+  revalidatePath("/categories")
+  revalidatePath("/")
+  return { success: !!category, category }
+}
+
+export async function deleteCategoryAction(id: number | string) {
+  const { deleteCategory } = await import("@/services/category-service")
+  const success = await deleteCategory(id)
+  revalidatePath("/admin/categories")
+  revalidatePath("/categories")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function toggleCategoryFeaturedAction(id: number | string, featured: boolean) {
+  const { toggleCategoryFeatured } = await import("@/services/category-service")
+  const success = await toggleCategoryFeatured(id, featured)
+  revalidatePath("/admin/categories")
+  revalidatePath("/categories")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function createBrandAction(data: {
+  name: string
+  slug?: string
+  logo?: string
+  top?: boolean
+}) {
+  const { createBrand } = await import("@/services/brand-service")
+  const brand = await createBrand(data)
+  revalidatePath("/admin/brands")
+  revalidatePath("/brands")
+  revalidatePath("/")
+  return { success: !!brand, brand }
+}
+
+export async function deleteBrandAction(id: number | string) {
+  const { deleteBrand } = await import("@/services/brand-service")
+  const success = await deleteBrand(id)
+  revalidatePath("/admin/brands")
+  revalidatePath("/brands")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function toggleBrandTopAction(id: number | string, top: boolean) {
+  const { toggleBrandTop } = await import("@/services/brand-service")
+  const success = await toggleBrandTop(id, top)
+  revalidatePath("/admin/brands")
+  revalidatePath("/brands")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function deleteCouponAction(id: number | string) {
+  const { deleteCoupon } = await import("@/services/coupon-service")
+  const success = await deleteCoupon(id)
+  revalidatePath("/admin/coupons")
+  revalidatePath("/seller/coupons")
+  return { success }
+}
+
+export async function toggleCouponStatusAction(id: number | string, status: boolean) {
+  const { toggleCouponStatus } = await import("@/services/coupon-service")
+  const success = await toggleCouponStatus(id, status)
+  revalidatePath("/admin/coupons")
+  revalidatePath("/seller/coupons")
+  return { success }
 }
 
 // Notification Actions (Customer & Admin Bulk Delete & Mark As Read)

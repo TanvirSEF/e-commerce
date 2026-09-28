@@ -6,6 +6,7 @@ import Image from "next/image"
 import { Tag, Plus, Trash2, Eye, CheckCircle2, Clock } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
 import { deleteCustomerProductAction } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { ClassifiedProductItem } from "@/services/customer-product-service"
 
 interface CustomerProductsListViewProps {
@@ -14,14 +15,26 @@ interface CustomerProductsListViewProps {
 
 export function CustomerProductsListView({ initialProducts }: CustomerProductsListViewProps) {
   const [products, setProducts] = useState<ClassifiedProductItem[]>(initialProducts)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this classified advertisement?")) return
-    setDeletingId(id)
-    await deleteCustomerProductAction(id)
-    setProducts((prev) => prev.filter((p) => p.id !== id))
-    setDeletingId(null)
+  const handleDeleteClick = (id: number) => {
+    setProductToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteCustomerProductAction(productToDelete)
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete))
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setProductToDelete(null)
+    }
   }
 
   return (
@@ -141,8 +154,8 @@ export function CustomerProductsListView({ initialProducts }: CustomerProductsLi
                         </Link>
                         <button
                           type="button"
-                          onClick={() => handleDelete(p.id)}
-                          disabled={deletingId === p.id}
+                          onClick={() => handleDeleteClick(p.id)}
+                          disabled={isDeleting && productToDelete === p.id}
                           className="p-1 text-red-500 hover:text-red-700 disabled:opacity-50"
                           title="Delete advertisement"
                         >
@@ -157,6 +170,20 @@ export function CustomerProductsListView({ initialProducts }: CustomerProductsLi
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setProductToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Advertisement"
+        description="Are you sure you want to delete this classified advertisement? This will immediately remove it from the marketplace."
+      />
     </div>
   )
 }

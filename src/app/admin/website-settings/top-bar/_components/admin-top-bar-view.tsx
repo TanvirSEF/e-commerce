@@ -1,15 +1,9 @@
 "use client"
 
 import React, { useState } from "react"
-import { Megaphone, Plus, Edit2, Trash2, X, Settings2, CheckCircle2 } from "lucide-react"
-
-interface Banner {
-  id: number
-  text: string
-  link: string
-  status: boolean
-  createdAt: string
-}
+import { Megaphone, Plus, Edit2, Trash2, Settings2, CheckCircle2 } from "lucide-react"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { EditBannerModal, type Banner } from "./edit-banner-modal"
 
 interface TopBarConfig {
   backgroundColor: string
@@ -33,9 +27,10 @@ export function AdminTopBarView({ initialBanners, initialConfig }: AdminTopBarVi
   const [newText, setNewText] = useState("")
   const [newLink, setNewLink] = useState("")
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
-  const [editText, setEditText] = useState("")
-  const [editLink, setEditLink] = useState("")
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [bannerToDelete, setBannerToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleToggleStatus = (id: number) => {
     setBanners((prev) =>
@@ -62,29 +57,32 @@ export function AdminTopBarView({ initialBanners, initialConfig }: AdminTopBarVi
 
   const openEditModal = (b: Banner) => {
     setEditingBanner(b)
-    setEditText(b.text)
-    setEditLink(b.link)
     setIsEditModalOpen(true)
   }
 
-  const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingBanner || !editText.trim()) return
-
+  const handleSaveEdit = (id: number, text: string, link: string) => {
     setBanners((prev) =>
-      prev.map((b) =>
-        b.id === editingBanner.id
-          ? { ...b, text: editText.trim(), link: editLink.trim() || "#" }
-          : b
-      )
+      prev.map((b) => (b.id === id ? { ...b, text, link } : b))
     )
     setIsEditModalOpen(false)
     setEditingBanner(null)
   }
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Are you sure you want to delete this Top Bar message?")) return
-    setBanners((prev) => prev.filter((b) => b.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setBannerToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!bannerToDelete) return
+    setIsDeleting(true)
+    try {
+      setBanners((prev) => prev.filter((b) => b.id !== bannerToDelete))
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setBannerToDelete(null)
+    }
   }
 
   const handleSaveSettings = (e: React.FormEvent) => {
@@ -189,8 +187,9 @@ export function AdminTopBarView({ initialBanners, initialConfig }: AdminTopBarVi
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDelete(b.id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            onClick={() => handleDeleteClick(b.id)}
+                            disabled={isDeleting && bannerToDelete === b.id}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -321,64 +320,29 @@ export function AdminTopBarView({ initialBanners, initialConfig }: AdminTopBarVi
         </div>
       )}
 
-      {/* Edit Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-800">
-                Edit Top Bar Announcement
-              </h3>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleUpdate} className="p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Text
-                </label>
-                <textarea
-                  rows={3}
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#d43533]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Redirect Link
-                </label>
-                <input
-                  type="text"
-                  value={editLink}
-                  onChange={(e) => setEditLink(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#d43533]"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 text-xs bg-[#d43533] hover:bg-[#b82d2b] text-white font-bold rounded-lg shadow-sm transition-colors"
-                >
-                  Update
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EditBannerModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setEditingBanner(null)
+        }}
+        banner={editingBanner}
+        onSave={handleSaveEdit}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setBannerToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Announcement"
+        description="Are you sure you want to delete this Top Bar message? This will immediately remove it from the store header."
+      />
     </div>
   )
 }

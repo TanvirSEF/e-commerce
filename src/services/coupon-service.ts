@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { coupons } from "../db/schema"
-import { desc } from "drizzle-orm"
+import { desc, eq } from "drizzle-orm"
 import { SEED_COUPONS, SeedCoupon } from "../db/seed/data"
 
 export async function getCoupons(): Promise<SeedCoupon[]> {
@@ -160,3 +160,26 @@ export async function validateCoupon(
   return { success: false, message: "Invalid or expired coupon code." }
 }
 
+export async function deleteCoupon(id: number | string): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.delete(coupons).where(eq(coupons.id, numericId))
+    return true
+  } catch (err) {
+    console.error("Error deleting coupon:", err)
+    return false
+  }
+}
+
+export async function toggleCouponStatus(id: number | string, status: boolean): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.update(coupons).set({ status }).where(eq(coupons.id, numericId))
+    return true
+  } catch (err) {
+    console.error("Error toggling coupon status:", err)
+    return false
+  }
+}

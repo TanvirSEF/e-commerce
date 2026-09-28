@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Store, Star, CheckCircle, ExternalLink, UserMinus } from "lucide-react"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { FollowedSellerItem } from "@/services/customer-extra-service"
 
 interface FollowedSellersViewProps {
@@ -12,11 +13,19 @@ interface FollowedSellersViewProps {
 
 export function FollowedSellersView({ initialSellers }: FollowedSellersViewProps) {
   const [sellers, setSellers] = useState<FollowedSellerItem[]>(initialSellers)
+  const [unfollowModalOpen, setUnfollowModalOpen] = useState(false)
+  const [shopToUnfollow, setShopToUnfollow] = useState<number | null>(null)
 
-  const handleUnfollow = (shopId: number) => {
-    if (confirm("Are you sure you want to unfollow this store?")) {
-      setSellers((prev) => prev.filter((s) => s.shopId !== shopId))
-    }
+  const handleUnfollowClick = (shopId: number) => {
+    setShopToUnfollow(shopId)
+    setUnfollowModalOpen(true)
+  }
+
+  const handleConfirmUnfollow = () => {
+    if (!shopToUnfollow) return
+    setSellers((prev) => prev.filter((s) => s.shopId !== shopToUnfollow))
+    setUnfollowModalOpen(false)
+    setShopToUnfollow(null)
   }
 
   return (
@@ -90,7 +99,7 @@ export function FollowedSellersView({ initialSellers }: FollowedSellersViewProps
                 </Link>
                 <button
                   type="button"
-                  onClick={() => handleUnfollow(shop.shopId)}
+                  onClick={() => handleUnfollowClick(shop.shopId)}
                   className="px-3 py-1.5 text-red-600 hover:bg-red-50 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
                   title="Unfollow Store"
                 >
@@ -102,6 +111,17 @@ export function FollowedSellersView({ initialSellers }: FollowedSellersViewProps
           ))}
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={unfollowModalOpen}
+        onClose={() => {
+          setUnfollowModalOpen(false)
+          setShopToUnfollow(null)
+        }}
+        onConfirm={handleConfirmUnfollow}
+        title="Unfollow Store"
+        message="Are you sure you want to unfollow this merchant store? You will stop receiving updates on deals and new arrivals."
+      />
     </div>
   )
 }

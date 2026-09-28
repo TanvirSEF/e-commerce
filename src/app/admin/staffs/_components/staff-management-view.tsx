@@ -14,10 +14,11 @@ import {
   CheckCircle,
 } from "lucide-react"
 import {
-  createStaffAction,
   updateStaffStatusAction,
   deleteStaffAction,
 } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { CreateStaffModal } from "./create-staff-modal"
 import type { StaffItem, RoleItem } from "@/services/staff-service"
 
 interface StaffManagementViewProps {
@@ -33,13 +34,9 @@ export function StaffManagementView({
   const [search, setSearch] = useState("")
   const [activeTab, setActiveTab] = useState<"staffs" | "roles">("staffs")
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Form State
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [phone, setPhone] = useState("")
-  const [selectedRole, setSelectedRole] = useState(roles[0]?.name || "Staff")
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [staffToDelete, setStaffToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filteredStaffs = staffs.filter(
     (s) =>
@@ -57,45 +54,26 @@ export function StaffManagementView({
     )
   }
 
-  const handleDeleteStaff = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this staff member?")) return
-    await deleteStaffAction(id)
-    setStaffs((prev) => prev.filter((s) => s.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setStaffToDelete(id)
+    setDeleteModalOpen(true)
   }
 
-  const handleCreateStaff = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim() || !email.trim()) return
-
-    const matchedRole = roles.find((r) => r.name === selectedRole)
-    setIsSubmitting(true)
+  const handleConfirmDelete = async () => {
+    if (!staffToDelete) return
+    setIsDeleting(true)
     try {
-      const res = await createStaffAction({
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim() || undefined,
-        roleName: selectedRole,
-        roleId: matchedRole?.id,
-      })
-
-      const newStaff: StaffItem = {
-        id: (res.item as any)?.id || Date.now(),
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim() || undefined,
-        roleName: selectedRole,
-        roleId: matchedRole?.id,
-        isActive: true,
-        createdAt: new Date().toISOString().slice(0, 10),
-      }
-      setStaffs((prev) => [newStaff, ...prev])
-      setIsModalOpen(false)
-      setName("")
-      setEmail("")
-      setPhone("")
+      await deleteStaffAction(staffToDelete)
+      setStaffs((prev) => prev.filter((s) => s.id !== staffToDelete))
     } finally {
-      setIsSubmitting(false)
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setStaffToDelete(null)
     }
+  }
+
+  const handleStaffCreated = (newStaff: StaffItem) => {
+    setStaffs((prev) => [newStaff, ...prev])
   }
 
   const getRoleBadgeStyle = (role: string) => {
@@ -249,8 +227,9 @@ export function StaffManagementView({
                       <td className="px-5 py-3.5 text-right whitespace-nowrap">
                         <button
                           type="button"
-                          onClick={() => handleDeleteStaff(staff.id)}
-                          className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteClick(staff.id)}
+                          disabled={isDeleting && staffToDelete === staff.id}
+                          className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50"
                           title="Delete Staff"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -302,103 +281,26 @@ export function StaffManagementView({
         </div>
       )}
 
-      {/* Add Staff Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-[#d43533]" />
-                Add New Staff Member
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
+      <CreateStaffModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        roles={roles}
+        onStaffCreated={handleStaffCreated}
+      />
 
-            <form onSubmit={handleCreateStaff} className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Asif Mahmud"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:border-[#d43533] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Email Address <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. asif.ops@huipper.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:border-[#d43533] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  placeholder="e.g. +880 1712-334455"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:border-[#d43533] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Assigned Role <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded bg-white focus:border-[#d43533] focus:outline-none"
-                >
-                  {roles.map((r) => (
-                    <option key={r.id} value={r.name}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 rounded text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-5 py-2 bg-[#d43533] text-white rounded text-xs font-bold hover:bg-[#b82a28] disabled:opacity-50"
-                >
-                  {isSubmitting ? "Creating..." : "Create Staff"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setStaffToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Staff Member"
+        description="Are you sure you want to delete this staff member? This will immediately revoke their administrative access."
+      />
     </div>
   )
 }

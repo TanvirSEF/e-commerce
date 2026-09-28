@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
 import { processWalletRechargeAction } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { WalletRechargeItem } from "@/services/wallet-service"
 
 interface WalletRechargesAdminViewProps {
@@ -26,6 +27,9 @@ export function WalletRechargesAdminView({
   const [search, setSearch] = useState("")
   const [selectedItem, setSelectedItem] = useState<WalletRechargeItem | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [itemToReject, setItemToReject] = useState<WalletRechargeItem | null>(null)
+  const [isRejecting, setIsRejecting] = useState(false)
 
   const filtered = recharges.filter(
     (r) =>
@@ -50,17 +54,24 @@ export function WalletRechargesAdminView({
     }
   }
 
-  const handleReject = async (item: WalletRechargeItem) => {
-    if (!confirm("Are you sure you want to decline this wallet recharge request?")) return
-    setIsProcessing(true)
+  const handleRejectClick = (item: WalletRechargeItem) => {
+    setItemToReject(item)
+    setRejectModalOpen(true)
+  }
+
+  const handleConfirmReject = async () => {
+    if (!itemToReject) return
+    setIsRejecting(true)
     try {
-      await processWalletRechargeAction(item.id, false)
+      await processWalletRechargeAction(itemToReject.id, false)
       setRecharges((prev) =>
-        prev.map((r) => (r.id === item.id ? { ...r, approval: false } : r))
+        prev.map((r) => (r.id === itemToReject.id ? { ...r, approval: false } : r))
       )
       setSelectedItem(null)
     } finally {
-      setIsProcessing(false)
+      setIsRejecting(false)
+      setRejectModalOpen(false)
+      setItemToReject(null)
     }
   }
 
@@ -164,15 +175,26 @@ export function WalletRechargesAdminView({
                           <Eye className="w-4 h-4" />
                         </button>
                         {!item.approval && (
-                          <button
-                            type="button"
-                            disabled={isProcessing}
-                            onClick={() => handleApprove(item)}
-                            className="p-1.5 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                            title="Approve & Credit Balance"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => handleRejectClick(item)}
+                              className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50"
+                              title="Decline Request"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => handleApprove(item)}
+                              className="p-1.5 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                              title="Approve & Credit Balance"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -237,19 +259,43 @@ export function WalletRechargesAdminView({
                 Close
               </button>
               {!selectedItem.approval && (
-                <button
-                  type="button"
-                  disabled={isProcessing}
-                  onClick={() => handleApprove(selectedItem)}
-                  className="px-5 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  Approve & Credit Balance
-                </button>
+                <>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleRejectClick(selectedItem)}
+                    className="px-4 py-2 border border-red-300 text-red-600 rounded text-xs font-bold hover:bg-red-50 disabled:opacity-50"
+                  >
+                    Decline
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleApprove(selectedItem)}
+                    className="px-5 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    Approve & Credit
+                  </button>
+                </>
               )}
             </div>
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={rejectModalOpen}
+        onClose={() => {
+          if (!isRejecting) {
+            setRejectModalOpen(false)
+            setItemToReject(null)
+          }
+        }}
+        onConfirm={handleConfirmReject}
+        isDeleting={isRejecting}
+        title="Decline Recharge Request"
+        message="Are you sure you want to decline this wallet recharge request? Customer wallet will not be credited."
+      />
     </div>
   )
 }

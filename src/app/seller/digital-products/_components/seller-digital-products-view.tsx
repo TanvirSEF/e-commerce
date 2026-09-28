@@ -3,6 +3,8 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import { Search, Plus, Download, Edit, Trash2, FileText, CheckCircle } from "lucide-react"
+import { deleteDigitalProductAction } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 interface DigitalProductItem {
   id: string
@@ -38,6 +40,10 @@ const SAMPLE_DIGITAL_PRODUCTS: DigitalProductItem[] = [
 export function SellerDigitalProductsView() {
   const [search, setSearch] = useState("")
   const [products, setProducts] = useState(SAMPLE_DIGITAL_PRODUCTS)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [downloadMsg, setDownloadMsg] = useState("")
 
   const filtered = products.filter(
     (p) =>
@@ -45,9 +51,24 @@ export function SellerDigitalProductsView() {
       p.category.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to remove this digital product?")) {
-      setProducts((prev) => prev.filter((p) => p.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setItemToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return
+    setIsDeleting(true)
+    try {
+      const numId = parseInt(itemToDelete.replace(/\D/g, "")) || 1
+      await deleteDigitalProductAction(numId)
+      setProducts((prev) => prev.filter((p) => p.id !== itemToDelete))
+    } catch (err) {
+      console.error("Error deleting digital product:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setItemToDelete(null)
     }
   }
 
@@ -69,6 +90,13 @@ export function SellerDigitalProductsView() {
           <span>Add New Digital Product</span>
         </Link>
       </div>
+
+      {downloadMsg && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-semibold text-emerald-800 flex items-center gap-2 animate-in fade-in">
+          <Download className="w-4 h-4 text-emerald-600 animate-bounce" />
+          {downloadMsg}
+        </div>
+      )}
 
       {/* Search */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
@@ -145,7 +173,10 @@ export function SellerDigitalProductsView() {
                         </Link>
                         <button
                           type="button"
-                          onClick={() => alert(`Downloading sample package for ${item.name}`)}
+                          onClick={() => {
+                            setDownloadMsg(`Downloading package for "${item.name}"...`)
+                            setTimeout(() => setDownloadMsg(""), 3500)
+                          }}
                           className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-emerald-600"
                           title="Download Asset"
                         >
@@ -153,8 +184,8 @@ export function SellerDigitalProductsView() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(item.id)}
-                          className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                          onClick={() => handleDeleteClick(item.id)}
+                          className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer"
                           title="Delete"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -168,6 +199,20 @@ export function SellerDigitalProductsView() {
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setItemToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to remove this digital product? Buyers who previously purchased this item will retain access in their order history."
+      />
     </div>
   )
 }

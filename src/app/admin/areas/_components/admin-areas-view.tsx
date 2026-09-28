@@ -1,16 +1,9 @@
 "use client"
 
 import React, { useState } from "react"
-import { MapPin, Plus, Edit2, Trash2, X, Search } from "lucide-react"
-
-interface Area {
-  id: number
-  name: string
-  city: string
-  state: string
-  country: string
-  status: boolean
-}
+import { MapPin, Plus, Edit2, Trash2, Search } from "lucide-react"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { AreaModal, type Area } from "./area-modal"
 
 interface AdminAreasViewProps {
   initialAreas: Area[]
@@ -22,31 +15,17 @@ export function AdminAreasView({ initialAreas }: AdminAreasViewProps) {
   const [cityFilter, setCityFilter] = useState("all")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingArea, setEditingArea] = useState<Area | null>(null)
-
-  // Form State
-  const [formName, setFormName] = useState("")
-  const [formCity, setFormCity] = useState("Dhaka")
-  const [formState, setFormState] = useState("Dhaka Division")
-  const [formCountry, setFormCountry] = useState("Bangladesh")
-  const [formStatus, setFormStatus] = useState(true)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [areaToDelete, setAreaToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const openAddModal = () => {
     setEditingArea(null)
-    setFormName("")
-    setFormCity("Dhaka")
-    setFormState("Dhaka Division")
-    setFormCountry("Bangladesh")
-    setFormStatus(true)
     setIsModalOpen(true)
   }
 
   const openEditModal = (a: Area) => {
     setEditingArea(a)
-    setFormName(a.name)
-    setFormCity(a.city)
-    setFormState(a.state)
-    setFormCountry(a.country)
-    setFormStatus(a.status)
     setIsModalOpen(true)
   }
 
@@ -56,31 +35,39 @@ export function AdminAreasView({ initialAreas }: AdminAreasViewProps) {
     )
   }
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Are you sure you want to delete this shipping area?")) return
-    setAreas((prev) => prev.filter((a) => a.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setAreaToDelete(id)
+    setDeleteModalOpen(true)
   }
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formName.trim()) return
+  const handleConfirmDelete = async () => {
+    if (!areaToDelete) return
+    setIsDeleting(true)
+    try {
+      setAreas((prev) => prev.filter((a) => a.id !== areaToDelete))
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setAreaToDelete(null)
+    }
+  }
 
-    if (editingArea) {
+  const handleSave = (data: {
+    id?: number
+    name: string
+    city: string
+    state: string
+    country: string
+    status: boolean
+  }) => {
+    if (data.id) {
       setAreas((prev) =>
-        prev.map((a) =>
-          a.id === editingArea.id
-            ? { ...a, name: formName, city: formCity, state: formState, country: formCountry, status: formStatus }
-            : a
-        )
+        prev.map((a) => (a.id === data.id ? { ...a, ...data, id: data.id! } : a))
       )
     } else {
       const newArea: Area = {
         id: Date.now(),
-        name: formName,
-        city: formCity,
-        state: formState,
-        country: formCountry,
-        status: formStatus,
+        ...data,
       }
       setAreas((prev) => [newArea, ...prev])
     }
@@ -181,8 +168,9 @@ export function AdminAreasView({ initialAreas }: AdminAreasViewProps) {
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDelete(area.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        onClick={() => handleDeleteClick(area.id)}
+                        disabled={isDeleting && areaToDelete === area.id}
+                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -196,104 +184,26 @@ export function AdminAreasView({ initialAreas }: AdminAreasViewProps) {
         </div>
       </div>
 
-      {/* Add / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <form
-            onSubmit={handleSave}
-            className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150"
-          >
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-sm font-bold text-gray-800">
-                {editingArea ? "Edit Area" : "Add New Area"}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      <AreaModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSave}
+        initialData={editingArea}
+      />
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Area Name</label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Gulshan 2"
-                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">City</label>
-                <input
-                  type="text"
-                  value={formCity}
-                  onChange={(e) => setFormCity(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">State / Region</label>
-                <input
-                  type="text"
-                  value={formState}
-                  onChange={(e) => setFormState(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Country</label>
-                <input
-                  type="text"
-                  value={formCountry}
-                  onChange={(e) => setFormCountry(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xs font-semibold text-gray-700">Status</span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formStatus}
-                    onChange={(e) => setFormStatus(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                </label>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 text-xs rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-[#d43533] text-white text-xs font-semibold rounded-lg hover:bg-[#b82d2b]"
-              >
-                {editingArea ? "Update Area" : "Create Area"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setAreaToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Shipping Area"
+        description="Are you sure you want to delete this shipping area? This cannot be undone."
+      />
     </div>
   )
 }

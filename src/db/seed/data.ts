@@ -39,6 +39,7 @@ export interface SeedProduct {
   sizes: string[]
   featured: boolean
   todaysDeal: boolean
+  published?: boolean
   sellerName: string
   sellerSlug: string
   description: string
@@ -749,11 +750,15 @@ export interface SeedBlog {
   slug: string
   shortDescription: string
   description: string
-  categoryName: string
+  categoryName?: string
+  category?: string
   categorySlug: string
   banner: string
-  date: string
-  author: string
+  date?: string
+  author?: string
+  createdAt?: string
+  viewsCount?: number
+  published?: boolean
 }
 
 export const SEED_BLOG_CATEGORIES: SeedBlogCategory[] = [

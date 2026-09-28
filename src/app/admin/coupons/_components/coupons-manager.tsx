@@ -3,7 +3,12 @@
 import { useState } from "react"
 import { Plus, Search, Trash2, X } from "lucide-react"
 import { SeedCoupon } from "@/db/seed/data"
-import { createCouponAction } from "@/app/actions/ecommerce-actions"
+import {
+  createCouponAction,
+  deleteCouponAction,
+  toggleCouponStatusAction,
+} from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 interface CouponsManagerProps {
   initialCoupons: SeedCoupon[]
@@ -24,16 +29,35 @@ export function CouponsManager({ initialCoupons }: CouponsManagerProps) {
   const [startDateStr, setStartDateStr] = useState("")
   const [endDateStr, setEndDateStr] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [couponToDelete, setCouponToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleToggleStatus = (id: string) => {
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
     setCoupons((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: !c.status } : c))
+      prev.map((c) => (c.id === id ? { ...c, status: nextStatus } : c))
     )
+    await toggleCouponStatusAction(id, nextStatus)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to remove this coupon?")) {
-      setCoupons((prev) => prev.filter((c) => c.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setCouponToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!couponToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteCouponAction(couponToDelete)
+      setCoupons((prev) => prev.filter((c) => c.id !== couponToDelete))
+    } catch (err) {
+      console.error("Error deleting coupon:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setCouponToDelete(null)
     }
   }
 
@@ -164,7 +188,7 @@ export function CouponsManager({ initialCoupons }: CouponsManagerProps) {
                       <td className="py-3.5 px-4 text-gray-600">{endDate}</td>
                       <td className="py-3.5 px-4 text-center">
                         <button
-                          onClick={() => handleToggleStatus(coupon.id)}
+                          onClick={() => handleToggleStatus(coupon.id, coupon.status)}
                           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                             coupon.status ? "bg-primary" : "bg-gray-200"
                           }`}
@@ -178,8 +202,8 @@ export function CouponsManager({ initialCoupons }: CouponsManagerProps) {
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <button
-                          onClick={() => handleDelete(coupon.id)}
-                          className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                          onClick={() => handleDeleteClick(coupon.id)}
+                          className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
                           title="Delete Coupon"
                         >
                           <Trash2 className="size-4" />
@@ -348,6 +372,20 @@ export function CouponsManager({ initialCoupons }: CouponsManagerProps) {
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setCouponToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to remove this coupon? Any active orders using this coupon will retain their historical discount."
+      />
     </div>
   )
 }

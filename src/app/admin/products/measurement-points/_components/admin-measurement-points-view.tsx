@@ -2,6 +2,12 @@
 
 import React, { useState } from "react"
 import { Ruler, Plus, Edit2, Trash2, X, Search } from "lucide-react"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import {
+  createMeasurementPointAction,
+  updateMeasurementPointAction,
+  deleteMeasurementPointAction,
+} from "@/app/actions/ecommerce-actions"
 
 interface Point {
   id: number
@@ -20,23 +26,36 @@ export function AdminMeasurementPointsView({ initialPoints }: AdminMeasurementPo
   const [editingPoint, setEditingPoint] = useState<Point | null>(null)
   const [editName, setEditName] = useState("")
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [pointToDelete, setPointToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filteredPoints = points.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newName.trim()) return
+    if (!newName.trim() || isSaving) return
 
-    const newPt: Point = {
-      id: Date.now(),
-      name: newName.trim(),
-      createdAt: new Date().toISOString().split("T")[0],
+    setIsSaving(true)
+    try {
+      const created = await createMeasurementPointAction(newName.trim())
+      if (created) {
+        setPoints([
+          {
+            id: created.id,
+            name: created.name,
+            createdAt: new Date().toISOString().split("T")[0],
+          },
+          ...points,
+        ])
+        setNewName("")
+      }
+    } finally {
+      setIsSaving(false)
     }
-
-    setPoints([newPt, ...points])
-    setNewName("")
   }
 
   const openEditModal = (p: Point) => {
@@ -45,22 +64,43 @@ export function AdminMeasurementPointsView({ initialPoints }: AdminMeasurementPo
     setIsEditModalOpen(true)
   }
 
-  const handleUpdate = (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editingPoint || !editName.trim()) return
+    if (!editingPoint || !editName.trim() || isSaving) return
 
-    setPoints((prev) =>
-      prev.map((pt) =>
-        pt.id === editingPoint.id ? { ...pt, name: editName.trim() } : pt
+    setIsSaving(true)
+    try {
+      await updateMeasurementPointAction(editingPoint.id, editName.trim())
+      setPoints((prev) =>
+        prev.map((pt) =>
+          pt.id === editingPoint.id ? { ...pt, name: editName.trim() } : pt
+        )
       )
-    )
-    setIsEditModalOpen(false)
-    setEditingPoint(null)
+      setIsEditModalOpen(false)
+      setEditingPoint(null)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Are you sure you want to delete this measurement point?")) return
-    setPoints((prev) => prev.filter((pt) => pt.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setPointToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!pointToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteMeasurementPointAction(pointToDelete)
+      setPoints((prev) => prev.filter((pt) => pt.id !== pointToDelete))
+    } catch (err) {
+      console.error("Error deleting measurement point:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setPointToDelete(null)
+    }
   }
 
   return (
@@ -133,8 +173,9 @@ export function AdminMeasurementPointsView({ initialPoints }: AdminMeasurementPo
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => handleDelete(pt.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              onClick={() => handleDeleteClick(pt.id)}
+                              disabled={isDeleting && pointToDelete === pt.id}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                               title="Delete"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -232,6 +273,20 @@ export function AdminMeasurementPointsView({ initialPoints }: AdminMeasurementPo
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setPointToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Measurement Point"
+        description="Are you sure you want to delete this measurement point? This cannot be undone."
+      />
     </div>
   )
 }

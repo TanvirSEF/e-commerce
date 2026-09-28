@@ -4,6 +4,12 @@ import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Search, Plus, Edit, Trash2, CheckCircle2, XCircle } from "lucide-react"
+import {
+  deleteProductAction,
+  toggleProductPublishedAction,
+  toggleProductFeaturedAction,
+} from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 export interface AdminProductRow {
   id: string
@@ -27,22 +33,43 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
   const [productsList, setProductsList] = useState<AdminProductRow[]>(initialProducts)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const togglePublished = (id: string) => {
+  const togglePublished = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
     setProductsList((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, published: !p.published } : p))
+      prev.map((p) => (p.id === id ? { ...p, published: nextStatus } : p))
     )
+    await toggleProductPublishedAction(id, nextStatus)
   }
 
-  const toggleFeatured = (id: string) => {
+  const toggleFeatured = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
     setProductsList((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, featured: !p.featured } : p))
+      prev.map((p) => (p.id === id ? { ...p, featured: nextStatus } : p))
     )
+    await toggleProductFeaturedAction(id, nextStatus)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this product?")) {
-      setProductsList((prev) => prev.filter((p) => p.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setProductToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteProductAction(productToDelete)
+      setProductsList((prev) => prev.filter((p) => p.id !== productToDelete))
+    } catch (err) {
+      console.error("Error deleting product:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setProductToDelete(null)
     }
   }
 
@@ -165,7 +192,7 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
                   <td className="py-3.5 px-4 text-center">
                     <button
                       type="button"
-                      onClick={() => togglePublished(prod.id)}
+                      onClick={() => togglePublished(prod.id, prod.published)}
                       className="cursor-pointer"
                       title="Toggle published status"
                     >
@@ -179,7 +206,7 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
                   <td className="py-3.5 px-4 text-center">
                     <button
                       type="button"
-                      onClick={() => toggleFeatured(prod.id)}
+                      onClick={() => toggleFeatured(prod.id, prod.featured)}
                       className="cursor-pointer"
                       title="Toggle featured status"
                     >
@@ -201,7 +228,7 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => handleDelete(prod.id)}
+                        onClick={() => handleDeleteClick(prod.id)}
                         className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer"
                         title="Delete"
                       >
@@ -221,6 +248,20 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
           </div>
         )}
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setProductToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to delete this product? All related stocks and media links will be removed."
+      />
     </div>
   )
 }

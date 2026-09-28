@@ -14,6 +14,7 @@ import {
   CheckCircle,
 } from "lucide-react"
 import { toggleReviewStatusAction, deleteReviewAction } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { ReviewItem } from "@/services/review-service"
 
 interface ReviewsAdminViewProps {
@@ -24,6 +25,9 @@ export function ReviewsAdminView({ initialReviews }: ReviewsAdminViewProps) {
   const [reviews, setReviews] = useState<ReviewItem[]>(initialReviews)
   const [searchTerm, setSearchTerm] = useState("")
   const [ratingFilter, setRatingFilter] = useState("all")
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = reviews.filter((r) => {
     const matchesSearch =
@@ -43,11 +47,25 @@ export function ReviewsAdminView({ initialReviews }: ReviewsAdminViewProps) {
     )
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to permanently delete this customer review?")) return
-    const numericId = parseInt(id.replace(/\D/g, "")) || 1
-    await deleteReviewAction(numericId)
-    setReviews((prev) => prev.filter((r) => r.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setReviewToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!reviewToDelete) return
+    setIsDeleting(true)
+    try {
+      const numericId = parseInt(reviewToDelete.replace(/\D/g, "")) || 1
+      await deleteReviewAction(numericId)
+      setReviews((prev) => prev.filter((r) => r.id !== reviewToDelete))
+    } catch (err) {
+      console.error("Error deleting review:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setReviewToDelete(null)
+    }
   }
 
   const avgRating =
@@ -214,8 +232,8 @@ export function ReviewsAdminView({ initialReviews }: ReviewsAdminViewProps) {
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <button
-                      onClick={() => handleDelete(review.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
+                      onClick={() => handleDeleteClick(review.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors cursor-pointer"
                       title="Delete Review"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -234,6 +252,20 @@ export function ReviewsAdminView({ initialReviews }: ReviewsAdminViewProps) {
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setReviewToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to permanently delete this customer review? The product average rating will be recalculated."
+      />
     </div>
   )
 }

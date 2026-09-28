@@ -2,7 +2,13 @@
 
 import React, { useState } from "react"
 import Image from "next/image"
-import { Search, Plus, Trash2, CheckCircle2, XCircle } from "lucide-react"
+import { Search, Plus, Trash2, CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import {
+  createBrandAction,
+  deleteBrandAction,
+  toggleBrandTopAction,
+} from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 export interface AdminBrandItem {
   id: string
@@ -21,35 +27,68 @@ export function AdminBrandsView({ initialBrands }: AdminBrandsViewProps) {
   const [brands, setBrands] = useState<AdminBrandItem[]>(initialBrands)
   const [searchQuery, setSearchQuery] = useState("")
   const [newBrandName, setNewBrandName] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [brandToDelete, setBrandToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const toggleTop = (id: string) => {
+  const toggleTop = async (id: string, currentTop: boolean) => {
+    const nextTop = !currentTop
     setBrands((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, top: !b.top } : b))
+      prev.map((b) => (b.id === id ? { ...b, top: nextTop } : b))
     )
+    await toggleBrandTopAction(id, nextTop)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this brand?")) {
-      setBrands((prev) => prev.filter((b) => b.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setBrandToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!brandToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteBrandAction(brandToDelete)
+      setBrands((prev) => prev.filter((b) => b.id !== brandToDelete))
+    } catch (err) {
+      console.error("Error deleting brand:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setBrandToDelete(null)
     }
   }
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newBrandName) return
+    if (!newBrandName.trim()) return
 
-    const slug = newBrandName.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-    const newBrand: AdminBrandItem = {
-      id: `brand-${Date.now()}`,
-      name: newBrandName,
-      slug,
-      logo: "/assets/img/placeholder.jpg",
-      top: false,
-      productCount: 0,
+    setIsSubmitting(true)
+    try {
+      const res = await createBrandAction({
+        name: newBrandName.trim(),
+        top: false,
+      })
+      if (res.success && res.brand) {
+        setBrands((prev) => [
+          {
+            id: res.brand!.id,
+            name: res.brand!.name,
+            slug: res.brand!.slug,
+            logo: res.brand!.logo || "/assets/img/placeholder.jpg",
+            top: res.brand!.top || false,
+            productCount: 0,
+          },
+          ...prev,
+        ])
+        setNewBrandName("")
+      }
+    } catch (err) {
+      console.error("Error creating brand:", err)
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setBrands((prev) => [newBrand, ...prev])
-    setNewBrandName("")
   }
 
   const filtered = brands.filter((b) =>
@@ -110,7 +149,7 @@ export function AdminBrandsView({ initialBrands }: AdminBrandsViewProps) {
                     <td className="py-3.5 px-4 text-center">
                       <button
                         type="button"
-                        onClick={() => toggleTop(brand.id)}
+                        onClick={() => toggleTop(brand.id, brand.top)}
                         className="cursor-pointer"
                         title="Toggle top brand"
                       >
@@ -124,7 +163,7 @@ export function AdminBrandsView({ initialBrands }: AdminBrandsViewProps) {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         type="button"
-                        onClick={() => handleDelete(brand.id)}
+                        onClick={() => handleDeleteClick(brand.id)}
                         className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer"
                         title="Delete brand"
                       >
@@ -162,20 +201,44 @@ export function AdminBrandsView({ initialBrands }: AdminBrandsViewProps) {
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Brand Logo</label>
               <div className="border border-dashed border-slate-300 rounded p-4 text-center bg-slate-50 text-xs text-slate-500">
-                Choose logo (120x80)
+                Default brand logo will be assigned
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-[#d43533] text-white text-xs font-bold rounded shadow-xs hover:bg-[#b82a28] transition-colors flex items-center justify-center space-x-1"
+              disabled={isSubmitting}
+              className="w-full py-2.5 bg-[#d43533] text-white text-xs font-bold rounded shadow-xs hover:bg-[#b82a28] transition-colors flex items-center justify-center space-x-1 cursor-pointer disabled:opacity-60"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Save Brand</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Save Brand</span>
+                </>
+              )}
             </button>
           </form>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setBrandToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to delete this brand? Products linked to this brand will have their brand association unlinked."
+      />
     </div>
   )
 }

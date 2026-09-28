@@ -3,6 +3,7 @@
 import React, { useState } from "react"
 import { ShieldCheck, Plus, Trash2, Search, CheckCircle2, Award } from "lucide-react"
 import { createWarrantyAction, deleteWarrantyAction } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { WarrantyData } from "@/services/warranty-service"
 
 interface WarrantiesViewProps {
@@ -29,7 +30,9 @@ export function WarrantiesView({ initialWarranties }: WarrantiesViewProps) {
   const [duration, setDuration] = useState("1 Year")
   const [logo, setLogo] = useState("/assets/img/warranty.png")
   const [saving, setSaving] = useState(false)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [warrantyToDelete, setWarrantyToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [successMsg, setSuccessMsg] = useState("")
 
   const filtered = warranties.filter(
@@ -54,12 +57,24 @@ export function WarrantiesView({ initialWarranties }: WarrantiesViewProps) {
     setSaving(false)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this warranty policy?")) return
-    setDeletingId(id)
-    await deleteWarrantyAction(id)
-    setWarranties((prev) => prev.filter((w) => w.id !== id))
-    setDeletingId(null)
+  const handleDeleteClick = (id: number) => {
+    setWarrantyToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!warrantyToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteWarrantyAction(warrantyToDelete)
+      setWarranties((prev) => prev.filter((w) => w.id !== warrantyToDelete))
+    } catch (err) {
+      console.error("Error deleting warranty:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setWarrantyToDelete(null)
+    }
   }
 
   return (
@@ -131,8 +146,8 @@ export function WarrantiesView({ initialWarranties }: WarrantiesViewProps) {
                     <td className="py-2.5 px-3 text-right">
                       <button
                         type="button"
-                        onClick={() => handleDelete(w.id)}
-                        disabled={deletingId === w.id}
+                        onClick={() => handleDeleteClick(w.id)}
+                        disabled={isDeleting && warrantyToDelete === w.id}
                         className="p-1 text-red-500 hover:text-red-700 disabled:opacity-50"
                         title="Delete warranty"
                       >
@@ -208,6 +223,20 @@ export function WarrantiesView({ initialWarranties }: WarrantiesViewProps) {
           </form>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setWarrantyToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Warranty Policy"
+        description="Are you sure you want to delete this warranty policy? This action cannot be undone."
+      />
     </div>
   )
 }

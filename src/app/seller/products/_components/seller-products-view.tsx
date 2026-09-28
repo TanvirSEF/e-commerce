@@ -16,6 +16,12 @@ import {
 } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
 import type { SeedProduct } from "@/db/seed/data"
+import {
+  deleteProductAction,
+  toggleProductPublishedAction,
+  toggleProductFeaturedAction,
+} from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 interface SellerProductsViewProps {
   initialProducts: SeedProduct[]
@@ -26,27 +32,49 @@ export function SellerProductsView({ initialProducts, total }: SellerProductsVie
   const [products, setProducts] = useState<SeedProduct[]>(initialProducts)
   const [searchTerm, setSearchTerm] = useState("")
   const [publishedStates, setPublishedStates] = useState<Record<string, boolean>>(
-    Object.fromEntries(initialProducts.map((p) => [p.id, true]))
+    Object.fromEntries(initialProducts.map((p) => [p.id, p.published ?? true]))
   )
   const [featuredStates, setFeaturedStates] = useState<Record<string, boolean>>(
-    Object.fromEntries(initialProducts.map((p) => [p.id, p.featured]))
+    Object.fromEntries(initialProducts.map((p) => [p.id, p.featured ?? false]))
   )
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = products.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Delete this product?")) return
-    setProducts((prev) => prev.filter((p) => p.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setProductToDelete(id)
+    setDeleteModalOpen(true)
   }
 
-  const togglePublished = (id: string) => {
-    setPublishedStates((prev) => ({ ...prev, [id]: !prev[id] }))
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteProductAction(productToDelete)
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete))
+    } catch (err) {
+      console.error("Error deleting product:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setProductToDelete(null)
+    }
   }
 
-  const toggleFeatured = (id: string) => {
-    setFeaturedStates((prev) => ({ ...prev, [id]: !prev[id] }))
+  const togglePublished = async (id: string) => {
+    const nextStatus = !publishedStates[id]
+    setPublishedStates((prev) => ({ ...prev, [id]: nextStatus }))
+    await toggleProductPublishedAction(id, nextStatus)
+  }
+
+  const toggleFeatured = async (id: string) => {
+    const nextStatus = !featuredStates[id]
+    setFeaturedStates((prev) => ({ ...prev, [id]: nextStatus }))
+    await toggleProductFeaturedAction(id, nextStatus)
   }
 
   return (
@@ -203,15 +231,16 @@ export function SellerProductsView({ initialProducts, total }: SellerProductsVie
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </Link>
-                      <button
+                      <Link
+                        href={`/seller/products/create?edit=${product.id}`}
                         className="p-1.5 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100 transition-colors"
                         title="Edit"
                       >
                         <Edit className="w-3.5 h-3.5" />
-                      </button>
+                      </Link>
                       <button
-                        onClick={() => handleDelete(product.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
+                        onClick={() => handleDeleteClick(product.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors cursor-pointer"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -224,6 +253,20 @@ export function SellerProductsView({ initialProducts, total }: SellerProductsVie
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setProductToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to delete this product? All vendor listings and stocks for this item will be removed."
+      />
     </div>
   )
 }

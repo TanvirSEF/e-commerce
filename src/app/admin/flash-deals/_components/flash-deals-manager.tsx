@@ -3,7 +3,13 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Plus, Search, Copy, Check, Trash2, X, ExternalLink } from "lucide-react"
-import { createFlashDealAction } from "@/app/actions/ecommerce-actions"
+import {
+  createFlashDealAction,
+  deleteFlashDealAction,
+  toggleFlashDealStatusAction,
+  toggleFlashDealFeaturedAction,
+} from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 interface FlashDealItem {
   id: string
@@ -25,6 +31,9 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
   const [search, setSearch] = useState("")
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [dealToDelete, setDealToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Form state
   const [title, setTitle] = useState("")
@@ -40,21 +49,39 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
     setTimeout(() => setCopiedSlug(null), 2000)
   }
 
-  const handleToggleStatus = (id: string) => {
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
     setDeals((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: !d.status } : d))
+      prev.map((d) => (d.id === id ? { ...d, status: nextStatus } : d))
     )
+    await toggleFlashDealStatusAction(id, nextStatus)
   }
 
-  const handleToggleFeatured = (id: string) => {
+  const handleToggleFeatured = async (id: string, currentFeatured: boolean) => {
+    const nextFeatured = !currentFeatured
     setDeals((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, featured: !d.featured } : d))
+      prev.map((d) => (d.id === id ? { ...d, featured: nextFeatured } : d))
     )
+    await toggleFlashDealFeaturedAction(id, nextFeatured)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this flash deal?")) {
-      setDeals((prev) => prev.filter((d) => d.id !== id))
+  const handleDeleteClick = (id: string) => {
+    setDealToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!dealToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteFlashDealAction(dealToDelete)
+      setDeals((prev) => prev.filter((d) => d.id !== dealToDelete))
+    } catch (err) {
+      console.error("Error deleting flash deal:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setDealToDelete(null)
     }
   }
 
@@ -168,7 +195,7 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
                       <td className="py-3.5 px-4 text-gray-600">{endDate}</td>
                       <td className="py-3.5 px-4 text-center">
                         <button
-                          onClick={() => handleToggleStatus(deal.id)}
+                          onClick={() => handleToggleStatus(deal.id, deal.status)}
                           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                             deal.status ? "bg-primary" : "bg-gray-200"
                           }`}
@@ -182,7 +209,7 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <button
-                          onClick={() => handleToggleFeatured(deal.id)}
+                          onClick={() => handleToggleFeatured(deal.id, deal.featured)}
                           className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                             deal.featured ? "bg-amber-500" : "bg-gray-200"
                           }`}
@@ -198,7 +225,7 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => handleCopyLink(deal.slug)}
-                            className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                            className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors cursor-pointer"
                             title="Copy Campaign URL"
                           >
                             {isCopied ? (
@@ -220,8 +247,8 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => handleDelete(deal.id)}
-                            className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                            onClick={() => handleDeleteClick(deal.id)}
+                            className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
                             title="Delete"
                           >
                             <Trash2 className="size-4" />
@@ -325,6 +352,20 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setDealToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to delete this flash deal campaign? Featured discounts and home page campaign showcases will be unlinked."
+      />
     </div>
   )
 }

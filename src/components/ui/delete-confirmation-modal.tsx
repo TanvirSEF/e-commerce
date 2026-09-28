@@ -9,7 +9,9 @@ interface DeleteConfirmationModalProps {
   onConfirm: () => void
   title?: string
   message?: string
+  description?: string
   isDeleting?: boolean
+  isLoading?: boolean
   isBulk?: boolean
 }
 
@@ -19,10 +21,16 @@ export function DeleteConfirmationModal({
   onConfirm,
   title = "Confirmation",
   message,
+  description,
   isDeleting = false,
+  isLoading = false,
   isBulk = false,
 }: DeleteConfirmationModalProps) {
+  const deleting = isDeleting || isLoading
+  const displayMessage = message || description
+
   if (!isOpen) return null
+
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -32,7 +40,7 @@ export function DeleteConfirmationModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={isDeleting}
+            disabled={deleting}
             className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md"
           >
             <X className="w-5 h-5" />
@@ -88,8 +96,8 @@ export function DeleteConfirmationModal({
           </h5>
 
           <p className="text-sm text-gray-600 mt-2 font-normal">
-            {message ? (
-              message
+            {displayMessage ? (
+              displayMessage
             ) : (
               <>
                 Do you really want to <span className="font-bold text-gray-900">Delete!</span>
@@ -103,7 +111,7 @@ export function DeleteConfirmationModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={isDeleting}
+            disabled={deleting}
             className="w-1/2 py-2.5 px-4 text-sm font-bold text-emerald-600 border-2 border-emerald-500/40 rounded-xl hover:bg-emerald-50 transition-colors text-center disabled:opacity-50"
           >
             No
@@ -111,10 +119,10 @@ export function DeleteConfirmationModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isDeleting}
+            disabled={deleting}
             className="w-1/2 py-2.5 px-4 text-sm font-bold text-red-600 border-2 border-red-500/40 rounded-xl hover:bg-red-50 transition-colors text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
-            {isDeleting ? (
+            {deleting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-red-600" />
                 <span>Deleting...</span>

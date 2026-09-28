@@ -122,6 +122,42 @@ export async function createFlashDeal(data: {
   }
 }
 
+export async function deleteFlashDeal(id: number | string): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.delete(flashDeals).where(eq(flashDeals.id, numericId))
+    return true
+  } catch (err) {
+    console.error("Error deleting flash deal:", err)
+    return false
+  }
+}
+
+export async function toggleFlashDealStatus(id: number | string, status: boolean): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.update(flashDeals).set({ status }).where(eq(flashDeals.id, numericId))
+    return true
+  } catch (err) {
+    console.error("Error updating flash deal status:", err)
+    return false
+  }
+}
+
+export async function toggleFlashDealFeatured(id: number | string, featured: boolean): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.update(flashDeals).set({ featured }).where(eq(flashDeals.id, numericId))
+    return true
+  } catch (err) {
+    console.error("Error updating flash deal featured:", err)
+    return false
+  }
+}
+
 export interface ShippingSettings {
   shippingType: "area_wise" | "flat_rate" | "product_wise"
   flatRateCost: number

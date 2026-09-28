@@ -18,6 +18,7 @@ import {
   updateClassifiedPublishedAction,
   deleteClassifiedProductAction,
 } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { ClassifiedProductItem } from "@/services/customer-product-service"
 
 interface ClassifiedProductsAdminViewProps {
@@ -30,6 +31,9 @@ export function ClassifiedProductsAdminView({
   const [products, setProducts] = useState<ClassifiedProductItem[]>(initialProducts)
   const [search, setSearch] = useState("")
   const [selectedProduct, setSelectedProduct] = useState<ClassifiedProductItem | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = products.filter(
     (p) =>
@@ -47,10 +51,24 @@ export function ClassifiedProductsAdminView({
     )
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to permanently delete this classified ad?")) return
-    await deleteClassifiedProductAction(id)
-    setProducts((prev) => prev.filter((p) => p.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setProductToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteClassifiedProductAction(productToDelete)
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete))
+    } catch (err) {
+      console.error("Error deleting classified product:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setProductToDelete(null)
+    }
   }
 
   return (
@@ -166,8 +184,8 @@ export function ClassifiedProductsAdminView({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(item.id)}
-                          className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteClick(item.id)}
+                          className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
                           title="Delete Ad"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -264,6 +282,20 @@ export function ClassifiedProductsAdminView({
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setProductToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to permanently delete this classified advertisement? The listing will be removed immediately from the marketplace."
+      />
     </div>
   )
 }

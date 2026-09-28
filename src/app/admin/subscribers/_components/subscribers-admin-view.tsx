@@ -15,6 +15,7 @@ import {
   addSubscriberAction,
   deleteSubscriberAction,
 } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { SubscriberItem } from "@/services/marketing-service"
 
 interface SubscribersAdminViewProps {
@@ -29,6 +30,9 @@ export function SubscribersAdminView({
   const [newEmail, setNewEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState("")
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [subscriberToDelete, setSubscriberToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = subscribers.filter((s) =>
     s.email.toLowerCase().includes(search.toLowerCase())
@@ -55,10 +59,24 @@ export function SubscribersAdminView({
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to remove this email subscriber?")) return
-    await deleteSubscriberAction(id)
-    setSubscribers((prev) => prev.filter((s) => s.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setSubscriberToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!subscriberToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteSubscriberAction(subscriberToDelete)
+      setSubscribers((prev) => prev.filter((s) => s.id !== subscriberToDelete))
+    } catch (err) {
+      console.error("Error deleting subscriber:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setSubscriberToDelete(null)
+    }
   }
 
   const handleExportCSV = () => {
@@ -163,8 +181,8 @@ export function SubscribersAdminView({
                         <td className="px-5 py-3.5 text-right whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => handleDelete(item.id)}
-                            className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteClick(item.id)}
+                            className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
                             title="Remove Subscriber"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -207,7 +225,7 @@ export function SubscribersAdminView({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 bg-[#d43533] text-white rounded text-xs font-bold hover:bg-[#b82a28] transition-colors disabled:opacity-50"
+                className="w-full py-2.5 bg-[#d43533] text-white rounded text-xs font-bold hover:bg-[#b82a28] transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? "Adding..." : "Add to List"}
               </button>
@@ -215,6 +233,20 @@ export function SubscribersAdminView({
           </div>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setSubscriberToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to remove this subscriber from the mailing list?"
+      />
     </div>
   )
 }

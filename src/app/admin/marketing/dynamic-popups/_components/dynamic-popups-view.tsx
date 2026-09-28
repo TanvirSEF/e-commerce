@@ -17,6 +17,7 @@ import {
   toggleDynamicPopupStatusAction,
   deleteDynamicPopupAction,
 } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 interface DynamicPopupItem {
   id: number
@@ -42,6 +43,9 @@ export function DynamicPopupsView({ initialPopups }: DynamicPopupsViewProps) {
   const [duration, setDuration] = useState("10")
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [popupToDelete, setPopupToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filteredPopups = popups.filter((p) =>
     p.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -65,18 +69,28 @@ export function DynamicPopupsView({ initialPopups }: DynamicPopupsViewProps) {
     })
   }
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Are you sure you want to delete this dynamic popup?")) return
-    startTransition(async () => {
-      const ok = await deleteDynamicPopupAction(id)
+  const handleDeleteClick = (id: number) => {
+    setPopupToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!popupToDelete) return
+    setIsDeleting(true)
+    try {
+      const ok = await deleteDynamicPopupAction(popupToDelete)
       if (ok) {
-        setPopups((prev) => prev.filter((p) => p.id !== id))
+        setPopups((prev) => prev.filter((p) => p.id !== popupToDelete))
         setFeedback({ type: "success", text: "Dynamic popup deleted successfully" })
       } else {
         setFeedback({ type: "error", text: "Failed to delete popup" })
       }
       setTimeout(() => setFeedback(null), 3000)
-    })
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setPopupToDelete(null)
+    }
   }
 
   const handleSaveDuration = (e: React.FormEvent) => {
@@ -261,9 +275,9 @@ export function DynamicPopupsView({ initialPopups }: DynamicPopupsViewProps) {
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
-                        onClick={() => handleDelete(popup.id)}
-                        disabled={isPending}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                        onClick={() => handleDeleteClick(popup.id)}
+                        disabled={isDeleting && popupToDelete === popup.id}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition disabled:opacity-50"
                         title="Delete popup"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -276,6 +290,20 @@ export function DynamicPopupsView({ initialPopups }: DynamicPopupsViewProps) {
           </table>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setPopupToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Dynamic Popup"
+        description="Are you sure you want to delete this dynamic promotional popup? This cannot be undone."
+      />
     </div>
   )
 }

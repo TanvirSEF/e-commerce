@@ -17,6 +17,7 @@ import {
   replyProductQueryAction,
   deleteProductQueryAction,
 } from "@/app/actions/ecommerce-actions"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import type { ProductQueryItem } from "@/services/product-query-service"
 
 interface ProductQueriesAdminViewProps {
@@ -31,6 +32,9 @@ export function ProductQueriesAdminView({
   const [selectedQuery, setSelectedQuery] = useState<ProductQueryItem | null>(null)
   const [replyText, setReplyText] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [queryToDelete, setQueryToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filtered = queries.filter(
     (q) =>
@@ -74,10 +78,24 @@ export function ProductQueriesAdminView({
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this customer question?")) return
-    await deleteProductQueryAction(id)
-    setQueries((prev) => prev.filter((q) => q.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setQueryToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!queryToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteProductQueryAction(queryToDelete)
+      setQueries((prev) => prev.filter((q) => q.id !== queryToDelete))
+    } catch (err) {
+      console.error("Error deleting query:", err)
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setQueryToDelete(null)
+    }
   }
 
   return (
@@ -191,8 +209,8 @@ export function ProductQueriesAdminView({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(item.id)}
-                          className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteClick(item.id)}
+                          className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
                           title="Delete Query"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -273,6 +291,20 @@ export function ProductQueriesAdminView({
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setQueryToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Confirmation"
+        description="Are you sure you want to delete this customer question and its associated answers?"
+      />
     </div>
   )
 }

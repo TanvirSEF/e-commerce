@@ -2,6 +2,7 @@
 
 import React, { useState } from "react"
 import { Truck, Plus, Edit2, Trash2, X, CheckCircle, Search } from "lucide-react"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 interface Carrier {
   id: number
@@ -21,6 +22,9 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
   const [search, setSearch] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCarrier, setEditingCarrier] = useState<Carrier | null>(null)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [carrierToDelete, setCarrierToDelete] = useState<number | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Form State
   const [formName, setFormName] = useState("")
@@ -52,9 +56,21 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
     )
   }
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Are you sure you want to delete this shipping carrier?")) return
-    setCarriers((prev) => prev.filter((c) => c.id !== id))
+  const handleDeleteClick = (id: number) => {
+    setCarrierToDelete(id)
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!carrierToDelete) return
+    setIsDeleting(true)
+    try {
+      setCarriers((prev) => prev.filter((c) => c.id !== carrierToDelete))
+    } finally {
+      setIsDeleting(false)
+      setDeleteModalOpen(false)
+      setCarrierToDelete(null)
+    }
   }
 
   const handleSave = (e: React.FormEvent) => {
@@ -168,8 +184,9 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDelete(carrier.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        onClick={() => handleDeleteClick(carrier.id)}
+                        disabled={isDeleting && carrierToDelete === carrier.id}
+                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -271,6 +288,20 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
           </form>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false)
+            setCarrierToDelete(null)
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        title="Delete Shipping Carrier"
+        description="Are you sure you want to delete this shipping carrier? This action cannot be undone."
+      />
     </div>
   )
 }

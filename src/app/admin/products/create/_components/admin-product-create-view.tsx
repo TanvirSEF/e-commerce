@@ -4,9 +4,12 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, Save, UploadCloud, XCircle } from "lucide-react"
-import { createProductAction } from "@/app/actions/ecommerce-actions"
+import { createProductAction, updateProductAction } from "@/app/actions/ecommerce-actions"
 import { ProductVariationMatrix, VariantItem } from "./product-variation-matrix"
 import { MediaPickerModal } from "@/components/ui/media-picker-modal"
+import type { ProductEditInitial } from "@/services/product-service"
+
+export type { ProductEditInitial }
 
 interface CategoryOption {
   id: string | number
@@ -23,29 +26,36 @@ interface BrandOption {
 interface AdminProductCreateViewProps {
   categories: CategoryOption[]
   brands: BrandOption[]
+  initialProduct?: ProductEditInitial | null
 }
 
-export function AdminProductCreateView({ categories, brands }: AdminProductCreateViewProps) {
+export function AdminProductCreateView({
+  categories,
+  brands,
+  initialProduct,
+}: AdminProductCreateViewProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
-    name: "",
-    categoryId: categories[0]?.id || 1,
-    brandId: brands[0]?.id || 1,
-    unit: "pc",
-    unitPrice: "",
-    purchasePrice: "",
-    discount: "0",
-    discountType: "percent" as "percent" | "amount",
-    stock: "20",
-    sku: "",
-    description: "",
-    thumbnail: "/assets/img/placeholder.jpg",
+    name: initialProduct?.name || "",
+    categoryId: initialProduct?.categoryId || categories[0]?.id || 1,
+    brandId: initialProduct?.brandId || brands[0]?.id || 1,
+    unit: initialProduct?.unit || "pc",
+    unitPrice: initialProduct?.unitPrice || "",
+    purchasePrice: initialProduct?.purchasePrice || "",
+    discount: initialProduct?.discount || "0",
+    discountType: (initialProduct?.discountType as "percent" | "amount") || "percent",
+    stock: initialProduct ? String(initialProduct.currentStock) : "20",
+    sku: initialProduct?.sku || "",
+    description: initialProduct?.description || "",
+    thumbnail: initialProduct?.thumbnailImg || "/assets/img/placeholder.jpg",
   })
 
-  const [variations, setVariations] = useState<VariantItem[]>([])
+  const [variations, setVariations] = useState<VariantItem[]>(
+    initialProduct?.variations || []
+  )
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -80,14 +90,17 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
         })),
       }
 
-      const res = await createProductAction(payload)
-      if (res) {
+      const res = initialProduct
+        ? await updateProductAction(initialProduct.id, payload)
+        : await createProductAction(payload)
+
+      if (res && (res as any).success !== false) {
         router.push("/admin/products")
       } else {
         setError("Failed to save product to database. Please try again.")
       }
     } catch (err) {
-      console.error("Error creating product:", err)
+      console.error("Error saving product:", err)
       setError("An error occurred while saving the product.")
     } finally {
       setIsSubmitting(false)
@@ -112,9 +125,13 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
             <ChevronLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Add New Product</h1>
+            <h1 className="text-xl font-bold text-slate-800">
+              {initialProduct ? "Edit Product" : "Add New Product"}
+            </h1>
             <p className="text-xs text-slate-500">
-              Fill in the required information to publish to catalog (Laravel 1:1)
+              {initialProduct
+                ? "Update product information, variations, and catalog details"
+                : "Fill in the required information to publish to catalog (Laravel 1:1)"}
             </p>
           </div>
         </div>
@@ -125,7 +142,13 @@ export function AdminProductCreateView({ categories, brands }: AdminProductCreat
           className="inline-flex items-center space-x-2 px-5 py-2 bg-[#d43533] text-white text-xs font-bold rounded shadow-xs hover:bg-[#b82a28] transition-colors disabled:opacity-50"
         >
           <Save className="w-4 h-4" />
-          <span>{isSubmitting ? "Saving..." : "Save & Publish"}</span>
+          <span>
+            {isSubmitting
+              ? "Saving..."
+              : initialProduct
+              ? "Update Product"
+              : "Save & Publish"}
+          </span>
         </button>
       </div>
 

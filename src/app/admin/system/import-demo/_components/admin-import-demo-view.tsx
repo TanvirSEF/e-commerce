@@ -2,15 +2,19 @@
 
 import React, { useState } from "react"
 import { Database, Download, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react"
+import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
 export function AdminImportDemoView() {
   const [importing, setImporting] = useState(false)
   const [imported, setImported] = useState(false)
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false)
 
-  const handleImport = () => {
-    if (!confirm("Importing demo data will populate sample products, sellers, banners, and categories. Proceed?")) {
-      return
-    }
+  const handleImportClick = () => {
+    setConfirmModalOpen(true)
+  }
+
+  const handleConfirmImport = () => {
+    setConfirmModalOpen(false)
     setImporting(true)
     setTimeout(() => {
       setImporting(false)
@@ -74,7 +78,7 @@ export function AdminImportDemoView() {
 
         <div className="flex justify-end pt-2">
           <button
-            onClick={handleImport}
+            onClick={handleImportClick}
             disabled={importing}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d43533] hover:bg-red-700 disabled:opacity-60 text-white font-medium text-sm rounded-lg transition-colors shadow-sm"
           >
@@ -83,6 +87,14 @@ export function AdminImportDemoView() {
           </button>
         </div>
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={confirmModalOpen}
+        onClose={() => setConfirmModalOpen(false)}
+        onConfirm={handleConfirmImport}
+        title="Import Demo Catalog Data"
+        message="Importing demo data will populate sample products, sellers, banners, and categories. Proceed with demo seeding?"
+      />
     </div>
   )
 }
