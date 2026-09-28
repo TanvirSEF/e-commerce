@@ -173,11 +173,9 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-2 text-left"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-600 transition-colors hover:border-[#d43533] hover:text-[#d43533]">
-                {user?.avatar ? (
-                  <div className="relative h-8 w-8 overflow-hidden rounded-full">
-                    <Image src={user.avatar} alt={user.name} fill className="object-cover" />
-                  </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-600 transition-colors hover:border-[#d43533] hover:text-[#d43533] overflow-hidden">
+                {user?.avatar && user.avatar !== "/assets/img/avatar-place.png" ? (
+                  <img src={user.avatar} alt={user.name} className="h-full w-full object-cover rounded-full" />
                 ) : (
                   <User className="h-4 w-4" />
                 )}

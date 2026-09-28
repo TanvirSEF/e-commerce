@@ -20,6 +20,7 @@ import {
   Download,
   Bell,
   Trash2,
+  Camera,
 } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
 import { AccountDeleteModal } from "./account-delete-modal"
@@ -49,16 +50,26 @@ export function CustomerSidebar() {
     <div className="w-full rounded border border-gray-200 bg-white shadow-sm overflow-hidden">
       {/* User Header */}
       <div className="p-6 text-center border-b border-gray-100 bg-gray-50/50">
-        <div className="relative mx-auto h-20 w-20 overflow-hidden rounded-full border-2 border-white shadow-sm bg-gray-100 mb-3">
-          <Image
-            src={user?.avatar || "/assets/img/avatar-place.png"}
-            alt={user?.name || "Customer"}
-            fill
-            className="object-cover"
-            onError={(e) => {
-              e.currentTarget.src = "/assets/img/avatar-place.png"
-            }}
-          />
+        <div className="relative mx-auto h-20 w-20 rounded-full border-2 border-white shadow-sm bg-gray-100 mb-3 group overflow-hidden">
+          {user?.avatar && user.avatar !== "/assets/img/avatar-place.png" ? (
+            <img
+              src={user.avatar}
+              alt={user?.name || "Customer"}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center bg-red-50 text-[#d43533] font-bold text-xl uppercase">
+              {user?.name ? user.name.slice(0, 2) : <User className="w-8 h-8 text-gray-400" />}
+            </div>
+          )}
+          <Link
+            href="/dashboard/profile"
+            className="absolute inset-0 bg-black/50 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold"
+            title="Upload / Change Profile Photo"
+          >
+            <Camera className="w-4 h-4 mb-0.5" />
+            Edit DP
+          </Link>
         </div>
         <h4 className="text-sm font-bold text-gray-900">{user?.name || "Customer"}</h4>
         <p className="text-xs text-gray-500 mt-0.5">{user?.email || user?.phone}</p>

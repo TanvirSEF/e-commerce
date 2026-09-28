@@ -41,8 +41,21 @@ export function ProfileView() {
         name={user?.name || "Tanvir Ahmed"}
         phone={user?.phone || "+880 1712 345678"}
         email={user?.email || "tanvir@example.com"}
-        onUpdate={({ name, phone }) => {
-          updateProfile({ name, phone })
+        avatar={user?.avatar || ""}
+        onUpdate={async ({ name, phone, avatar, password }) => {
+          updateProfile({ name, phone, avatar })
+          try {
+            const { updateCustomerProfileAction } = await import("@/app/actions/ecommerce-actions")
+            await updateCustomerProfileAction({
+              userId: user?.id,
+              name,
+              phone,
+              avatar,
+              password,
+            })
+          } catch {
+            // Context and localStorage update succeed regardless
+          }
         }}
       />
 

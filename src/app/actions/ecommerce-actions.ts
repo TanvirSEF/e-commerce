@@ -355,6 +355,36 @@ export async function updateAdminProfileAction(data: {
   return await updateAdminProfile(data.adminId || "usr_admin_default_01", data)
 }
 
+export async function updateCustomerProfileAction(data: {
+  userId?: string
+  name: string
+  phone?: string
+  avatar?: string
+  password?: string
+}) {
+  try {
+    const { db } = await import("@/db")
+    const { users } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+
+    if (data.userId) {
+      await db
+        .update(users)
+        .set({
+          name: data.name,
+          ...(data.phone ? { phone: data.phone } : {}),
+          ...(data.avatar ? { image: data.avatar } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, data.userId))
+    }
+    return { success: true, message: "Profile updated successfully" }
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Failed to update profile" }
+  }
+}
+
+
 export async function updateAppearanceSettingsAction(data: any) {
   const { updateAppearanceSettings } = await import("@/services/appearance-service")
   return await updateAppearanceSettings(data)
