@@ -1919,3 +1919,27 @@ export async function updateAuthLayoutAction(data: { layout: "boxed" | "free" | 
   return res
 }
 
+export async function toggleWishlistAction(productId: number, userId?: string) {
+  const effectiveUserId = userId || "usr_customer_demo"
+  const { toggleWishlistProduct } = await import("@/services/customer-extra-service")
+  const res = await toggleWishlistProduct(effectiveUserId, productId)
+  revalidatePath("/wishlists")
+  revalidatePath("/dashboard/wishlist")
+  revalidatePath("/admin/reports/wishlist")
+  return res
+}
+
+export async function createRefundReasonAction(reason: string, type: string = "customer_refund_reason") {
+  const { createRefundReason } = await import("@/services/refund-service")
+  const ok = await createRefundReason(reason, type)
+  revalidatePath("/admin/refund-requests")
+  return ok
+}
+
+export async function deleteRefundReasonAction(id: number) {
+  const { deleteRefundReason } = await import("@/services/refund-service")
+  const ok = await deleteRefundReason(id)
+  revalidatePath("/admin/refund-requests")
+  return ok
+}
+

@@ -17,6 +17,7 @@ import {
 import { formatPrice } from "@/lib/utils"
 import { processRefundAction } from "@/app/actions/ecommerce-actions"
 import type { RefundRequestItem } from "@/services/refund-service"
+import { RefundDetailModal } from "./refund-detail-modal"
 
 interface RefundRequestsAdminViewProps {
   initialRefunds: RefundRequestItem[]
@@ -272,144 +273,21 @@ export function RefundRequestsAdminView({
       </div>
 
       {/* Inspect & Approval Modal */}
-      {selectedRefund && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-[#d43533]" />
-                {actionType === "approve"
-                  ? "Approve Refund Request"
-                  : actionType === "reject"
-                  ? "Reject Refund Request"
-                  : "Inspect Refund Request"}
-              </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedRefund(null)
-                  setActionType(null)
-                }}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded border border-slate-200">
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Order Code</div>
-                  <div className="font-bold text-[#d43533]">{selectedRefund.orderCode}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Amount</div>
-                  <div className="font-bold text-slate-800">{formatPrice(selectedRefund.amount)}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Customer</div>
-                  <div className="font-medium text-slate-700">{selectedRefund.customerName}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">Requested Date</div>
-                  <div className="font-medium text-slate-700">{selectedRefund.date}</div>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Product</div>
-                <div className="font-bold text-slate-900">{selectedRefund.productName}</div>
-              </div>
-
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Return Reason</div>
-                <div className="p-2.5 bg-amber-50/60 border border-amber-100 rounded text-slate-800 font-medium">
-                  {selectedRefund.reason}
-                </div>
-              </div>
-
-              {selectedRefund.details && (
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400 mb-1">Buyer Explanation</div>
-                  <div className="p-2.5 bg-slate-50 border border-slate-100 rounded text-slate-700">
-                    {selectedRefund.details}
-                  </div>
-                </div>
-              )}
-
-              {actionType && (
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">
-                    Admin Note & Explanation to Customer
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={adminNote}
-                    onChange={(e) => setAdminNote(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded text-xs focus:border-[#d43533] focus:outline-none"
-                    placeholder="Enter approval message or reason for rejection..."
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedRefund(null)
-                  setActionType(null)
-                }}
-                className="px-4 py-2 border border-slate-300 rounded text-xs font-semibold text-slate-600 hover:bg-slate-100"
-              >
-                Close
-              </button>
-
-              {actionType ? (
-                <button
-                  type="button"
-                  disabled={isProcessing}
-                  onClick={handleProcessAction}
-                  className={`px-5 py-2 rounded text-xs font-bold text-white disabled:opacity-50 ${
-                    actionType === "approve"
-                      ? "bg-emerald-600 hover:bg-emerald-700"
-                      : "bg-red-600 hover:bg-red-700"
-                  }`}
-                >
-                  {isProcessing
-                    ? "Processing..."
-                    : actionType === "approve"
-                    ? "Confirm Approval & Credit"
-                    : "Confirm Rejection"}
-                </button>
-              ) : selectedRefund.status === "pending" ? (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionType("reject")
-                      setAdminNote("Product does not meet return policy criteria.")
-                    }}
-                    className="px-4 py-2 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActionType("approve")
-                      setAdminNote("Approved and refunded to customer wallet.")
-                    }}
-                    className="px-4 py-2 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700"
-                  >
-                    Approve
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      )}
+      <RefundDetailModal
+        refund={selectedRefund}
+        actionType={actionType}
+        adminNote={adminNote}
+        isProcessing={isProcessing}
+        onClose={() => {
+          setSelectedRefund(null)
+          setActionType(null)
+          setAdminNote("")
+        }}
+        onActionTypeChange={setActionType}
+        onAdminNoteChange={setAdminNote}
+        onProcessAction={handleProcessAction}
+      />
     </div>
   )
 }
+

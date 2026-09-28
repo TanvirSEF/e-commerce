@@ -4,6 +4,13 @@ import React, { useState } from "react"
 import { Truck, Plus, Edit2, Trash2, X, CheckCircle, Search } from "lucide-react"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 
+import {
+  createCarrierAction,
+  updateCarrierAction,
+  toggleCarrierStatusAction,
+  deleteCarrierAction,
+} from "@/app/actions/carrier-actions"
+
 interface Carrier {
   id: number
   name: string
@@ -25,6 +32,7 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [carrierToDelete, setCarrierToDelete] = useState<number | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Form State
   const [formName, setFormName] = useState("")
@@ -50,10 +58,14 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
     setIsModalOpen(true)
   }
 
-  const handleToggleStatus = (id: number) => {
+  const handleToggleStatus = async (id: number) => {
+    const target = carriers.find((c) => c.id === id)
+    if (!target) return
+    const newStatus = !target.status
     setCarriers((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: !c.status } : c))
+      prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
     )
+    await toggleCarrierStatusAction(id, newStatus)
   }
 
   const handleDeleteClick = (id: number) => {
@@ -65,6 +77,7 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
     if (!carrierToDelete) return
     setIsDeleting(true)
     try {
+      await deleteCarrierAction(carrierToDelete)
       setCarriers((prev) => prev.filter((c) => c.id !== carrierToDelete))
     } finally {
       setIsDeleting(false)
@@ -73,31 +86,49 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
     }
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formName.trim()) return
+    setIsSaving(true)
 
-    if (editingCarrier) {
-      setCarriers((prev) =>
-        prev.map((c) =>
-          c.id === editingCarrier.id
-            ? { ...c, name: formName, transitTime: formTransit, logo: formLogo, status: formStatus }
-            : c
+    try {
+      if (editingCarrier) {
+        await updateCarrierAction(editingCarrier.id, {
+          name: formName,
+          transitTime: formTransit,
+          logo: formLogo,
+          status: formStatus,
+        })
+        setCarriers((prev) =>
+          prev.map((c) =>
+            c.id === editingCarrier.id
+              ? { ...c, name: formName, transitTime: formTransit, logo: formLogo, status: formStatus }
+              : c
+          )
         )
-      )
-    } else {
-      const newCarrier: Carrier = {
-        id: Date.now(),
-        name: formName,
-        transitTime: formTransit,
-        logo: formLogo,
-        status: formStatus,
-        freeShipping: false,
+      } else {
+        const res = await createCarrierAction({
+          name: formName,
+          transitTime: formTransit,
+          logo: formLogo,
+          status: formStatus,
+          freeShipping: false,
+        })
+        const newId = res.data?.id || Date.now()
+        const newCarrier: Carrier = {
+          id: newId,
+          name: formName,
+          transitTime: formTransit,
+          logo: formLogo,
+          status: formStatus,
+          freeShipping: false,
+        }
+        setCarriers((prev) => [newCarrier, ...prev])
       }
-      setCarriers((prev) => [newCarrier, ...prev])
+      setIsModalOpen(false)
+    } finally {
+      setIsSaving(false)
     }
-
-    setIsModalOpen(false)
   }
 
   const filtered = carriers.filter((c) =>

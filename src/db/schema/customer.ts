@@ -12,6 +12,7 @@ import {
 import { relations } from "drizzle-orm"
 import { users } from "./auth"
 import { orders } from "./orders"
+import { products } from "./products"
 
 export const wallets = pgTable("wallets", {
   id: serial("id").primaryKey(),
@@ -122,3 +123,28 @@ export const customerProducts = pgTable("customer_products", {
 })
 
 export type CustomerProduct = typeof customerProducts.$inferSelect
+
+export const wishlists = pgTable("wishlists", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  productId: integer("product_id")
+    .notNull()
+    .references(() => products.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export const wishlistsRelations = relations(wishlists, ({ one }) => ({
+  user: one(users, {
+    fields: [wishlists.userId],
+    references: [users.id],
+  }),
+  product: one(products, {
+    fields: [wishlists.productId],
+    references: [products.id],
+  }),
+}))
+
+export type Wishlist = typeof wishlists.$inferSelect
+export type NewWishlist = typeof wishlists.$inferInsert

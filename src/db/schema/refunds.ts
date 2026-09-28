@@ -40,3 +40,15 @@ export const refundRequestsRelations = relations(refundRequests, ({ one }) => ({
 
 export type RefundRequest = typeof refundRequests.$inferSelect
 export type NewRefundRequest = typeof refundRequests.$inferInsert
+
+export const refundReasons = pgTable("refund_reasons", {
+  id: serial("id").primaryKey(),
+  type: varchar("type", { length: 60 }).notNull().default("customer_refund_reason"),
+  reason: text("reason").notNull(),
+  status: boolean("status").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
+export type RefundReason = typeof refundReasons.$inferSelect
+export type NewRefundReason = typeof refundReasons.$inferInsert

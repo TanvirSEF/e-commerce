@@ -1,5 +1,5 @@
 import { db } from "../db"
-import { refundRequests } from "../db/schema"
+import { refundRequests, refundReasons, type RefundReason } from "../db/schema"
 import { eq, desc } from "drizzle-orm"
 
 export interface RefundRequestItem {
@@ -128,5 +128,51 @@ export async function processRefundAdmin(data: {
   } catch (err) {
     console.warn("processRefundAdmin error:", (err as Error).message)
     return { success: true }
+  }
+}
+
+const DEFAULT_REFUND_REASONS: RefundReason[] = [
+  { id: 1, type: "customer_refund_reason", reason: "Damaged or defective item received", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
+  { id: 2, type: "customer_refund_reason", reason: "Item does not match description or specifications", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
+  { id: 3, type: "customer_refund_reason", reason: "Wrong item or wrong variation delivered", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
+  { id: 4, type: "customer_refund_reason", reason: "Item arrived significantly later than promised", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
+  { id: 5, type: "customer_refund_reason", reason: "Quality not as expected / Missing accessories", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
+  { id: 6, type: "customer_refund_reason", reason: "Changed mind / No longer needed", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
+]
+
+export async function getRefundReasons(type: string = "customer_refund_reason"): Promise<RefundReason[]> {
+  try {
+    const list = await db
+      .select()
+      .from(refundReasons)
+      .where(eq(refundReasons.type, type))
+      .orderBy(refundReasons.id)
+
+    if (list && list.length > 0) {
+      return list
+    }
+  } catch (err) {
+    console.warn("DB getRefundReasons fallback:", (err as Error).message)
+  }
+  return DEFAULT_REFUND_REASONS.filter((r) => r.type === type)
+}
+
+export async function createRefundReason(reason: string, type: string = "customer_refund_reason"): Promise<boolean> {
+  try {
+    await db.insert(refundReasons).values({ reason, type, status: true })
+    return true
+  } catch (err) {
+    console.error("createRefundReason error:", err)
+    return false
+  }
+}
+
+export async function deleteRefundReason(id: number): Promise<boolean> {
+  try {
+    await db.delete(refundReasons).where(eq(refundReasons.id, id))
+    return true
+  } catch (err) {
+    console.error("deleteRefundReason error:", err)
+    return false
   }
 }

@@ -7,11 +7,13 @@ import { ProductInfo, type ProductDetailsData } from "./_components/product-info
 import { ProductTabs } from "./_components/product-tabs"
 import { ProductRelated } from "./_components/product-related"
 import { ProductSmartBar } from "./_components/product-smart-bar"
+import { FrequentlyBoughtTogether } from "./_components/frequently-bought-together"
 import type { ProductCardProps } from "@/components/product/product-card"
 import { getProductBySlug } from "@/lib/data-service"
 import { getProductReviews } from "@/services/review-service"
 import { getWholesaleTiersForProduct } from "@/services/wholesale-service"
 import { getCustomProductVisitorsSettings } from "@/services/settings-service"
+import { getFrequentlyBoughtProducts } from "@/services/frequently-bought-service"
 
 interface ProductPageProps {
   params: Promise<{
@@ -203,9 +205,15 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
             : SAMPLE_PRODUCT_DATA.default.name,
       }
 
-  const [wholesaleTiers, visitorsConfig] = await Promise.all([
+  const numericProductId =
+    typeof product.id === "number"
+      ? product.id
+      : parseInt(String(product.id).replace(/\D/g, "")) || 1
+
+  const [wholesaleTiers, visitorsConfig, frequentlyBought] = await Promise.all([
     getWholesaleTiersForProduct(product.id),
     getCustomProductVisitorsSettings(),
+    getFrequentlyBoughtProducts(numericProductId),
   ])
   const productWithWholesale = { ...product, wholesaleTiers }
 
@@ -259,6 +267,9 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
           rating={product.rating}
           reviewCount={product.reviews.length || product.reviewCount}
         />
+
+        {/* Frequently Bought Together (Active eCommerce CMS 1:1) */}
+        <FrequentlyBoughtTogether products={frequentlyBought} />
 
         {/* Related Products Carousel / Grid */}
         <ProductRelated products={RELATED_PRODUCTS} />

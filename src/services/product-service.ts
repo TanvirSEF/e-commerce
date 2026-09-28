@@ -486,6 +486,8 @@ export async function createProduct(data: {
   choiceOptions?: { attribute_id: string; values: string[] }[]
   variations?: { variant: string; sku: string; price: number; stock: number }[]
   shippingCost?: string | number
+  weight?: string | number
+  frequentlyBoughtSelectionType?: "product" | "category"
 }): Promise<any> {
   try {
     const slug =
@@ -512,6 +514,8 @@ export async function createProduct(data: {
         colors: data.colors || [],
         choiceOptions: data.choiceOptions || [],
         variations: data.variations || [],
+        weight: data.weight ? String(data.weight) : "0.00",
+        frequentlyBoughtSelectionType: data.frequentlyBoughtSelectionType || "product",
         published: true,
         featured: false,
         todaysDeal: false,

@@ -61,6 +61,8 @@ export const products = pgTable("products", {
   published: boolean("published").default(true).notNull(),
   isDigital: boolean("is_digital").default(false).notNull(),
   digitalFile: text("digital_file"),
+  weight: numeric("weight", { precision: 8, scale: 2 }).default("0.00").notNull(),
+  frequentlyBoughtSelectionType: varchar("frequently_bought_selection_type", { length: 20 }).default("product").notNull(),
   addedBy: varchar("added_by", { length: 50 }).default("admin").notNull(),
   userId: text("user_id"),
   shopId: integer("shop_id"),
@@ -82,7 +84,7 @@ export const brandsRelations = relations(brands, ({ many }) => ({
   products: many(products),
 }))
 
-export const productsRelations = relations(products, ({ one }) => ({
+export const productsRelations = relations(products, ({ one, many }) => ({
   category: one(categories, {
     fields: [products.categoryId],
     references: [categories.id],
@@ -91,4 +93,48 @@ export const productsRelations = relations(products, ({ one }) => ({
     fields: [products.brandId],
     references: [brands.id],
   }),
+  frequentlyBought: many(frequentlyBoughtProducts),
 }))
+
+export const frequentlyBoughtProducts = pgTable("frequently_bought_products", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  frequentlyBoughtProductId: integer("frequently_bought_product_id").references(() => products.id, { onDelete: "cascade" }),
+  categoryId: integer("category_id").references(() => categories.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export const frequentlyBoughtProductsRelations = relations(frequentlyBoughtProducts, ({ one }) => ({
+  product: one(products, {
+    fields: [frequentlyBoughtProducts.productId],
+    references: [products.id],
+  }),
+  frequentlyBoughtProduct: one(products, {
+    fields: [frequentlyBoughtProducts.frequentlyBoughtProductId],
+    references: [products.id],
+  }),
+  category: one(categories, {
+    fields: [frequentlyBoughtProducts.categoryId],
+    references: [categories.id],
+  }),
+}))
+
+export type FrequentlyBoughtProduct = typeof frequentlyBoughtProducts.$inferSelect
+export type NewFrequentlyBoughtProduct = typeof frequentlyBoughtProducts.$inferInsert
+
+export const lastViewedProducts = pgTable("last_viewed_products", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  productId: integer("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
+
+export const lastViewedProductsRelations = relations(lastViewedProducts, ({ one }) => ({
+  product: one(products, {
+    fields: [lastViewedProducts.productId],
+    references: [products.id],
+  }),
+}))
+
+export type LastViewedProduct = typeof lastViewedProducts.$inferSelect
+export type NewLastViewedProduct = typeof lastViewedProducts.$inferInsert

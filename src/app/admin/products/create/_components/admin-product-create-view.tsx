@@ -49,6 +49,7 @@ export function AdminProductCreateView({
     discountType: (initialProduct?.discountType as "percent" | "amount") || "percent",
     stock: initialProduct ? String(initialProduct.currentStock) : "20",
     sku: initialProduct?.sku || "",
+    weight: "0.00",
     description: initialProduct?.description || "",
     thumbnail: initialProduct?.thumbnailImg || "/assets/img/placeholder.jpg",
   })
@@ -80,6 +81,7 @@ export function AdminProductCreateView({
         discountType: formData.discountType,
         currentStock: parseInt(formData.stock, 10) || 10,
         sku: formData.sku || `SKU-${Date.now().toString().slice(-6)}`,
+        weight: parseFloat(formData.weight) || 0,
         description: formData.description,
         thumbnailImg: formData.thumbnail,
         variations: variations.map((v) => ({
@@ -284,16 +286,30 @@ export function AdminProductCreateView({
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">Base SKU</label>
-          <input
-            type="text"
-            name="sku"
-            value={formData.sku}
-            onChange={handleChange}
-            placeholder="e.g. PROD-SKU-001"
-            className="w-full max-w-sm px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Base SKU</label>
+            <input
+              type="text"
+              name="sku"
+              value={formData.sku}
+              onChange={handleChange}
+              placeholder="e.g. PROD-SKU-001"
+              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Weight (In Kg)</label>
+            <input
+              type="number"
+              step="0.01"
+              name="weight"
+              value={formData.weight}
+              onChange={handleChange}
+              placeholder="0.00"
+              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
+            />
+          </div>
         </div>
       </div>
 

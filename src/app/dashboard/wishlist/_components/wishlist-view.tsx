@@ -8,8 +8,10 @@ import { useCart } from "@/lib/context/cart-context"
 import { formatPrice } from "@/lib/utils"
 import { Trash2, ShoppingCart, Heart } from "lucide-react"
 
+import type { WishlistProductItem } from "@/services/customer-extra-service"
+
 // Product catalog catalogue items matching wishlist IDs
-const WISHLIST_PRODUCTS = [
+const FALLBACK_WISHLIST_PRODUCTS = [
   {
     id: "prod-1",
     name: "Classic Men's Casual Shirt - Slim Fit Cotton",
@@ -33,13 +35,30 @@ const WISHLIST_PRODUCTS = [
   },
 ]
 
-export function WishlistView() {
+interface WishlistViewProps {
+  initialItems?: WishlistProductItem[]
+}
+
+export function WishlistView({ initialItems }: WishlistViewProps) {
   const { wishlist, toggleWishlist } = useAuth()
   const { addItem } = useCart()
 
-  const displayedProducts = WISHLIST_PRODUCTS.filter((p) => wishlist.includes(p.id))
+  const catalog =
+    initialItems && initialItems.length > 0
+      ? initialItems.map((item) => ({
+          id: String(item.productId),
+          name: item.name,
+          slug: item.slug,
+          price: item.price,
+          thumbnail: item.thumbnail,
+        }))
+      : FALLBACK_WISHLIST_PRODUCTS
 
-  const handleAddToCart = (product: (typeof WISHLIST_PRODUCTS)[0]) => {
+  const displayedProducts = catalog.filter((p) =>
+    wishlist.length > 0 ? wishlist.includes(p.id) : true
+  )
+
+  const handleAddToCart = (product: (typeof FALLBACK_WISHLIST_PRODUCTS)[0]) => {
     addItem({
       productId: product.id,
       name: product.name,

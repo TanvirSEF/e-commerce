@@ -2,6 +2,7 @@ import { db } from "@/db"
 import { shops, shopFollowers } from "@/db/schema/shops"
 import { orders, orderItems } from "@/db/schema/orders"
 import { products } from "@/db/schema/products"
+import { wishlists } from "@/db/schema/customer"
 import { eq, and, desc } from "drizzle-orm"
 
 export interface FollowedSellerItem {
@@ -175,4 +176,72 @@ export async function getDigitalPurchases(userId?: string): Promise<DigitalPurch
     console.warn("getDigitalPurchases DB query fallback:", err)
   }
   return FALLBACK_DIGITAL_PURCHASES
+}
+
+export interface WishlistProductItem {
+  id: number
+  productId: number
+  name: string
+  slug: string
+  price: number
+  thumbnail: string
+  createdAt: string
+}
+
+export async function getUserWishlistProducts(userId: string): Promise<WishlistProductItem[]> {
+  try {
+    if (!userId) return []
+
+    const rows = await db
+      .select({
+        id: wishlists.id,
+        productId: products.id,
+        name: products.name,
+        slug: products.slug,
+        price: products.unitPrice,
+        thumbnail: products.thumbnailImg,
+        createdAt: wishlists.createdAt,
+      })
+      .from(wishlists)
+      .innerJoin(products, eq(wishlists.productId, products.id))
+      .where(eq(wishlists.userId, userId))
+      .orderBy(desc(wishlists.createdAt))
+
+    return rows.map((r) => ({
+      id: r.id,
+      productId: r.productId,
+      name: r.name,
+      slug: r.slug,
+      price: Number(r.price) || 0,
+      thumbnail: r.thumbnail || "/assets/img/placeholder.jpg",
+      createdAt: r.createdAt.toISOString().slice(0, 10),
+    }))
+  } catch (err) {
+    console.warn("getUserWishlistProducts fallback:", err)
+    return []
+  }
+}
+
+export async function toggleWishlistProduct(
+  userId: string,
+  productId: number
+): Promise<{ added: boolean }> {
+  try {
+    const existing = await db
+      .select({ id: wishlists.id })
+      .from(wishlists)
+      .where(and(eq(wishlists.userId, userId), eq(wishlists.productId, productId)))
+      .limit(1)
+
+    if (existing.length > 0) {
+      await db.delete(wishlists).where(eq(wishlists.id, existing[0].id))
+      return { added: false }
+    } else {
+      await db.insert(wishlists).values({ userId, productId })
+      return { added: true }
+    }
+  } catch (err) {
+    console.error("toggleWishlistProduct error:", err)
+    return { added: false }
+  }
 }

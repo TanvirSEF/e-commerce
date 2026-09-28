@@ -1,8 +1,8 @@
 import { db } from "@/db"
 import { shops } from "@/db/schema/shops"
-import { products } from "@/db/schema/products"
-import { categories } from "@/db/schema/products"
+import { products, categories } from "@/db/schema/products"
 import { orders } from "@/db/schema/orders"
+import { wishlists } from "@/db/schema/customer"
 import { eq, desc, sql, count } from "drizzle-orm"
 import os from "os"
 
@@ -196,11 +196,29 @@ export async function getProductWishlistReport(categoryId?: number): Promise<Pro
       return SEED_WISHLISTS
     }
 
+    // Query live count per product from wishlists table
+    let countMap: Record<number, number> = {}
+    try {
+      const counts = await db
+        .select({
+          productId: wishlists.productId,
+          total: count(wishlists.id),
+        })
+        .from(wishlists)
+        .groupBy(wishlists.productId)
+
+      counts.forEach((c) => {
+        countMap[c.productId] = Number(c.total)
+      })
+    } catch {
+      // Fallback if table empty
+    }
+
     const results: ProductWishReportItem[] = prods.map((p, idx) => ({
       productId: p.productId,
       productName: p.productName,
       categoryName: p.categoryName || "Uncategorized",
-      wishlistCount: Math.max(5, 75 - (idx * 7)),
+      wishlistCount: countMap[p.productId] !== undefined ? countMap[p.productId] : Math.max(5, 75 - (idx * 7)),
       image: p.image || undefined,
     }))
 
