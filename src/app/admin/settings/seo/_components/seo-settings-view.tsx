@@ -1,8 +1,10 @@
 "use client"
 
 import React, { useState, useTransition } from "react"
-import { SearchCheck, Save, CheckCircle2, AlertCircle } from "lucide-react"
+import Image from "next/image"
+import { SearchCheck, Save, CheckCircle2, AlertCircle, X } from "lucide-react"
 import { updateGenericSettingAction } from "@/app/actions/ecommerce-actions"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 import type { SeoSettings } from "@/services/settings-service"
 
 interface SeoSettingsViewProps {
@@ -11,6 +13,7 @@ interface SeoSettingsViewProps {
 
 export function SeoSettingsView({ initialSettings }: SeoSettingsViewProps) {
   const [settings, setSettings] = useState<SeoSettings>(initialSettings)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -120,14 +123,45 @@ export function SeoSettingsView({ initialSettings }: SeoSettingsViewProps) {
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
-                OG Banner Image URL
+                OG Banner Image <span className="text-gray-400 font-normal">(1200x630)</span>
               </label>
-              <input
-                type="text"
-                value={settings.ogImage}
-                onChange={(e) => setSettings({ ...settings, ogImage: e.target.value })}
-                className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-900 font-mono focus:border-[#d43533] focus:outline-hidden"
-              />
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsPickerOpen(true)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 font-medium border-r border-gray-200 transition-colors shrink-0 cursor-pointer"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setIsPickerOpen(true)}
+                  className="px-3 py-1.5 text-gray-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {settings.ogImage ? (
+                    <span className="text-gray-800 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-gray-400">Choose File</span>
+                  )}
+                </div>
+              </div>
+              {settings.ogImage && (
+                <div className="mt-2 relative w-28 h-16 rounded border border-gray-200 overflow-hidden bg-gray-50">
+                  <Image
+                    src={settings.ogImage}
+                    alt="OG Banner Preview"
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSettings({ ...settings, ogImage: "" })}
+                    className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-2">
@@ -148,13 +182,25 @@ export function SeoSettingsView({ initialSettings }: SeoSettingsViewProps) {
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#d43533] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#b82a28] transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#d43533] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#b82a28] transition-colors disabled:opacity-50 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             {isPending ? "Saving..." : "Save SEO Settings"}
           </button>
         </div>
       </form>
+
+      <MediaPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setSettings((prev) => ({ ...prev, ogImage: urls[0] }))
+          }
+          setIsPickerOpen(false)
+        }}
+        title="Select OpenGraph Banner Image"
+      />
     </div>
   )
 }

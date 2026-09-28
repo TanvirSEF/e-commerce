@@ -2,13 +2,14 @@
 
 import React, { useState } from "react"
 import Image from "next/image"
-import { Search, Plus, Trash2, CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import { Search, Plus, Trash2, CheckCircle2, XCircle, Loader2, X } from "lucide-react"
 import {
   createCategoryAction,
   deleteCategoryAction,
   toggleCategoryFeaturedAction,
 } from "@/app/actions/ecommerce-actions"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 export interface AdminCategoryItem {
   id: string
@@ -28,6 +29,9 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
   const [searchQuery, setSearchQuery] = useState("")
   const [newCatName, setNewCatName] = useState("")
   const [orderLevel, setOrderLevel] = useState<number>(0)
+  const [banner, setBanner] = useState("")
+  const [icon, setIcon] = useState("")
+  const [pickerTarget, setPickerTarget] = useState<"banner" | "icon" | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [catToDelete, setCatToDelete] = useState<string | null>(null)
@@ -69,6 +73,8 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
     try {
       const res = await createCategoryAction({
         name: newCatName.trim(),
+        banner: banner || undefined,
+        icon: icon || undefined,
         orderLevel: orderLevel || 0,
         featured: false,
       })
@@ -78,7 +84,7 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
             id: res.category!.id,
             name: res.category!.name,
             slug: res.category!.slug,
-            icon: res.category!.icon || "/assets/img/placeholder.jpg",
+            icon: res.category!.icon || icon || "/assets/img/placeholder.jpg",
             featured: res.category!.featured || false,
             orderLevel: res.category!.orderLevel || 0,
           },
@@ -86,6 +92,8 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
         ])
         setNewCatName("")
         setOrderLevel(0)
+        setBanner("")
+        setIcon("")
       }
     } catch (err) {
       console.error("Error creating category:", err)
@@ -220,10 +228,89 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Category Banner</label>
-              <div className="border border-dashed border-slate-300 rounded p-4 text-center bg-slate-50 text-xs text-slate-500">
-                Default category banner will be assigned
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Banner <span className="text-gray-400 font-normal">(200x200)</span>
+              </label>
+              <div className="flex rounded border border-slate-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPickerTarget("banner")}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 font-medium border-r border-slate-300 transition-colors shrink-0 cursor-pointer"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setPickerTarget("banner")}
+                  className="px-3 py-2 text-slate-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {banner ? (
+                    <span className="text-slate-800 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-slate-400">Choose File</span>
+                  )}
+                </div>
               </div>
+              {banner && (
+                <div className="mt-2 relative w-20 h-14 rounded border border-slate-200 overflow-hidden bg-slate-50">
+                  <Image
+                    src={banner}
+                    alt="Category Banner Preview"
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBanner("")}
+                    className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Icon <span className="text-gray-400 font-normal">(32x32)</span>
+              </label>
+              <div className="flex rounded border border-slate-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPickerTarget("icon")}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 font-medium border-r border-slate-300 transition-colors shrink-0 cursor-pointer"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setPickerTarget("icon")}
+                  className="px-3 py-2 text-slate-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {icon ? (
+                    <span className="text-slate-800 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-slate-400">Choose File</span>
+                  )}
+                </div>
+              </div>
+              {icon && (
+                <div className="mt-2 relative w-12 h-12 rounded border border-slate-200 overflow-hidden bg-slate-50">
+                  <Image
+                    src={icon}
+                    alt="Category Icon Preview"
+                    fill
+                    className="object-contain p-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIcon("")}
+                    className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <button
@@ -259,6 +346,19 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
         isLoading={isDeleting}
         title="Delete Confirmation"
         description="Are you sure you want to delete this category? Products belonging to this category will need re-categorization."
+      />
+
+      <MediaPickerModal
+        isOpen={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            if (pickerTarget === "banner") setBanner(urls[0])
+            if (pickerTarget === "icon") setIcon(urls[0])
+          }
+          setPickerTarget(null)
+        }}
+        title={pickerTarget === "icon" ? "Select Category Icon" : "Select Category Banner"}
       />
     </div>
   )

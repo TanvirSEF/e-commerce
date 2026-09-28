@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -9,12 +10,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Eye,
+  X,
 } from "lucide-react"
 import { createDynamicPopupAction } from "@/app/actions/ecommerce-actions"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 export function DynamicPopupCreateView() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const [formData, setFormData] = useState({
@@ -133,37 +137,51 @@ export function DynamicPopupCreateView() {
             />
           </div>
 
-          {/* Banner URL */}
+          {/* Banner */}
           <div>
             <div className="flex justify-between items-baseline mb-1">
               <label className="text-xs font-semibold text-gray-700">
-                Banner Image URL <span className="text-red-500">*</span>
+                Banner Image <span className="text-red-500">*</span>
               </label>
               <span className="text-[10px] text-gray-400">(Recommended 512px x 280px)</span>
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                required
-                placeholder="https://images.unsplash.com/... or /assets/img/slider/1.png"
-                value={formData.bannerUrl}
-                onChange={(e) => setFormData({ ...formData, bannerUrl: e.target.value })}
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs focus:border-[#d43533] focus:outline-hidden font-mono"
-              />
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
               <button
                 type="button"
-                onClick={() =>
-                  setFormData({
-                    ...formData,
-                    bannerUrl:
-                      "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&auto=format&fit=crop&q=80",
-                  })
-                }
-                className="px-3 py-2 text-xs rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 shrink-0 font-medium"
+                onClick={() => setIsPickerOpen(true)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3.5 py-2 font-medium border-r border-gray-200 transition-colors shrink-0 cursor-pointer"
               >
-                Sample Image
+                Browse
               </button>
+              <div
+                onClick={() => setIsPickerOpen(true)}
+                className="px-3 py-2 text-gray-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+              >
+                {formData.bannerUrl ? (
+                  <span className="text-gray-800 font-medium truncate">1 File selected</span>
+                ) : (
+                  <span className="text-gray-400">Choose File</span>
+                )}
+              </div>
             </div>
+            {formData.bannerUrl && (
+              <div className="mt-2 relative w-32 h-16 rounded border border-gray-200 overflow-hidden bg-gray-50">
+                <Image
+                  src={formData.bannerUrl}
+                  alt="Popup Banner Preview"
+                  fill
+                  className="object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, bannerUrl: "" })}
+                  className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                  title="Remove"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Button Text & Color */}
@@ -344,6 +362,18 @@ export function DynamicPopupCreateView() {
           </div>
         </div>
       </form>
+
+      <MediaPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setFormData((prev) => ({ ...prev, bannerUrl: urls[0] }))
+          }
+          setIsPickerOpen(false)
+        }}
+        title="Select Dynamic Popup Banner"
+      />
     </div>
   )
 }

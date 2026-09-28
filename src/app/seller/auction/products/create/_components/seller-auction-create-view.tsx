@@ -3,12 +3,15 @@
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Save, Gavel, DollarSign, XCircle } from "lucide-react"
+import Image from "next/image"
+import { ArrowLeft, Save, Gavel, DollarSign, XCircle, X } from "lucide-react"
 import { createAuctionProductAction } from "@/app/actions/ecommerce-actions"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 export function SellerAuctionCreateView() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     name: "",
@@ -106,13 +109,46 @@ export function SellerAuctionCreateView() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">Thumbnail Image URL</label>
-              <input
-                type="url"
-                value={formData.thumbnail}
-                onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#d43533]/20 focus:border-[#d43533]"
-              />
+              <label className="text-xs font-semibold text-slate-300">
+                Thumbnail Image <span className="text-slate-500 font-normal">(300x300)</span>
+              </label>
+              <div className="flex rounded-lg border border-slate-700 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsPickerOpen(true)}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 font-medium border-r border-slate-700 transition-colors shrink-0 cursor-pointer"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setIsPickerOpen(true)}
+                  className="px-3 py-2 text-slate-400 bg-slate-900 flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {formData.thumbnail ? (
+                    <span className="text-slate-200 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-slate-500">Choose File</span>
+                  )}
+                </div>
+              </div>
+              {formData.thumbnail && (
+                <div className="mt-2 relative w-16 h-16 rounded border border-slate-700 overflow-hidden bg-slate-800">
+                  <Image
+                    src={formData.thumbnail}
+                    alt="Auction Thumbnail"
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, thumbnail: "" })}
+                    className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -171,13 +207,25 @@ export function SellerAuctionCreateView() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d43533] hover:bg-red-700 disabled:opacity-60 text-white font-medium text-sm rounded-lg transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d43533] hover:bg-red-700 disabled:opacity-60 text-white font-medium text-sm rounded-lg transition-colors shadow-sm cursor-pointer"
           >
             <Save className="w-4 h-4" />
             {isSubmitting ? "Listing..." : "Launch Auction"}
           </button>
         </div>
       </form>
+
+      <MediaPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setFormData((prev) => ({ ...prev, thumbnail: urls[0] }))
+          }
+          setIsPickerOpen(false)
+        }}
+        title="Select Auction Thumbnail Image"
+      />
     </div>
   )
 }

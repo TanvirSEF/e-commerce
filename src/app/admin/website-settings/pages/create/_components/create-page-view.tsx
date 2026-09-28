@@ -2,9 +2,11 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { createCustomPageAction } from "@/app/actions/ecommerce-actions"
-import { ArrowLeft, Save, FileText, Search } from "lucide-react"
+import { ArrowLeft, Save, FileText, Search, X } from "lucide-react"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 export function CreatePageView() {
   const router = useRouter()
@@ -15,6 +17,7 @@ export function CreatePageView() {
   const [metaDescription, setMetaDescription] = useState("")
   const [keywords, setKeywords] = useState("")
   const [metaImage, setMetaImage] = useState("")
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
 
@@ -211,19 +214,63 @@ export function CreatePageView() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-            <label className="sm:col-span-3 text-xs font-semibold text-gray-700">Meta Image URL</label>
+            <label className="sm:col-span-3 text-xs font-semibold text-gray-700">
+              Meta Image <span className="text-gray-400 font-normal">(1200x630)</span>
+            </label>
             <div className="sm:col-span-9">
-              <input
-                type="url"
-                value={metaImage}
-                onChange={(e) => setMetaImage(e.target.value)}
-                placeholder="https://example.com/images/meta-banner.jpg"
-                className="w-full text-xs px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#d43533] focus:border-[#d43533] outline-none"
-              />
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsPickerOpen(true)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3.5 py-2 font-medium border-r border-gray-300 transition-colors shrink-0 cursor-pointer"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setIsPickerOpen(true)}
+                  className="px-3 py-2 text-gray-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {metaImage ? (
+                    <span className="text-gray-800 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-gray-400">Choose File</span>
+                  )}
+                </div>
+              </div>
+              {metaImage && (
+                <div className="mt-2 relative w-24 h-14 rounded border border-gray-200 overflow-hidden bg-gray-50">
+                  <Image
+                    src={metaImage}
+                    alt="Meta Image Preview"
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMetaImage("")}
+                    className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      <MediaPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setMetaImage(urls[0])
+          }
+          setIsPickerOpen(false)
+        }}
+        title="Select Meta Image"
+      />
     </form>
   )
 }

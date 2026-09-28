@@ -2,8 +2,9 @@
 
 import React, { useState } from "react"
 import Image from "next/image"
-import { User, ShieldCheck, Lock, Mail, Phone, Save, CheckCircle2, AlertCircle } from "lucide-react"
+import { User, ShieldCheck, Lock, Mail, Phone, Save, CheckCircle2, AlertCircle, X } from "lucide-react"
 import { updateAdminProfileAction } from "@/app/actions/ecommerce-actions"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 import type { AdminProfileData } from "@/services/admin-profile-service"
 
 interface AdminProfileViewProps {
@@ -12,6 +13,7 @@ interface AdminProfileViewProps {
 
 export function AdminProfileView({ initialProfile }: AdminProfileViewProps) {
   const [profile, setProfile] = useState<AdminProfileData>(initialProfile)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [saving, setSaving] = useState(false)
@@ -149,14 +151,46 @@ export function AdminProfileView({ initialProfile }: AdminProfileViewProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Avatar Image URL</label>
-              <input
-                type="text"
-                value={profile.image || ""}
-                onChange={(e) => setProfile({ ...profile, image: e.target.value })}
-                placeholder="/assets/img/avatar-place.png"
-                className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#d43533]"
-              />
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Avatar <span className="text-gray-400 font-normal">(90x90)</span>
+              </label>
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsPickerOpen(true)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3.5 py-2 font-medium border-r border-gray-300 transition-colors shrink-0"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setIsPickerOpen(true)}
+                  className="px-3 py-2 text-gray-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {profile.image ? (
+                    <span className="text-gray-800 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-gray-400">Choose File</span>
+                  )}
+                </div>
+              </div>
+              {profile.image && (
+                <div className="mt-2.5 relative w-[90px] h-[90px] rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
+                  <Image
+                    src={profile.image}
+                    alt="Avatar preview"
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setProfile({ ...profile, image: "" })}
+                    className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -208,6 +242,18 @@ export function AdminProfileView({ initialProfile }: AdminProfileViewProps) {
           </button>
         </div>
       </form>
+
+      <MediaPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setProfile((prev) => ({ ...prev, image: urls[0] }))
+          }
+          setIsPickerOpen(false)
+        }}
+        title="Select Admin Avatar"
+      />
     </div>
   )
 }

@@ -1,6 +1,9 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import Image from "next/image"
+import { X } from "lucide-react"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 export interface VariantItem {
   variant: string
@@ -38,6 +41,7 @@ export function ProductVariationMatrix({
   const [selectedColors, setSelectedColors] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [variants, setVariants] = useState<VariantItem[]>([])
+  const [pickingIdx, setPickingIdx] = useState<number | null>(null)
 
   const toggleColor = (colorName: string) => {
     setSelectedColors((prev) =>
@@ -230,13 +234,35 @@ export function ProductVariationMatrix({
                       />
                     </td>
                     <td className="py-2 px-3">
-                      <input
-                        type="text"
-                        value={v.img || ""}
-                        placeholder="Image URL"
-                        onChange={(e) => handleVariantFieldChange(idx, "img", e.target.value)}
-                        className="w-40 px-2 py-1 border border-slate-300 rounded text-xs"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setPickingIdx(idx)}
+                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-[11px] font-medium text-slate-700 cursor-pointer"
+                        >
+                          Browse
+                        </button>
+                        {v.img ? (
+                          <div className="relative w-8 h-8 rounded border border-slate-200 overflow-hidden bg-slate-50 shrink-0">
+                            <Image
+                              src={v.img}
+                              alt="Variant Photo"
+                              fill
+                              className="object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleVariantFieldChange(idx, "img", "")}
+                              className="absolute top-0 right-0 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                              title="Remove"
+                            >
+                              <X className="w-2 h-2" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400">Choose File</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -245,6 +271,18 @@ export function ProductVariationMatrix({
           </div>
         </div>
       )}
+
+      <MediaPickerModal
+        isOpen={pickingIdx !== null}
+        onClose={() => setPickingIdx(null)}
+        onSelect={(urls) => {
+          if (urls.length > 0 && pickingIdx !== null) {
+            handleVariantFieldChange(pickingIdx, "img", urls[0])
+          }
+          setPickingIdx(null)
+        }}
+        title="Select Variant Photo"
+      />
     </div>
   )
 }

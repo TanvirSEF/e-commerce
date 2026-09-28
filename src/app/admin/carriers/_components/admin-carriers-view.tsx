@@ -1,8 +1,10 @@
 "use client"
 
 import React, { useState } from "react"
+import Image from "next/image"
 import { Truck, Plus, Edit2, Trash2, X, CheckCircle, Search } from "lucide-react"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 import {
   createCarrierAction,
@@ -39,12 +41,13 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
   const [formTransit, setFormTransit] = useState("")
   const [formLogo, setFormLogo] = useState("")
   const [formStatus, setFormStatus] = useState(true)
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
 
   const openAddModal = () => {
     setEditingCarrier(null)
     setFormName("")
     setFormTransit("2-3 Business Days")
-    setFormLogo("https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=200")
+    setFormLogo("")
     setFormStatus(true)
     setIsModalOpen(true)
   }
@@ -277,14 +280,46 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Logo URL</label>
-                <input
-                  type="url"
-                  value={formLogo}
-                  onChange={(e) => setFormLogo(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-                />
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Logo <span className="text-gray-400 font-normal">(120x80)</span>
+                </label>
+                <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setIsPickerOpen(true)}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 font-medium border-r border-gray-300 transition-colors shrink-0 cursor-pointer"
+                  >
+                    Browse
+                  </button>
+                  <div
+                    onClick={() => setIsPickerOpen(true)}
+                    className="px-3 py-2 text-gray-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                  >
+                    {formLogo ? (
+                      <span className="text-gray-800 font-medium truncate">1 File selected</span>
+                    ) : (
+                      <span className="text-gray-400">Choose File</span>
+                    )}
+                  </div>
+                </div>
+                {formLogo && (
+                  <div className="mt-2 relative w-16 h-12 rounded border border-gray-200 overflow-hidden bg-gray-50">
+                    <Image
+                      src={formLogo}
+                      alt="Carrier Logo"
+                      fill
+                      className="object-contain p-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormLogo("")}
+                      className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                      title="Remove"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-1">
@@ -332,6 +367,18 @@ export function AdminCarriersView({ initialCarriers }: AdminCarriersViewProps) {
         isLoading={isDeleting}
         title="Delete Shipping Carrier"
         description="Are you sure you want to delete this shipping carrier? This action cannot be undone."
+      />
+
+      <MediaPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setFormLogo(urls[0])
+          }
+          setIsPickerOpen(false)
+        }}
+        title="Select Carrier Logo"
       />
     </div>
   )

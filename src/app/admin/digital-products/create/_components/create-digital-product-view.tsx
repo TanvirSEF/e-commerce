@@ -2,9 +2,11 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { createDigitalProductAction } from "@/app/actions/ecommerce-actions"
-import { ArrowLeft, Save, FileCode, UploadCloud, DollarSign } from "lucide-react"
+import { ArrowLeft, Save, FileCode, UploadCloud, DollarSign, X } from "lucide-react"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 interface CreateDigitalProductViewProps {
   categories: { id: string | number; name: string }[]
@@ -17,6 +19,7 @@ export function CreateDigitalProductView({ categories }: CreateDigitalProductVie
   const [unitPrice, setUnitPrice] = useState<string>("")
   const [thumbnailImg, setThumbnailImg] = useState("")
   const [digitalFile, setDigitalFile] = useState("")
+  const [pickerTarget, setPickerTarget] = useState<"thumbnail" | "file" | null>(null)
   const [description, setDescription] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -151,31 +154,79 @@ export function CreateDigitalProductView({ categories }: CreateDigitalProductVie
 
           <div>
             <label className="block font-semibold text-gray-700 mb-1">
-              Thumbnail Preview Image URL <span className="text-red-500">*</span>
+              Thumbnail Preview Image <span className="text-red-500">*</span> <span className="text-gray-400 font-normal">(300x300)</span>
             </label>
-            <input
-              type="url"
-              value={thumbnailImg}
-              onChange={(e) => setThumbnailImg(e.target.value)}
-              placeholder="https://images.unsplash.com/... or uploaded asset URL"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-              required
-            />
+            <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => setPickerTarget("thumbnail")}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3.5 py-2.5 font-medium border-r border-gray-300 transition-colors shrink-0 cursor-pointer"
+              >
+                Browse
+              </button>
+              <div
+                onClick={() => setPickerTarget("thumbnail")}
+                className="px-3 py-2.5 text-gray-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+              >
+                {thumbnailImg ? (
+                  <span className="text-gray-800 font-medium truncate">1 File selected</span>
+                ) : (
+                  <span className="text-gray-400">Choose File</span>
+                )}
+              </div>
+            </div>
+            {thumbnailImg && (
+              <div className="mt-2.5 relative w-20 h-20 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
+                <Image
+                  src={thumbnailImg}
+                  alt="Thumbnail Preview"
+                  fill
+                  className="object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setThumbnailImg("")}
+                  className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                  title="Remove"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
             <label className="block font-semibold text-gray-700 mb-1">
-              Downloadable File Link / Delivery URL
+              Downloadable File / Delivery Asset
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={digitalFile}
-                onChange={(e) => setDigitalFile(e.target.value)}
-                placeholder="/downloads/software-bundle-v1.zip or cloud storage secure link"
-                className="w-full pl-8 pr-3 py-2.5 border border-gray-300 rounded-lg outline-none focus:border-[#d43533] font-mono"
-              />
-              <UploadCloud className="w-4 h-4 text-gray-400 absolute left-2.5 top-3" />
+            <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => setPickerTarget("file")}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3.5 py-2.5 font-medium border-r border-gray-300 transition-colors shrink-0 cursor-pointer"
+              >
+                Browse
+              </button>
+              <div
+                onClick={() => setPickerTarget("file")}
+                className="px-3 py-2.5 text-gray-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+              >
+                {digitalFile ? (
+                  <span className="text-gray-800 font-medium truncate">{digitalFile}</span>
+                ) : (
+                  <span className="text-gray-400">Choose File</span>
+                )}
+              </div>
+              {digitalFile && (
+                <button
+                  type="button"
+                  onClick={() => setDigitalFile("")}
+                  className="px-3 text-gray-400 hover:text-red-600 border-l border-gray-200"
+                  title="Clear file"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
             <p className="text-[11px] text-gray-400 mt-1">
               This file download link will be provided to verified customers after payment.
@@ -194,6 +245,20 @@ export function CreateDigitalProductView({ categories }: CreateDigitalProductVie
           </div>
         </div>
       </div>
+
+      <MediaPickerModal
+        isOpen={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        type={pickerTarget === "thumbnail" ? "image" : "all"}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            if (pickerTarget === "thumbnail") setThumbnailImg(urls[0])
+            if (pickerTarget === "file") setDigitalFile(urls[0])
+          }
+          setPickerTarget(null)
+        }}
+        title={pickerTarget === "thumbnail" ? "Select Thumbnail Image" : "Select Product Digital File"}
+      />
     </form>
   )
 }

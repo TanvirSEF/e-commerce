@@ -1,7 +1,9 @@
 "use client"
 
 import React, { useState } from "react"
-import { Store, Save, CheckCircle, Globe, Phone, MapPin } from "lucide-react"
+import Image from "next/image"
+import { Store, Save, CheckCircle, Globe, Phone, MapPin, X } from "lucide-react"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 import type { SeedShop } from "@/db/seed/data"
 
 interface SellerShopViewProps {
@@ -24,6 +26,7 @@ export function SellerShopView({ shop }: SellerShopViewProps) {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [pickerTarget, setPickerTarget] = useState<"logo" | "topBanner" | null>(null)
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -119,30 +122,89 @@ export function SellerShopView({ shop }: SellerShopViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Shop Logo URL
+                Shop Logo <span className="text-gray-400 font-normal">(200x200)</span>
               </label>
-              <input
-                type="url"
-                name="logo"
-                value={form.logo}
-                onChange={handleChange}
-                placeholder="https://..."
-                className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-              />
+              <div className="flex rounded border border-slate-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPickerTarget("logo")}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 font-medium border-r border-slate-300 transition-colors shrink-0 cursor-pointer"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setPickerTarget("logo")}
+                  className="px-3 py-2 text-slate-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {form.logo ? (
+                    <span className="text-slate-800 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-slate-400">Choose File</span>
+                  )}
+                </div>
+              </div>
+              {form.logo && (
+                <div className="mt-2 relative w-16 h-16 rounded border border-slate-200 overflow-hidden bg-slate-50">
+                  <Image
+                    src={form.logo}
+                    alt="Shop Logo"
+                    fill
+                    className="object-contain p-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, logo: "" }))}
+                    className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
               <p className="text-[11px] text-slate-400 mt-1">Recommended: 200×200px</p>
             </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Top Banner URL
+                Top Banner <span className="text-gray-400 font-normal">(1280x300)</span>
               </label>
-              <input
-                type="url"
-                name="topBanner"
-                value={form.topBanner}
-                onChange={handleChange}
-                placeholder="https://..."
-                className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-              />
+              <div className="flex rounded border border-slate-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPickerTarget("topBanner")}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 font-medium border-r border-slate-300 transition-colors shrink-0 cursor-pointer"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setPickerTarget("topBanner")}
+                  className="px-3 py-2 text-slate-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {form.topBanner ? (
+                    <span className="text-slate-800 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-slate-400">Choose File</span>
+                  )}
+                </div>
+              </div>
+              {form.topBanner && (
+                <div className="mt-2 relative w-32 h-14 rounded border border-slate-200 overflow-hidden bg-slate-50">
+                  <Image
+                    src={form.topBanner}
+                    alt="Top Banner"
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, topBanner: "" }))}
+                    className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
               <p className="text-[11px] text-slate-400 mt-1">Recommended: 1280×300px</p>
             </div>
           </div>
@@ -215,13 +277,29 @@ export function SellerShopView({ shop }: SellerShopViewProps) {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center gap-1.5 px-5 py-2 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded shadow-sm transition-colors"
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded shadow-sm transition-colors cursor-pointer"
           >
             <Save className="w-4 h-4" />
             {isSubmitting ? "Saving..." : "Save Shop Settings"}
           </button>
         </div>
       </form>
+
+      <MediaPickerModal
+        isOpen={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            if (pickerTarget === "logo") {
+              setForm((prev) => ({ ...prev, logo: urls[0] }))
+            } else if (pickerTarget === "topBanner") {
+              setForm((prev) => ({ ...prev, topBanner: urls[0] }))
+            }
+          }
+          setPickerTarget(null)
+        }}
+        title={pickerTarget === "logo" ? "Select Shop Logo" : "Select Shop Banner"}
+      />
     </div>
   )
 }

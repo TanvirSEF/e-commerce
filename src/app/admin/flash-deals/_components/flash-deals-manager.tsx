@@ -10,6 +10,7 @@ import {
   toggleFlashDealFeaturedAction,
 } from "@/app/actions/ecommerce-actions"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { CreateFlashDealModal } from "./create-flash-deal-modal"
 
 interface FlashDealItem {
   id: string
@@ -34,13 +35,6 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [dealToDelete, setDealToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
-  // Form state
-  const [title, setTitle] = useState("")
-  const [startDateStr, setStartDateStr] = useState("")
-  const [endDateStr, setEndDateStr] = useState("")
-  const [banner, setBanner] = useState("/assets/img/placeholder-rect.jpg")
-  const [submitting, setSubmitting] = useState(false)
 
   const handleCopyLink = (slug: string) => {
     const url = `${window.location.origin}/flash-deal/${slug}`
@@ -83,29 +77,6 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
       setDeleteModalOpen(false)
       setDealToDelete(null)
     }
-  }
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!title || !startDateStr || !endDateStr) return
-
-    setSubmitting(true)
-    const start = new Date(startDateStr).getTime()
-    const end = new Date(endDateStr).getTime()
-
-    const res = await createFlashDealAction({
-      title,
-      banner,
-      startDate: start,
-      endDate: end,
-    })
-
-    setDeals([res.deal, ...deals])
-    setSubmitting(false)
-    setShowModal(false)
-    setTitle("")
-    setStartDateStr("")
-    setEndDateStr("")
   }
 
   const filteredDeals = deals.filter((d) =>
@@ -265,93 +236,11 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
       </div>
 
       {/* Create Flash Deal Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900 text-sm">Create Flash Deal Campaign</h3>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-1"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreate} className="p-4 sm:p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Campaign Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Mega Eid Flash Sale 2026"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded p-2.5 focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Start Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={startDateStr}
-                    onChange={(e) => setStartDateStr(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded p-2.5 focus:border-primary focus:outline-none bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    End Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={endDateStr}
-                    onChange={(e) => setEndDateStr(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded p-2.5 focus:border-primary focus:outline-none bg-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Banner Image URL
-                </label>
-                <input
-                  type="text"
-                  value={banner}
-                  onChange={(e) => setBanner(e.target.value)}
-                  className="w-full text-xs border border-gray-200 rounded p-2.5 focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded text-xs font-semibold text-gray-600 hover:bg-gray-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs disabled:opacity-50"
-                >
-                  {submitting ? "Saving..." : "Save Campaign"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateFlashDealModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onCreated={(deal) => setDeals((prev) => [deal, ...prev])}
+      />
 
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}

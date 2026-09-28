@@ -1,8 +1,10 @@
 "use client"
 
 import React, { useState } from "react"
+import Image from "next/image"
 import { X, PenLine } from "lucide-react"
 import { createBlogAction } from "@/app/actions/ecommerce-actions"
+import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 import type { SeedBlog, SeedBlogCategory } from "@/db/seed/data"
 
 interface CreateBlogModalProps {
@@ -26,6 +28,7 @@ export function CreateBlogModal({
     description: "",
     banner: "",
   })
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [createSuccess, setCreateSuccess] = useState(false)
 
@@ -194,17 +197,45 @@ export function CreateBlogModal({
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Featured Banner Image URL
+                Featured Banner <span className="text-gray-400 font-normal">(1300x650)</span>
               </label>
-              <input
-                type="url"
-                placeholder="https://..."
-                value={form.banner}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, banner: e.target.value }))
-                }
-                className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-              />
+              <div className="flex rounded border border-slate-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsPickerOpen(true)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 font-medium border-r border-slate-300 transition-colors shrink-0 cursor-pointer"
+                >
+                  Browse
+                </button>
+                <div
+                  onClick={() => setIsPickerOpen(true)}
+                  className="px-3 py-1.5 text-slate-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+                >
+                  {form.banner ? (
+                    <span className="text-slate-800 font-medium truncate">1 File selected</span>
+                  ) : (
+                    <span className="text-slate-400">Choose File</span>
+                  )}
+                </div>
+              </div>
+              {form.banner && (
+                <div className="mt-2 relative w-32 h-16 rounded border border-slate-200 overflow-hidden bg-slate-50">
+                  <Image
+                    src={form.banner}
+                    alt="Banner Preview"
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, banner: "" }))}
+                    className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                    title="Remove"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
@@ -226,6 +257,18 @@ export function CreateBlogModal({
           </form>
         )}
       </div>
+
+      <MediaPickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={(urls) => {
+          if (urls.length > 0) {
+            setForm((f) => ({ ...f, banner: urls[0] }))
+          }
+          setIsPickerOpen(false)
+        }}
+        title="Select Blog Banner"
+      />
     </div>
   )
 }
