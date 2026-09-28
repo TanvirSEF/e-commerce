@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/context/auth-context"
 import { ProfileBasicInfo } from "./profile-basic-info"
 import { ProfileAddressBook, type UserAddress } from "./profile-address-book"
 import { ProfilePaymentInfo } from "./profile-payment-info"
+import { ProfileChangeEmail } from "./profile-change-email"
 
 const INITIAL_ADDRESSES: UserAddress[] = [
   {
@@ -64,6 +65,9 @@ export function ProfileView() {
 
       {/* 3. Payment & Payout Information (For Refunds) */}
       <ProfilePaymentInfo />
+
+      {/* 4. Change Your Email (Verification Flow) */}
+      <ProfileChangeEmail currentEmail={user?.email || "tanvir@example.com"} />
     </div>
   )
 }

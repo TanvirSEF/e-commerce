@@ -55,6 +55,12 @@ export async function getShopBySlug(slug: string): Promise<SeedShop | null> {
         instagram: row.instagram || undefined,
         twitter: row.twitter || undefined,
         youtube: row.youtube || undefined,
+        cashPaymentStatus: row.cashPaymentStatus ?? true,
+        bankPaymentStatus: row.bankPaymentStatus ?? true,
+        bankName: row.bankName || "",
+        bankAccName: row.bankAccName || "",
+        bankAccNo: row.bankAccNo || "",
+        bankRoutingNo: row.bankRoutingNo || "",
       }
     }
   } catch (err) {

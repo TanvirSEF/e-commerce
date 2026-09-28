@@ -466,6 +466,12 @@ export interface SeedShop {
   instagram?: string
   twitter?: string
   youtube?: string
+  cashPaymentStatus?: boolean
+  bankPaymentStatus?: boolean
+  bankName?: string
+  bankAccName?: string
+  bankAccNo?: string
+  bankRoutingNo?: string
 }
 
 export const SEED_SHOPS: SeedShop[] = [

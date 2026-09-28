@@ -90,12 +90,12 @@ export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
                   Shop Settings
                 </Link>
                 <Link
-                  href="/seller/dashboard"
+                  href="/seller/profile"
                   onClick={() => setProfileMenuOpen(false)}
                   className="flex items-center gap-2 px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#d43533] transition-colors"
                 >
                   <User className="w-3.5 h-3.5" />
-                  Account
+                  Manage Profile
                 </Link>
                 <div className="border-t border-slate-100" />
                 <Link

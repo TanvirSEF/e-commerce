@@ -42,6 +42,12 @@ export const shops = pgTable("shops", {
   youtube: text("youtube"),
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
+  cashPaymentStatus: boolean("cash_payment_status").default(true),
+  bankPaymentStatus: boolean("bank_payment_status").default(true),
+  bankName: varchar("bank_name", { length: 150 }),
+  bankAccName: varchar("bank_acc_name", { length: 150 }),
+  bankAccNo: varchar("bank_acc_no", { length: 100 }),
+  bankRoutingNo: varchar("bank_routing_no", { length: 50 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })

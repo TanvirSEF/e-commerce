@@ -364,7 +364,7 @@ export async function updateCustomerProfileAction(data: {
 }) {
   try {
     const { db } = await import("@/db")
-    const { users } = await import("@/db/schema")
+    const { users, accounts } = await import("@/db/schema")
     const { eq } = await import("drizzle-orm")
 
     if (data.userId) {
@@ -377,10 +377,142 @@ export async function updateCustomerProfileAction(data: {
           updatedAt: new Date(),
         })
         .where(eq(users.id, data.userId))
+
+      if (data.password && data.password.trim().length > 0) {
+        try {
+          const { hashPassword } = await import("better-auth/crypto")
+          const hashedPassword = await hashPassword(data.password)
+          await db
+            .update(accounts)
+            .set({ password: hashedPassword, updatedAt: new Date() })
+            .where(eq(accounts.userId, data.userId))
+        } catch {}
+      }
     }
     return { success: true, message: "Profile updated successfully" }
   } catch (err: any) {
     return { success: false, message: err?.message || "Failed to update profile" }
+  }
+}
+
+export async function sendEmailUpdateCodeAction(email: string) {
+  try {
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      return { success: false, message: "Please provide a valid email address." }
+    }
+
+    const { db } = await import("@/db")
+    const { verifications, users } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+
+    // Check if email already used by someone else
+    const existing = await db.select().from(users).where(eq(users.email, cleanEmail)).limit(1)
+    if (existing.length > 0) {
+      return { success: false, message: "This email is already in use by another account." }
+    }
+
+    const code = "123456" // Standard demo code for Active eCommerce CMS
+    await db
+      .insert(verifications)
+      .values({
+        id: `ver_email_${Date.now()}`,
+        identifier: cleanEmail,
+        value: code,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      })
+      .catch(() => {})
+
+    return {
+      success: true,
+      message: `Verification code sent to ${cleanEmail}. (Demo Code: ${code})`,
+      code,
+    }
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Failed to send verification code." }
+  }
+}
+
+export async function updateUserEmailAction(data: {
+  email: string
+  code: string
+  userId?: string
+}) {
+  try {
+    const cleanEmail = data.email.trim().toLowerCase()
+    const code = data.code.trim()
+
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      return { success: false, message: "Please enter a valid email address." }
+    }
+
+    if (code !== "123456") {
+      return { success: false, message: "Invalid verification code. Please check and try again." }
+    }
+
+    const { db } = await import("@/db")
+    const { users } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+
+    if (data.userId) {
+      await db
+        .update(users)
+        .set({ email: cleanEmail, updatedAt: new Date() })
+        .where(eq(users.id, data.userId))
+    }
+
+    return {
+      success: true,
+      message: "Your email address has been updated successfully.",
+      email: cleanEmail,
+    }
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Failed to update email address." }
+  }
+}
+
+export async function updateSellerProfileAction(data: {
+  userId?: string
+  name: string
+  phone?: string
+  avatar?: string
+  password?: string
+}) {
+  return await updateCustomerProfileAction(data)
+}
+
+export async function updateSellerPaymentSettingsAction(data: {
+  shopId?: number
+  cashPaymentStatus: boolean
+  bankPaymentStatus: boolean
+  bankName?: string
+  bankAccName?: string
+  bankAccNo?: string
+  bankRoutingNo?: string
+}) {
+  try {
+    const { db } = await import("@/db")
+    const { shops } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+
+    if (data.shopId) {
+      await db
+        .update(shops)
+        .set({
+          cashPaymentStatus: data.cashPaymentStatus,
+          bankPaymentStatus: data.bankPaymentStatus,
+          bankName: data.bankName || null,
+          bankAccName: data.bankAccName || null,
+          bankAccNo: data.bankAccNo || null,
+          bankRoutingNo: data.bankRoutingNo || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(shops.id, data.shopId))
+    }
+
+    return { success: true, message: "Payment settings updated successfully." }
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Failed to update payment settings." }
   }
 }
 

@@ -26,6 +26,7 @@ import {
   FileText,
   FolderOpen,
   RotateCcw,
+  User,
 } from "lucide-react"
 
 interface NavItem {
@@ -139,6 +140,11 @@ const navItems: NavItem[] = [
     title: "Shop Verification",
     href: "/seller/verify",
     icon: ShieldCheck,
+  },
+  {
+    title: "Manage Profile",
+    href: "/seller/profile",
+    icon: User,
   },
   {
     title: "Product Reviews",
