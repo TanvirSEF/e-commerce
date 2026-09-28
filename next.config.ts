@@ -113,6 +113,15 @@ const nextConfig: NextConfig = {
       { source: "/admin/promotion-and-offers-dashboard", destination: "/admin/promotional-products-index" },
       { source: "/admin/product-management/dashboard", destination: "/admin/products" },
       { source: "/403", destination: "/forbidden" },
+      { source: "/blog", destination: "/blogs" },
+      { source: "/mobile-page/:slug", destination: "/page/:slug" },
+      { source: "/seller/seller-packages", destination: "/seller/packages" },
+      { source: "/admin/seller_packages", destination: "/admin/seller-packages" },
+      { source: "/admin/offline-wallet-recharge-requests", destination: "/admin/wallet-recharges" },
+      { source: "/admin/offline-seller-package-payment-requests", destination: "/admin/seller-packages/payments" },
+      { source: "/admin/offline-customer-package-payment-requests", destination: "/customer-packages" },
+      { source: "/admin/refund-method-for-customer-index", destination: "/admin/refund-requests" },
+      { source: "/preorder/category/:slug", destination: "/preorder" },
     ]
   },
 }
