@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth/auth"
 
 import {
   getUserNotifications,
+  getAdminNotifications,
   markNotificationsAsRead,
   deleteUserNotifications,
 } from "@/services/notification-service"
@@ -11,9 +12,17 @@ import {
 export async function GET(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
-    const userId = session?.user?.id || "usr_customer_default_01"
+    const variant = req.nextUrl.searchParams.get("variant") || "storefront"
 
-    const notifications = await getUserNotifications(userId)
+    let notifications
+    if (variant === "admin") {
+      const adminId = session?.user?.id || "usr_admin_default_01"
+      notifications = await getAdminNotifications(adminId)
+    } else {
+      const userId = session?.user?.id || "usr_customer_default_01"
+      notifications = await getUserNotifications(userId)
+    }
+
     const unreadCount = notifications.filter((n) => !n.isRead).length
 
     return NextResponse.json({
@@ -33,11 +42,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
-    const userId = session?.user?.id || "usr_customer_default_01"
+    const variant = req.nextUrl.searchParams.get("variant") || "storefront"
+    const userId = session?.user?.id || (variant === "admin" ? "usr_admin_default_01" : "usr_customer_default_01")
     const body = await req.json()
 
+    const fetchCurrent = () => (variant === "admin" ? getAdminNotifications(userId) : getUserNotifications(userId))
+
     if (body.action === "mark_all_read") {
-      const all = await getUserNotifications(userId)
+      const all = await fetchCurrent()
       const ids = all.filter((n) => !n.isRead).map((n) => n.id)
       await markNotificationsAsRead(ids, userId)
       return NextResponse.json({ success: true, unreadCount: 0 })
@@ -45,14 +57,14 @@ export async function POST(req: NextRequest) {
 
     if (body.action === "mark_read" && body.id) {
       await markNotificationsAsRead([body.id], userId)
-      const all = await getUserNotifications(userId)
+      const all = await fetchCurrent()
       const unreadCount = all.filter((n) => !n.isRead).length
       return NextResponse.json({ success: true, unreadCount })
     }
 
     if (body.action === "delete" && Array.isArray(body.ids)) {
       await deleteUserNotifications(body.ids, userId)
-      const all = await getUserNotifications(userId)
+      const all = await fetchCurrent()
       const unreadCount = all.filter((n) => !n.isRead).length
       return NextResponse.json({ success: true, unreadCount })
     }

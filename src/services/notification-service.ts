@@ -250,3 +250,75 @@ export async function markNotificationsAsRead(
   return { success: true }
 }
 
+export async function getAdminNotifications(
+  adminId: string = "usr_admin_default_01"
+): Promise<CustomerNotificationItem[]> {
+  const items: CustomerNotificationItem[] = []
+  const userReadIds = new Set<string>(readNotificationIds)
+  const userDeletedIds = new Set<string>(deletedNotificationIds)
+
+  try {
+    const reads = await db
+      .select({ notificationId: notificationReads.notificationId })
+      .from(notificationReads)
+      .where(eq(notificationReads.userId, adminId))
+    reads.forEach((r) => userReadIds.add(r.notificationId))
+
+    const dels = await db
+      .select({ notificationId: notificationDeletes.notificationId })
+      .from(notificationDeletes)
+      .where(eq(notificationDeletes.userId, adminId))
+    dels.forEach((d) => userDeletedIds.add(d.notificationId))
+  } catch (err) {
+    console.warn("Admin notification read/delete DB lookup fallback:", err)
+  }
+
+  // 1. Fetch system orders for Admin
+  try {
+    const { getOrdersAdmin } = await import("./order-service")
+    const { orders } = await getOrdersAdmin({ limit: 15 })
+
+    for (const order of orders) {
+      items.push({
+        id: `admin-order-${order.id}-${order.code}`,
+        type: "order",
+        title: "New Order Placed",
+        message: `A new order: [[${order.code}]] has been placed. Total: ৳${order.total.toLocaleString()}`,
+        orderCode: order.code,
+        link: `/admin/orders`,
+        image: "/assets/img/notification.png",
+        date: order.date || new Date().toISOString().slice(0, 10),
+        isRead: false,
+      })
+    }
+  } catch (err) {
+    console.warn("getAdminNotifications orders fallback:", err)
+  }
+
+  // 2. Fetch custom notifications
+  try {
+    const customs = await getAllCustomNotifications()
+    for (const c of customs) {
+      items.push({
+        id: `admin-custom-${c.id}`,
+        type: c.notificationType === "Promotional" ? "promo" : "system",
+        title: c.title,
+        message: c.content,
+        link: c.link || "/admin/notifications",
+        image: "/assets/img/notification.png",
+        date: c.createdAt ? c.createdAt.toISOString().slice(0, 10) : "2026-03-20",
+        isRead: false,
+      })
+    }
+  } catch (err) {}
+
+  return items
+    .filter((it) => !userDeletedIds.has(it.id))
+    .map((it) => ({
+      ...it,
+      isRead: it.isRead || userReadIds.has(it.id),
+    }))
+}
+
+
+

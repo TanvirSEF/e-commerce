@@ -33,12 +33,13 @@ export function NotificationBell({
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState<number>(initialUnreadCount)
   const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<"all" | "orders" | "system">("all")
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const fetchNotifications = useCallback(async (isInitial = false) => {
     try {
       if (isInitial) setLoading(true)
-      const res = await fetch("/api/notifications", {
+      const res = await fetch(`/api/notifications?variant=${variant}`, {
         headers: { "Cache-Control": "no-cache" },
       })
       if (!res.ok) return
@@ -52,7 +53,7 @@ export function NotificationBell({
     } finally {
       if (isInitial) setLoading(false)
     }
-  }, [])
+  }, [variant])
 
   useEffect(() => {
     fetchNotifications(true)
@@ -82,7 +83,7 @@ export function NotificationBell({
       )
       setUnreadCount((c) => Math.max(0, c - 1))
       try {
-        await fetch("/api/notifications", {
+        await fetch(`/api/notifications?variant=${variant}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "mark_read", id: item.id }),
@@ -94,6 +95,12 @@ export function NotificationBell({
       router.push(item.link)
     }
   }
+
+  const filteredNotifications = notifications.filter((n) => {
+    if (activeTab === "orders") return n.type === "order"
+    if (activeTab === "system") return n.type !== "order"
+    return true
+  })
 
   const viewAllLink =
     variant === "admin"
@@ -143,20 +150,64 @@ export function NotificationBell({
           } mt-2 w-80 sm:w-96 rounded-none border border-gray-200 bg-white shadow-lg z-50 overflow-hidden text-left`}
         >
           {/* Header */}
-          <div className="p-3 bg-gray-50 border-b border-gray-200">
+          <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
             <h6 className="mb-0 text-sm font-semibold text-gray-800">Notifications</h6>
+            {unreadCount > 0 && (
+              <span className="text-[10px] bg-red-100 text-[#d43533] font-bold px-2 py-0.5 rounded-full">
+                {unreadCount} unread
+              </span>
+            )}
           </div>
+
+          {/* Admin Tabs (Active eCommerce CMS 1:1) */}
+          {variant === "admin" && (
+            <div className="flex border-b border-gray-200 text-xs bg-gray-50/50">
+              <button
+                type="button"
+                onClick={() => setActiveTab("all")}
+                className={`flex-1 py-2 text-center font-medium transition-colors border-b-2 ${
+                  activeTab === "all"
+                    ? "border-[#d43533] text-[#d43533] font-bold bg-white"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("orders")}
+                className={`flex-1 py-2 text-center font-medium transition-colors border-b-2 ${
+                  activeTab === "orders"
+                    ? "border-[#d43533] text-[#d43533] font-bold bg-white"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Orders
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("system")}
+                className={`flex-1 py-2 text-center font-medium transition-colors border-b-2 ${
+                  activeTab === "system"
+                    ? "border-[#d43533] text-[#d43533] font-bold bg-white"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                System
+              </button>
+            </div>
+          )}
 
           {/* List */}
           <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-100">
             {loading ? (
               <div className="py-6 text-center text-xs text-gray-400">Loading...</div>
-            ) : notifications.length === 0 ? (
+            ) : filteredNotifications.length === 0 ? (
               <div className="py-8 text-center text-sm text-gray-500">
                 No notification found
               </div>
             ) : (
-              notifications.slice(0, 10).map((item) => (
+              filteredNotifications.slice(0, 10).map((item) => (
                 <div
                   key={item.id}
                   onClick={() => handleNotificationClick(item)}
