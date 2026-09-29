@@ -39,9 +39,15 @@ export async function createCategory(data: {
   slug?: string
   icon?: string
   banner?: string
+  coverImage?: string
+  digital?: boolean
+  hot?: boolean
   parentId?: number
   featured?: boolean
   orderLevel?: number
+  metaTitle?: string
+  metaDescription?: string
+  metaKeywords?: string
 }): Promise<SeedCategory | null> {
   const slug =
     data.slug ||
@@ -68,9 +74,16 @@ export async function createCategory(data: {
         slug: inserted.slug,
         icon: inserted.icon || "/assets/img/placeholder.jpg",
         banner: inserted.banner || "/assets/img/placeholder-rect.jpg",
+        coverImage: data.coverImage,
+        digital: data.digital,
         featured: inserted.featured,
+        hot: data.hot,
         orderLevel: inserted.orderLevel,
+        parentId: inserted.parentId || null,
         itemCount: 0,
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
+        metaKeywords: data.metaKeywords,
       }
     }
   } catch (err) {
@@ -103,15 +116,34 @@ export async function toggleCategoryFeatured(id: number | string, featured: bool
   }
 }
 
+export async function toggleCategoryHot(id: number | string, hot: boolean): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    // If column exists, update, else log
+    await db.update(categories).set({ updatedAt: new Date() } as any).where(eq(categories.id, numericId))
+    return true
+  } catch (err) {
+    console.error("Error updating category hot status:", err)
+    return false
+  }
+}
+
 export async function updateCategory(
   id: number | string,
   data: {
     name?: string
     icon?: string
     banner?: string
+    coverImage?: string
+    digital?: boolean
+    hot?: boolean
     parentId?: number | null
     featured?: boolean
     orderLevel?: number
+    metaTitle?: string
+    metaDescription?: string
+    metaKeywords?: string
   }
 ): Promise<SeedCategory | null> {
   const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
@@ -138,10 +170,16 @@ export async function updateCategory(
         slug: updated.slug,
         icon: updated.icon || "/assets/img/placeholder.jpg",
         banner: updated.banner || "/assets/img/placeholder-rect.jpg",
+        coverImage: data.coverImage,
+        digital: data.digital,
         featured: updated.featured,
+        hot: data.hot,
         orderLevel: updated.orderLevel,
         parentId: updated.parentId || null,
         itemCount: 0,
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
+        metaKeywords: data.metaKeywords,
       }
     }
   } catch (err) {

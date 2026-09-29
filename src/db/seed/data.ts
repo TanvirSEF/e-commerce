@@ -4,10 +4,17 @@ export interface SeedCategory {
   slug: string
   icon: string
   banner: string
+  coverImage?: string
+  digital?: boolean
   featured: boolean
+  hot?: boolean
+  level?: number
   orderLevel: number
   itemCount: number
   parentId?: number | null
+  metaTitle?: string
+  metaDescription?: string
+  metaKeywords?: string
 }
 
 export interface SeedBrand {

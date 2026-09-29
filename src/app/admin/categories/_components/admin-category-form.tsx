@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Plus, Save, RotateCcw, X, Loader2 } from "lucide-react"
 import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 import type { AdminCategoryItem } from "./admin-categories-table"
+import { AdminCategorySeoFields } from "./admin-category-seo-fields"
 
 interface AdminCategoryFormProps {
   allCategories: AdminCategoryItem[]
@@ -15,6 +16,11 @@ interface AdminCategoryFormProps {
     orderLevel?: number
     banner?: string
     icon?: string
+    coverImage?: string
+    digital?: boolean
+    metaTitle?: string
+    metaDescription?: string
+    metaKeywords?: string
   }) => Promise<void>
   onCancelEdit: () => void
   isSubmitting: boolean
@@ -28,25 +34,40 @@ export function AdminCategoryForm({
   isSubmitting,
 }: AdminCategoryFormProps) {
   const [name, setName] = useState("")
+  const [digital, setDigital] = useState(false)
   const [parentId, setParentId] = useState<string>("")
   const [orderLevel, setOrderLevel] = useState<number>(0)
   const [banner, setBanner] = useState("")
   const [icon, setIcon] = useState("")
-  const [pickerTarget, setPickerTarget] = useState<"banner" | "icon" | null>(null)
+  const [coverImage, setCoverImage] = useState("")
+  const [metaTitle, setMetaTitle] = useState("")
+  const [metaDescription, setMetaDescription] = useState("")
+  const [metaKeywords, setMetaKeywords] = useState("")
+  const [pickerTarget, setPickerTarget] = useState<"banner" | "icon" | "coverImage" | null>(null)
 
   useEffect(() => {
     if (editingCategory) {
       setName(editingCategory.name)
+      setDigital(!!editingCategory.digital)
       setParentId(editingCategory.parentId ? String(editingCategory.parentId) : "")
       setOrderLevel(editingCategory.orderLevel || 0)
       setBanner(editingCategory.banner || "")
       setIcon(editingCategory.icon || "")
+      setCoverImage(editingCategory.coverImage || "")
+      setMetaTitle(editingCategory.metaTitle || "")
+      setMetaDescription(editingCategory.metaDescription || "")
+      setMetaKeywords(editingCategory.metaKeywords || "")
     } else {
       setName("")
+      setDigital(false)
       setParentId("")
       setOrderLevel(0)
       setBanner("")
       setIcon("")
+      setCoverImage("")
+      setMetaTitle("")
+      setMetaDescription("")
+      setMetaKeywords("")
     }
   }, [editingCategory])
 
@@ -56,18 +77,28 @@ export function AdminCategoryForm({
 
     await onSave({
       name: name.trim(),
+      digital,
       parentId: parentId ? Number(parentId) : null,
       orderLevel: Number(orderLevel) || 0,
       banner: banner || undefined,
       icon: icon || undefined,
+      coverImage: coverImage || undefined,
+      metaTitle: metaTitle || undefined,
+      metaDescription: metaDescription || undefined,
+      metaKeywords: metaKeywords || undefined,
     })
 
     if (!editingCategory) {
       setName("")
+      setDigital(false)
       setParentId("")
       setOrderLevel(0)
       setBanner("")
       setIcon("")
+      setCoverImage("")
+      setMetaTitle("")
+      setMetaDescription("")
+      setMetaKeywords("")
     }
   }
 
@@ -94,6 +125,45 @@ export function AdminCategoryForm({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Type (Physical / Digital - Active eCommerce 1:1) */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Type</label>
+          <div className="grid grid-cols-2 gap-2">
+            <label
+              className={`flex items-center gap-2 p-2 border rounded cursor-pointer text-xs transition-colors ${
+                !digital
+                  ? "border-[#d43533] bg-red-50/50 text-[#d43533] font-semibold"
+                  : "border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="digital"
+                checked={!digital}
+                onChange={() => setDigital(false)}
+                className="text-[#d43533]"
+              />
+              <span>Physical</span>
+            </label>
+            <label
+              className={`flex items-center gap-2 p-2 border rounded cursor-pointer text-xs transition-colors ${
+                digital
+                  ? "border-[#d43533] bg-red-50/50 text-[#d43533] font-semibold"
+                  : "border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="digital"
+                checked={digital}
+                onChange={() => setDigital(true)}
+                className="text-[#d43533]"
+              />
+              <span>Digital</span>
+            </label>
+          </div>
+        </div>
+
         {/* Category Name */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -219,6 +289,55 @@ export function AdminCategoryForm({
           )}
         </div>
 
+        {/* Cover Image (Active eCommerce 1:1) */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">
+            Cover Image <span className="text-gray-400 font-normal">(260x260)</span>
+          </label>
+          <div className="flex rounded border border-slate-300 overflow-hidden text-xs">
+            <button
+              type="button"
+              onClick={() => setPickerTarget("coverImage")}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 font-medium border-r border-slate-300 transition-colors shrink-0 cursor-pointer"
+            >
+              Browse
+            </button>
+            <div
+              onClick={() => setPickerTarget("coverImage")}
+              className="px-3 py-2 text-slate-500 bg-white flex-1 cursor-pointer truncate flex items-center"
+            >
+              {coverImage ? (
+                <span className="text-slate-800 font-medium truncate">1 File selected</span>
+              ) : (
+                <span className="text-slate-400">Choose File</span>
+              )}
+            </div>
+          </div>
+          {coverImage && (
+            <div className="mt-2 relative w-20 h-14 rounded border border-slate-200 overflow-hidden bg-slate-50">
+              <Image src={coverImage} alt="Cover Preview" fill className="object-cover" />
+              <button
+                type="button"
+                onClick={() => setCoverImage("")}
+                className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5 cursor-pointer"
+                title="Remove"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Meta SEO Fields */}
+        <AdminCategorySeoFields
+          metaTitle={metaTitle}
+          metaDescription={metaDescription}
+          metaKeywords={metaKeywords}
+          onTitleChange={setMetaTitle}
+          onDescriptionChange={setMetaDescription}
+          onKeywordsChange={setMetaKeywords}
+        />
+
         {/* Submit Button */}
         <button
           type="submit"
@@ -251,10 +370,17 @@ export function AdminCategoryForm({
           if (urls.length > 0) {
             if (pickerTarget === "banner") setBanner(urls[0])
             if (pickerTarget === "icon") setIcon(urls[0])
+            if (pickerTarget === "coverImage") setCoverImage(urls[0])
           }
           setPickerTarget(null)
         }}
-        title={pickerTarget === "icon" ? "Select Category Icon" : "Select Category Banner"}
+        title={
+          pickerTarget === "icon"
+            ? "Select Category Icon"
+            : pickerTarget === "coverImage"
+            ? "Select Category Cover Image"
+            : "Select Category Banner"
+        }
       />
     </div>
   )

@@ -26,6 +26,7 @@ interface AdminBrandsViewProps {
 
 export function AdminBrandsView({ initialBrands }: AdminBrandsViewProps) {
   const [brands, setBrands] = useState<AdminBrandItem[]>(initialBrands)
+  const [activeTab, setActiveTab] = useState<"all" | "unused">("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [editingBrand, setEditingBrand] = useState<AdminBrandItem | null>(null)
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -114,6 +115,11 @@ export function AdminBrandsView({ initialBrands }: AdminBrandsViewProps) {
     showNotification("success", message)
   }
 
+  const filteredBrands = brands.filter((b) => {
+    if (activeTab === "unused") return (b.productCount || 0) === 0
+    return true
+  })
+
   return (
     <div className="space-y-6">
       {/* Top Header Bar */}
@@ -132,6 +138,32 @@ export function AdminBrandsView({ initialBrands }: AdminBrandsViewProps) {
           <UploadCloud className="w-3.5 h-3.5 text-[#d43533]" />
           <span>Bulk Upload</span>
         </Link>
+      </div>
+
+      {/* Brand Tabs (Active eCommerce 1:1) */}
+      <div className="flex items-center gap-1 border-b border-slate-200 bg-white px-4 rounded-t-lg shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab("all")}
+          className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
+            activeTab === "all"
+              ? "border-[#d43533] text-[#d43533]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          All Brands ({brands.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("unused")}
+          className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
+            activeTab === "unused"
+              ? "border-[#d43533] text-[#d43533]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Unused Brands ({brands.filter((b) => (b.productCount || 0) === 0).length})
+        </button>
       </div>
 
       {/* Notification Banner */}
@@ -157,7 +189,7 @@ export function AdminBrandsView({ initialBrands }: AdminBrandsViewProps) {
         {/* All Brands Table Pane */}
         <div className="lg:col-span-8">
           <AdminBrandsTable
-            brands={brands}
+            brands={filteredBrands}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onToggleTop={toggleTop}

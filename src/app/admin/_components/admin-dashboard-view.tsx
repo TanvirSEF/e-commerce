@@ -2,6 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
+import { Info } from "lucide-react"
 import type { AdminDashboardData } from "@/services/admin-dashboard-service"
 import { DashboardKpiCards } from "./dashboard-kpi-cards"
 import { DashboardSalesSellers } from "./dashboard-sales-sellers"
@@ -29,6 +30,19 @@ export function AdminDashboardView({ data }: AdminDashboardViewProps) {
           >
             + Add New Product
           </Link>
+        </div>
+      </div>
+
+      {/* SMTP Notice (Active eCommerce 1:1) */}
+      <div className="bg-sky-50 border border-sky-200 text-sky-800 text-xs px-4 py-3 rounded flex items-center justify-between shadow-2xs">
+        <div className="flex items-center gap-2">
+          <Info className="w-4 h-4 text-sky-600 shrink-0" />
+          <span>
+            Please Configure SMTP Setting to work all email sending functionality.{" "}
+            <Link href="/admin/settings" className="font-bold underline ml-1 hover:text-sky-950">
+              Configure Now
+            </Link>
+          </span>
         </div>
       </div>
 

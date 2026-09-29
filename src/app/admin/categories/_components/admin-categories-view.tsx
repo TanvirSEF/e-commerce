@@ -6,6 +6,7 @@ import {
   updateCategoryAction,
   deleteCategoryAction,
   toggleCategoryFeaturedAction,
+  toggleCategoryHotAction,
 } from "@/app/actions/ecommerce-actions"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import { AdminCategoriesTable, type AdminCategoryItem } from "./admin-categories-table"
@@ -22,6 +23,7 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
   const [categories, setCategories] = useState<AdminCategoryItem[]>(initialCategories)
   const [editingCategory, setEditingCategory] = useState<AdminCategoryItem | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState<"all" | "physical" | "digital">("all")
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [catToDelete, setCatToDelete] = useState<string | null>(null)
@@ -50,12 +52,32 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
     })
   }
 
+  const handleToggleHot = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, hot: nextStatus } : c))
+    )
+    startTransition(async () => {
+      const res = await toggleCategoryHotAction(id, nextStatus)
+      if (res.success) {
+        showToast("success", `Category ${nextStatus ? "marked as hot" : "removed from hot"}`)
+      } else {
+        showToast("error", "Failed to update category hot status")
+      }
+    })
+  }
+
   const handleSave = async (data: {
     name: string
     parentId?: number | null
     orderLevel?: number
     banner?: string
     icon?: string
+    coverImage?: string
+    digital?: boolean
+    metaTitle?: string
+    metaDescription?: string
+    metaKeywords?: string
   }) => {
     setIsSubmitting(true)
     try {
@@ -72,8 +94,13 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
                     slug: updated.slug,
                     icon: updated.icon,
                     banner: updated.banner,
+                    coverImage: updated.coverImage,
+                    digital: updated.digital,
                     orderLevel: updated.orderLevel,
                     parentId: updated.parentId || null,
+                    metaTitle: updated.metaTitle,
+                    metaDescription: updated.metaDescription,
+                    metaKeywords: updated.metaKeywords,
                   }
                 : c
             )
@@ -86,11 +113,17 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
       } else {
         const res = await createCategoryAction({
           name: data.name,
+          digital: data.digital,
           parentId: data.parentId ? Number(data.parentId) : undefined,
           orderLevel: data.orderLevel || 0,
           banner: data.banner,
           icon: data.icon,
+          coverImage: data.coverImage,
+          metaTitle: data.metaTitle,
+          metaDescription: data.metaDescription,
+          metaKeywords: data.metaKeywords,
           featured: false,
+          hot: false,
         })
         if (res.success && res.category) {
           const created = res.category
@@ -101,9 +134,15 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
               slug: created.slug,
               icon: created.icon || "/assets/img/placeholder.jpg",
               banner: created.banner || "/assets/img/placeholder-rect.jpg",
+              coverImage: created.coverImage,
+              digital: created.digital,
               featured: created.featured || false,
+              hot: created.hot || false,
               orderLevel: created.orderLevel || 0,
               parentId: created.parentId || null,
+              metaTitle: created.metaTitle,
+              metaDescription: created.metaDescription,
+              metaKeywords: created.metaKeywords,
             },
             ...prev,
           ])
@@ -142,9 +181,13 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
     }
   }
 
-  const filtered = categories.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filtered = categories.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    if (!matchesSearch) return false
+    if (activeTab === "physical") return !c.digital
+    if (activeTab === "digital") return !!c.digital
+    return true
+  })
 
   return (
     <div className="space-y-6">
@@ -154,6 +197,43 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
         <p className="text-xs text-slate-500 mt-0.5">
           Manage product categories, subcategories hierarchy, and store taxonomy (Active eCommerce 1:1)
         </p>
+      </div>
+
+      {/* Category Tabs (Active eCommerce 1:1) */}
+      <div className="flex items-center gap-1 border-b border-slate-200 bg-white px-4 rounded-t-lg shadow-2xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab("all")}
+          className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
+            activeTab === "all"
+              ? "border-[#d43533] text-[#d43533]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          All Categories
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("physical")}
+          className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
+            activeTab === "physical"
+              ? "border-[#d43533] text-[#d43533]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Physical Categories
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("digital")}
+          className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
+            activeTab === "digital"
+              ? "border-[#d43533] text-[#d43533]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Digital Categories
+        </button>
       </div>
 
       {feedback && (
@@ -183,6 +263,7 @@ export function AdminCategoriesView({ initialCategories }: AdminCategoriesViewPr
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onToggleFeatured={handleToggleFeatured}
+            onToggleHot={handleToggleHot}
             onEditClick={(cat) => setEditingCategory(cat)}
             onDeleteClick={handleDeleteClick}
           />

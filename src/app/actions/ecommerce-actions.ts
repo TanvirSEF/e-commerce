@@ -1528,9 +1528,15 @@ export async function createCategoryAction(data: {
   slug?: string
   icon?: string
   banner?: string
+  coverImage?: string
+  digital?: boolean
+  hot?: boolean
   parentId?: number
   featured?: boolean
   orderLevel?: number
+  metaTitle?: string
+  metaDescription?: string
+  metaKeywords?: string
 }) {
   const { createCategory } = await import("@/services/category-service")
   const category = await createCategory(data)
@@ -1558,15 +1564,30 @@ export async function toggleCategoryFeaturedAction(id: number | string, featured
   return { success }
 }
 
+export async function toggleCategoryHotAction(id: number | string, hot: boolean) {
+  const { toggleCategoryHot } = await import("@/services/category-service")
+  const success = await toggleCategoryHot(id, hot)
+  revalidatePath("/admin/categories")
+  revalidatePath("/categories")
+  revalidatePath("/")
+  return { success }
+}
+
 export async function updateCategoryAction(
   id: number | string,
   data: {
     name?: string
     icon?: string
     banner?: string
+    coverImage?: string
+    digital?: boolean
+    hot?: boolean
     parentId?: number | null
     featured?: boolean
     orderLevel?: number
+    metaTitle?: string
+    metaDescription?: string
+    metaKeywords?: string
   }
 ) {
   const { updateCategory } = await import("@/services/category-service")

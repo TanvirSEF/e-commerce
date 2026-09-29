@@ -88,6 +88,7 @@ export function AdminBrandsTable({
               <th className="py-3 px-4 w-12">#</th>
               <th className="py-3 px-4">Brand Name</th>
               <th className="py-3 px-4">Logo</th>
+              <th className="py-3 px-4 text-center">Qty Products</th>
               <th className="py-3 px-4 text-center">Top Brand</th>
               <th className="py-3 px-4 text-right w-24">Options</th>
             </tr>
@@ -95,7 +96,7 @@ export function AdminBrandsTable({
           <tbody className="divide-y divide-slate-100">
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-12 text-center text-slate-400">
+                <td colSpan={6} className="py-12 text-center text-slate-400">
                   <p className="font-medium text-sm">No brands found</p>
                   <p className="text-xs text-slate-400 mt-1">Try refining your search keyword</p>
                 </td>
@@ -129,6 +130,12 @@ export function AdminBrandsTable({
                           className="object-contain p-1"
                         />
                       </div>
+                    </td>
+
+                    <td className="py-3 px-4 text-center font-mono font-medium text-slate-700">
+                      <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[11px]">
+                        {brand.productCount ?? 0}
+                      </span>
                     </td>
 
                     <td className="py-3 px-4 text-center">
