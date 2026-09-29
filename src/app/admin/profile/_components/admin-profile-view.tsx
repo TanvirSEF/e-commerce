@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { User, ShieldCheck, Lock, Mail, Phone, Save, CheckCircle2, AlertCircle, X } from "lucide-react"
 import { updateAdminProfileAction } from "@/app/actions/ecommerce-actions"
@@ -12,6 +13,7 @@ interface AdminProfileViewProps {
 }
 
 export function AdminProfileView({ initialProfile }: AdminProfileViewProps) {
+  const router = useRouter()
   const [profile, setProfile] = useState<AdminProfileData>(initialProfile)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [newPassword, setNewPassword] = useState("")
@@ -45,6 +47,17 @@ export function AdminProfileView({ initialProfile }: AdminProfileViewProps) {
         image: profile.image || undefined,
         newPassword: newPassword || undefined,
       })
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("admin-profile-updated", {
+            detail: {
+              ...profile,
+              image: profile.image,
+            },
+          })
+        )
+      }
+      router.refresh()
       setSuccessMsg("Admin profile updated successfully!")
       setNewPassword("")
       setConfirmPassword("")

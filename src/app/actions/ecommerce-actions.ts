@@ -386,7 +386,11 @@ export async function updateAdminProfileAction(data: {
   newPassword?: string
 }) {
   const { updateAdminProfile } = await import("@/services/admin-profile-service")
-  return await updateAdminProfile(data.adminId || "usr_admin_default_01", data)
+  const result = await updateAdminProfile(data.adminId || "usr_admin_default_01", data)
+  const { revalidatePath } = await import("next/cache")
+  revalidatePath("/admin", "layout")
+  revalidatePath("/admin/profile")
+  return result
 }
 
 export async function updateCustomerProfileAction(data: {

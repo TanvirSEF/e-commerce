@@ -1,18 +1,40 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import Image from "next/image"
-import { Menu, Globe, Bell, LogOut, User, ShieldCheck } from "lucide-react"
+import { Menu, Globe, LogOut, User, ShieldCheck } from "lucide-react"
 import { NotificationBell } from "@/components/layout/notification-bell"
-
+import type { AdminProfileData } from "@/services/admin-profile-service"
 
 interface AdminHeaderProps {
   onToggleSidebar: () => void
+  initialProfile?: AdminProfileData
 }
 
-export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
+export function AdminHeader({ onToggleSidebar, initialProfile }: AdminHeaderProps) {
+  const [profile, setProfile] = useState<AdminProfileData | undefined>(initialProfile)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [imgError, setImgError] = useState(false)
+
+  useEffect(() => {
+    if (initialProfile) {
+      setProfile(initialProfile)
+    }
+  }, [initialProfile])
+
+  useEffect(() => {
+    const handleProfileUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<AdminProfileData>
+      if (customEvent.detail) {
+        setProfile((prev) => ({ ...(prev || {}), ...customEvent.detail } as AdminProfileData))
+        setImgError(false)
+      }
+    }
+    window.addEventListener("admin-profile-updated", handleProfileUpdate)
+    return () => window.removeEventListener("admin-profile-updated", handleProfileUpdate)
+  }, [])
+
+  const avatarSrc = profile?.image && profile.image.trim() !== "" ? profile.image : "/assets/img/avatar-place.png"
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-30 flex items-center justify-between px-4 lg:px-8">
@@ -51,7 +73,6 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
           <NotificationBell variant="admin" align="right" />
         </div>
 
-
         {/* Admin Profile Dropdown */}
         <div className="relative">
           <button
@@ -60,53 +81,61 @@ export function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
             className="flex items-center space-x-2.5 p-1 rounded-full hover:bg-gray-100 transition-colors"
           >
             <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 relative border border-gray-300">
-              <Image
-                src="/assets/img/avatar-place.png"
-                alt="Admin"
-                fill
-                sizes="32px"
-                className="object-cover"
+              <img
+                src={imgError ? "/assets/img/avatar-place.png" : avatarSrc}
+                alt={profile?.name || "Admin"}
+                className="w-full h-full object-cover"
+                onError={() => setImgError(true)}
               />
             </div>
             <div className="text-left hidden md:block leading-tight">
-              <span className="text-xs font-bold text-gray-800 block">Administrator</span>
+              <span className="text-xs font-bold text-gray-800 block truncate max-w-[140px]">
+                {profile?.name || "Administrator"}
+              </span>
               <span className="text-[10px] text-emerald-600 font-semibold flex items-center">
-                <ShieldCheck className="w-2.5 h-2.5 mr-0.5" /> Super Admin
+                <ShieldCheck className="w-2.5 h-2.5 mr-0.5" />
+                {profile?.role === "super_admin" || !profile?.role ? "Super Admin" : profile.role}
               </span>
             </div>
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg py-1 z-50 text-xs">
-              <div className="px-4 py-2 border-b border-gray-100">
-                <p className="font-bold text-gray-800">Admin User</p>
-                <p className="text-gray-500 text-[11px] truncate">admin@example.com</p>
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowProfileMenu(false)}
+              />
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 text-xs">
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <p className="font-bold text-gray-800 truncate">{profile?.name || "Admin User"}</p>
+                  <p className="text-gray-500 text-[11px] truncate">{profile?.email || "admin@example.com"}</p>
+                </div>
+                <Link
+                  href="/admin/profile"
+                  onClick={() => setShowProfileMenu(false)}
+                  className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-[#d43533] transition-colors"
+                >
+                  <User className="w-3.5 h-3.5 mr-2 text-gray-400" />
+                  Manage Profile
+                </Link>
+                <Link
+                  href="/admin/settings"
+                  onClick={() => setShowProfileMenu(false)}
+                  className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-[#d43533] transition-colors"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 mr-2 text-gray-400" />
+                  General Settings
+                </Link>
+                <Link
+                  href="/login"
+                  onClick={() => setShowProfileMenu(false)}
+                  className="flex items-center px-4 py-2 text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100"
+                >
+                  <LogOut className="w-3.5 h-3.5 mr-2 text-red-400" />
+                  Sign Out
+                </Link>
               </div>
-              <Link
-                href="/admin/profile"
-                onClick={() => setShowProfileMenu(false)}
-                className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-[#d43533] transition-colors"
-              >
-                <User className="w-3.5 h-3.5 mr-2 text-gray-400" />
-                Manage Profile
-              </Link>
-              <Link
-                href="/admin/settings"
-                onClick={() => setShowProfileMenu(false)}
-                className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-[#d43533] transition-colors"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 mr-2 text-gray-400" />
-                General Settings
-              </Link>
-              <Link
-                href="/login"
-                onClick={() => setShowProfileMenu(false)}
-                className="flex items-center px-4 py-2 text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100"
-              >
-                <LogOut className="w-3.5 h-3.5 mr-2 text-red-400" />
-                Sign Out
-              </Link>
-            </div>
+            </>
           )}
         </div>
       </div>
