@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres"
 import { migrate } from "drizzle-orm/node-postgres/migrator"
 import * as schema from "../src/db/schema/index.js"
 import { SEED_CATEGORIES, SEED_BRANDS, SEED_PRODUCTS, SEED_FLASH_DEALS, SEED_SHOPS, SEED_COUPONS } from "../src/db/seed/data.js"
-import { eq } from "drizzle-orm"
+import { eq, count } from "drizzle-orm"
 
 const { Pool } = pg
 
@@ -420,6 +420,224 @@ async function runSetup() {
       }
     }
     console.log("[OK] Canonical Addons seeded")
+
+    // 12. Seed Canonical Orders for Active eCommerce CMS
+    const dbProducts = await db.select().from(schema.products)
+    const existingOrdersCount = await db.select({ val: count() }).from(schema.orders)
+    if (Number(existingOrdersCount[0]?.val || 0) === 0 && dbProducts.length > 0) {
+      const now = new Date()
+      const getPastDate = (daysAgo: number) => new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000)
+
+      const SEED_ORDERS_DATA = [
+        {
+          code: "ORD-942851",
+          trackingCode: "TRK-942851",
+          userId: "usr_customer_default_01",
+          customerName: "Tanvir Ahmed",
+          customerEmail: "tanvir@example.com",
+          amount: "2200.00",
+          paymentType: "cash_on_delivery",
+          paymentStatus: "paid",
+          deliveryStatus: "delivered",
+          date: getPastDate(1),
+          productId: dbProducts[0]?.id,
+          qty: 1,
+        },
+        {
+          code: "ORD-938210",
+          trackingCode: "TRK-938210",
+          userId: "usr_customer_default_01",
+          customerName: "Rashidul Islam",
+          customerEmail: "rashidul@example.com",
+          amount: "3450.00",
+          paymentType: "wallet",
+          paymentStatus: "paid",
+          deliveryStatus: "delivered",
+          date: getPastDate(3),
+          productId: dbProducts[1]?.id || dbProducts[0]?.id,
+          qty: 2,
+        },
+        {
+          code: "ORD-921473",
+          trackingCode: "TRK-921473",
+          userId: "usr_customer_default_01",
+          customerName: "Mohammad Ali",
+          customerEmail: "ali@example.com",
+          amount: "999.00",
+          paymentType: "cash_on_delivery",
+          paymentStatus: "unpaid",
+          deliveryStatus: "pending",
+          date: getPastDate(4),
+          productId: dbProducts[2]?.id || dbProducts[0]?.id,
+          qty: 1,
+        },
+        {
+          code: "ORD-915420",
+          trackingCode: "TRK-915420",
+          userId: "usr_customer_default_01",
+          customerName: "Sarah Khan",
+          customerEmail: "sarah@example.com",
+          amount: "4800.00",
+          paymentType: "sslcommerz",
+          paymentStatus: "paid",
+          deliveryStatus: "confirmed",
+          date: getPastDate(5),
+          productId: dbProducts[3]?.id || dbProducts[0]?.id,
+          qty: 1,
+        },
+        {
+          code: "ORD-902184",
+          trackingCode: "TRK-902184",
+          userId: "usr_customer_default_01",
+          customerName: "Arif Hossain",
+          customerEmail: "arif@example.com",
+          amount: "1650.00",
+          paymentType: "cash_on_delivery",
+          paymentStatus: "paid",
+          deliveryStatus: "on_the_way",
+          date: getPastDate(7),
+          productId: dbProducts[4]?.id || dbProducts[0]?.id,
+          qty: 1,
+        },
+        {
+          code: "ORD-894721",
+          trackingCode: "TRK-894721",
+          userId: "usr_customer_default_01",
+          customerName: "Nusrat Jahan",
+          customerEmail: "nusrat@example.com",
+          amount: "3200.00",
+          paymentType: "wallet",
+          paymentStatus: "paid",
+          deliveryStatus: "picked_up",
+          date: getPastDate(12),
+          productId: dbProducts[5]?.id || dbProducts[0]?.id,
+          qty: 2,
+        },
+        {
+          code: "ORD-882190",
+          trackingCode: "TRK-882190",
+          userId: "usr_customer_default_01",
+          customerName: "Tanvir Ahmed",
+          customerEmail: "tanvir@example.com",
+          amount: "5800.00",
+          paymentType: "cash_on_delivery",
+          paymentStatus: "paid",
+          deliveryStatus: "delivered",
+          date: getPastDate(25),
+          productId: dbProducts[0]?.id,
+          qty: 2,
+        },
+        {
+          code: "ORD-871203",
+          trackingCode: "TRK-871203",
+          userId: "usr_customer_default_01",
+          customerName: "Mehedi Hasan",
+          customerEmail: "mehedi@example.com",
+          amount: "7500.00",
+          paymentType: "bkash",
+          paymentStatus: "paid",
+          deliveryStatus: "delivered",
+          date: getPastDate(45),
+          productId: dbProducts[1]?.id || dbProducts[0]?.id,
+          qty: 3,
+        },
+        {
+          code: "ORD-860492",
+          trackingCode: "TRK-860492",
+          userId: "usr_customer_default_01",
+          customerName: "Shamima Akter",
+          customerEmail: "shamima@example.com",
+          amount: "9200.00",
+          paymentType: "wallet",
+          paymentStatus: "paid",
+          deliveryStatus: "delivered",
+          date: getPastDate(70),
+          productId: dbProducts[2]?.id || dbProducts[0]?.id,
+          qty: 2,
+        },
+        {
+          code: "ORD-851928",
+          trackingCode: "TRK-851928",
+          userId: "usr_customer_default_01",
+          customerName: "Tanvir Ahmed",
+          customerEmail: "tanvir@example.com",
+          amount: "12400.00",
+          paymentType: "cash_on_delivery",
+          paymentStatus: "paid",
+          deliveryStatus: "delivered",
+          date: getPastDate(100),
+          productId: dbProducts[3]?.id || dbProducts[0]?.id,
+          qty: 4,
+        },
+        {
+          code: "ORD-840192",
+          trackingCode: "TRK-840192",
+          userId: "usr_customer_default_01",
+          customerName: "Rashed Khan",
+          customerEmail: "rashed@example.com",
+          amount: "1200.00",
+          paymentType: "cash_on_delivery",
+          paymentStatus: "unpaid",
+          deliveryStatus: "cancelled",
+          date: getPastDate(10),
+          productId: dbProducts[4]?.id || dbProducts[0]?.id,
+          qty: 1,
+        },
+        {
+          code: "ORD-831092",
+          trackingCode: "TRK-831092",
+          userId: "usr_customer_default_01",
+          customerName: "Farhana Yeasmin",
+          customerEmail: "farhana@example.com",
+          amount: "2900.00",
+          paymentType: "cash_on_delivery",
+          paymentStatus: "paid",
+          deliveryStatus: "confirmed",
+          date: getPastDate(6),
+          productId: dbProducts[5]?.id || dbProducts[0]?.id,
+          qty: 1,
+        },
+      ]
+
+      for (const ord of SEED_ORDERS_DATA) {
+        const [newOrder] = await db
+          .insert(schema.orders)
+          .values({
+            code: ord.code,
+            trackingCode: ord.trackingCode,
+            userId: ord.userId,
+            shippingAddress: {
+              name: ord.customerName,
+              email: ord.customerEmail,
+              address: "House 12, Road 5, Dhanmondi",
+              city: "Dhaka",
+              country: "Bangladesh",
+              phone: "+880 1712 000000",
+            },
+            paymentType: ord.paymentType,
+            paymentStatus: ord.paymentStatus,
+            deliveryStatus: ord.deliveryStatus,
+            grandTotal: ord.amount,
+            createdAt: ord.date,
+            updatedAt: ord.date,
+          })
+          .returning()
+
+        if (newOrder && ord.productId) {
+          await db.insert(schema.orderItems).values({
+            orderId: newOrder.id,
+            productId: ord.productId,
+            quantity: ord.qty,
+            price: ord.amount,
+            tax: "0.00",
+            shippingCost: "0.00",
+            createdAt: ord.date,
+            updatedAt: ord.date,
+          })
+        }
+      }
+      console.log("[OK] Canonical Orders & Order Items seeded")
+    }
 
     console.log("==================================================")
     console.log("[OK] Installation completed")
