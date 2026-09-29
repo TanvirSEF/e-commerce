@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Menu, Globe, LogOut, User, ShieldCheck } from "lucide-react"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import type { AdminProfileData } from "@/services/admin-profile-service"
@@ -12,9 +13,42 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ onToggleSidebar, initialProfile }: AdminHeaderProps) {
+  const pathname = usePathname()
   const [profile, setProfile] = useState<AdminProfileData | undefined>(initialProfile)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [imgError, setImgError] = useState(false)
+
+  const getBreadcrumbs = () => {
+    if (!pathname || pathname === "/admin") return ["Overview"]
+    if (pathname.startsWith("/admin/products/create")) return ["Products", "Product Editor"]
+    if (pathname.startsWith("/admin/products/category-discount")) return ["Products", "Category Discount"]
+    if (pathname.startsWith("/admin/products/smart-bar")) return ["Products", "Smart Bar"]
+    if (pathname.startsWith("/admin/products/size-charts")) return ["Products", "Size Charts"]
+    if (pathname.startsWith("/admin/products/measurement-points")) return ["Products", "Measurement Points"]
+    if (pathname.startsWith("/admin/products/attributes")) return ["Products", "Attributes"]
+    if (pathname.startsWith("/admin/products/colors")) return ["Products", "Colors"]
+    if (pathname.startsWith("/admin/products/warranties")) return ["Products", "Warranties"]
+    if (pathname.startsWith("/admin/products")) return ["Products", "All Products"]
+    if (pathname.startsWith("/admin/pos-activation")) return ["POS System", "POS Configuration"]
+    if (pathname.startsWith("/admin/pos-orders")) return ["POS System", "POS Orders"]
+    if (pathname.startsWith("/admin/pos")) return ["POS System", "POS Manager"]
+    if (pathname.startsWith("/admin/orders")) return ["Sales", "All Orders"]
+    if (pathname.startsWith("/admin/categories")) return ["Products", "Categories"]
+    if (pathname.startsWith("/admin/brands")) return ["Products", "Brands"]
+    if (pathname.startsWith("/admin/customers")) return ["Customers", "All Customers"]
+    if (pathname.startsWith("/admin/sellers")) return ["Sellers", "All Sellers"]
+    if (pathname.startsWith("/admin/settings")) return ["Settings", "General Settings"]
+
+    const clean = pathname.replace(/^\/admin\/?/, "")
+    if (!clean) return ["Overview"]
+    return clean.split("/").map((part) =>
+      part
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    )
+  }
+
+  const breadcrumbs = getBreadcrumbs()
 
   useEffect(() => {
     if (initialProfile) {
@@ -38,7 +72,7 @@ export function AdminHeader({ onToggleSidebar, initialProfile }: AdminHeaderProp
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-30 flex items-center justify-between px-4 lg:px-8">
-      {/* Left: Mobile Toggle & Breadcrumb / Title */}
+      {/* Left: Mobile Toggle & Dynamic Breadcrumb */}
       <div className="flex items-center space-x-3">
         <button
           type="button"
@@ -50,9 +84,26 @@ export function AdminHeader({ onToggleSidebar, initialProfile }: AdminHeaderProp
         </button>
 
         <div className="hidden sm:flex items-center space-x-2 text-xs text-gray-500">
-          <span className="font-semibold text-gray-800">Admin Control Panel</span>
-          <span>/</span>
-          <span className="text-gray-500">Overview</span>
+          <Link
+            href="/admin"
+            className="font-semibold text-gray-800 hover:text-[#d43533] transition-colors"
+          >
+            Admin Control Panel
+          </Link>
+          {breadcrumbs.map((crumb, idx) => (
+            <React.Fragment key={`${crumb}-${idx}`}>
+              <span>/</span>
+              <span
+                className={
+                  idx === breadcrumbs.length - 1
+                    ? "text-gray-700 font-medium"
+                    : "text-gray-500"
+                }
+              >
+                {crumb}
+              </span>
+            </React.Fragment>
+          ))}
         </div>
       </div>
 

@@ -17,18 +17,26 @@ export interface ProductFilters {
   limit?: number
   featured?: boolean
   todaysDeal?: boolean
+  includeUnpublished?: boolean
+  addedBy?: string
 }
 
 export async function getProducts(filters: ProductFilters = {}): Promise<{ data: SeedProduct[]; total: number }> {
   const catSlug = filters.categorySlug || filters.category
   const bSlug = filters.brandSlug || filters.brand
   const searchTerm = filters.search || filters.q
-  const { minPrice, maxPrice, page = 1, limit = 12, featured, todaysDeal } = filters
+  const { minPrice, maxPrice, page = 1, limit = 12, featured, todaysDeal, includeUnpublished, addedBy } = filters
   const sort = filters.sort || "newest"
 
   try {
-    const conditions = [eq(products.published, true)]
+    const conditions = []
 
+    if (!includeUnpublished) {
+      conditions.push(eq(products.published, true))
+    }
+    if (addedBy && addedBy !== "all") {
+      conditions.push(eq(products.addedBy, addedBy))
+    }
     if (catSlug) {
       conditions.push(eq(categories.slug, catSlug))
     }
@@ -59,12 +67,14 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
 
     const offset = (page - 1) * limit
 
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
     const [totalRes] = await db
       .select({ count: count() })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .leftJoin(brands, eq(products.brandId, brands.id))
-      .where(and(...conditions))
+      .where(whereClause)
 
     const total = Number(totalRes?.count || 0)
 
@@ -90,6 +100,8 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
         variations: products.variations,
         featured: products.featured,
         todaysDeal: products.todaysDeal,
+        published: products.published,
+        addedBy: products.addedBy,
         description: products.description,
         categorySlug: categories.slug,
         categoryName: categories.name,
@@ -99,7 +111,7 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .leftJoin(brands, eq(products.brandId, brands.id))
-      .where(and(...conditions))
+      .where(whereClause)
       .orderBy(orderByClause)
       .limit(limit)
       .offset(offset)
@@ -126,6 +138,8 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
         sizes: (p.choiceOptions?.[0]?.values as string[]) || [],
         featured: p.featured,
         todaysDeal: p.todaysDeal,
+        published: p.published,
+        addedBy: p.addedBy || "admin",
         sellerName: "Active eCommerce Outlet",
         sellerSlug: "active-outlet",
         description: p.description || "",
@@ -561,6 +575,71 @@ export async function toggleProductFeatured(id: number | string, featured: boole
   } catch (error) {
     console.error("Error updating product featured:", error)
     return false
+  }
+}
+
+export async function toggleProductTodaysDeal(id: number | string, todaysDeal: boolean): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    await db.update(products).set({ todaysDeal, updatedAt: new Date() }).where(eq(products.id, numericId))
+    return true
+  } catch (error) {
+    console.error("Error updating product todaysDeal:", error)
+    return false
+  }
+}
+
+export async function duplicateProduct(id: number | string) {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return null
+  try {
+    const [orig] = await db.select().from(products).where(eq(products.id, numericId)).limit(1)
+    if (!orig) return null
+
+    const timestamp = Date.now().toString().slice(-4)
+    const newSlug = `${orig.slug}-copy-${timestamp}`
+    const [inserted] = await db
+      .insert(products)
+      .values({
+        name: `${orig.name} (Copy)`,
+        slug: newSlug,
+        sku: orig.sku ? `${orig.sku}-COPY-${timestamp}` : `SKU-COPY-${timestamp}`,
+        categoryId: orig.categoryId,
+        brandId: orig.brandId,
+        photos: orig.photos,
+        thumbnailImg: orig.thumbnailImg,
+        unitPrice: orig.unitPrice,
+        purchasePrice: orig.purchasePrice,
+        discount: orig.discount,
+        discountType: orig.discountType,
+        currentStock: orig.currentStock,
+        unit: orig.unit,
+        rating: "0.00",
+        numOfReviews: 0,
+        numOfSale: 0,
+        description: orig.description,
+        colors: orig.colors,
+        choiceOptions: orig.choiceOptions,
+        variations: orig.variations,
+        featured: false,
+        todaysDeal: false,
+        published: false,
+        isDigital: orig.isDigital,
+        digitalFile: orig.digitalFile,
+        weight: orig.weight,
+        frequentlyBoughtSelectionType: orig.frequentlyBoughtSelectionType,
+        addedBy: orig.addedBy,
+        userId: orig.userId,
+        shopId: orig.shopId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+    return inserted || null
+  } catch (err) {
+    console.error("duplicateProduct error:", err)
+    return null
   }
 }
 

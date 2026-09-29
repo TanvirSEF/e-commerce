@@ -1,48 +1,65 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useTransition } from "react"
 import Link from "next/link"
-import Image from "next/image"
-import { Search, Plus, Edit, Trash2, CheckCircle2, XCircle } from "lucide-react"
+import { Search, Plus, CheckCircle2, AlertCircle } from "lucide-react"
 import {
   deleteProductAction,
   toggleProductPublishedAction,
   toggleProductFeaturedAction,
+  toggleProductTodaysDealAction,
+  duplicateProductAction,
 } from "@/app/actions/ecommerce-actions"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { AdminProductRowItem, type AdminProductRowData } from "./admin-product-row"
+import { AdminProductsPagination } from "./admin-products-pagination"
 
-export interface AdminProductRow {
-  id: string
-  name: string
-  slug: string
-  category: string
-  brand: string
-  price: number
-  stock: number
-  salesCount: number
-  published: boolean
-  featured: boolean
-  thumbnail: string
-}
+export type { AdminProductRowData }
 
 interface AdminProductsViewProps {
-  initialProducts: AdminProductRow[]
+  initialProducts: AdminProductRowData[]
+  categories: { id: number | string; name: string; slug: string }[]
+  totalCount: number
 }
 
-export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
-  const [productsList, setProductsList] = useState<AdminProductRow[]>(initialProducts)
+export function AdminProductsView({
+  initialProducts,
+  categories,
+  totalCount: _totalCount,
+}: AdminProductsViewProps) {
+  const [productsList, setProductsList] = useState<AdminProductRowData[]>(initialProducts)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [selectedSeller, setSelectedSeller] = useState("all")
+  const [selectedSort, setSelectedSort] = useState("newest")
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 15
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [, startTransition] = useTransition()
 
+  const showToast = (type: "success" | "error", text: string) => {
+    setFeedback({ type, text })
+    setTimeout(() => setFeedback(null), 3500)
+  }
+
+  // Toggles
   const togglePublished = async (id: string, currentStatus: boolean) => {
     const nextStatus = !currentStatus
     setProductsList((prev) =>
       prev.map((p) => (p.id === id ? { ...p, published: nextStatus } : p))
     )
-    await toggleProductPublishedAction(id, nextStatus)
+    startTransition(async () => {
+      const res = await toggleProductPublishedAction(id, nextStatus)
+      if (res.success) {
+        showToast("success", `Product ${nextStatus ? "published" : "unpublished"} successfully`)
+      } else {
+        showToast("error", "Failed to update published status")
+      }
+    })
   }
 
   const toggleFeatured = async (id: string, currentStatus: boolean) => {
@@ -50,7 +67,53 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
     setProductsList((prev) =>
       prev.map((p) => (p.id === id ? { ...p, featured: nextStatus } : p))
     )
-    await toggleProductFeaturedAction(id, nextStatus)
+    startTransition(async () => {
+      const res = await toggleProductFeaturedAction(id, nextStatus)
+      if (res.success) {
+        showToast("success", `Product ${nextStatus ? "marked as featured" : "removed from featured"}`)
+      }
+    })
+  }
+
+  const toggleTodaysDeal = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
+    setProductsList((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, todaysDeal: nextStatus } : p))
+    )
+    startTransition(async () => {
+      const res = await toggleProductTodaysDealAction(id, nextStatus)
+      if (res.success) {
+        showToast("success", `Today's Deal ${nextStatus ? "activated" : "deactivated"}`)
+      }
+    })
+  }
+
+  const handleDuplicate = async (id: string) => {
+    startTransition(async () => {
+      const res = await duplicateProductAction(id)
+      if (res.success && res.product) {
+        const p = res.product
+        const newRow: AdminProductRowData = {
+          id: String(p.id),
+          name: p.name,
+          slug: p.slug,
+          category: categories.find((c) => String(c.id) === String(p.categoryId))?.name || "General",
+          brand: "N/A",
+          price: Number(p.unitPrice),
+          stock: p.currentStock || 0,
+          salesCount: 0,
+          published: false,
+          featured: false,
+          todaysDeal: false,
+          addedBy: p.addedBy || "admin",
+          thumbnail: p.thumbnailImg || "/assets/img/placeholder.jpg",
+        }
+        setProductsList((prev) => [newRow, ...prev])
+        showToast("success", `Product duplicated as draft: "${p.name}"`)
+      } else {
+        showToast("error", "Failed to duplicate product")
+      }
+    })
   }
 
   const handleDeleteClick = (id: string) => {
@@ -64,8 +127,10 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
     try {
       await deleteProductAction(productToDelete)
       setProductsList((prev) => prev.filter((p) => p.id !== productToDelete))
+      showToast("success", "Product permanently deleted from store catalog")
     } catch (err) {
       console.error("Error deleting product:", err)
+      showToast("error", "Failed to delete product")
     } finally {
       setIsDeleting(false)
       setDeleteModalOpen(false)
@@ -73,22 +138,43 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
     }
   }
 
+  // Filter & Sort
   const filtered = productsList.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.slug.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCat =
-      selectedCategory === "all" || p.category.toLowerCase().includes(selectedCategory.toLowerCase())
-    return matchesSearch && matchesCat
+      selectedCategory === "all" ||
+      p.category.toLowerCase().replace(/[^a-z0-9]/g, "").includes(selectedCategory.toLowerCase().replace(/[^a-z0-9]/g, ""))
+    const matchesSeller =
+      selectedSeller === "all" ||
+      (selectedSeller === "inhouse" ? p.addedBy === "admin" || !p.addedBy : p.addedBy !== "admin" && !!p.addedBy)
+
+    return matchesSearch && matchesCat && matchesSeller
   })
 
+  // Sort
+  const sorted = [...filtered].sort((a, b) => {
+    if (selectedSort === "price-asc") return a.price - b.price
+    if (selectedSort === "price-desc") return b.price - a.price
+    if (selectedSort === "sales") return b.salesCount - a.salesCount
+    if (selectedSort === "stock") return b.stock - a.stock
+    return 0 // default newest order preserved
+  })
+
+  // Pagination
+  const totalPages = Math.ceil(sorted.length / pageSize) || 1
+  const paginated = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Title & Action */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-800">All Products</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Manage store catalog, stocks, and pricing</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Manage store catalog, inventory stocks, prices, and vendor products
+          </p>
         </div>
         <Link
           href="/admin/products/create"
@@ -99,154 +185,140 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
         </Link>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-4 border border-slate-200 rounded-sm shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm">
+      {feedback && (
+        <div
+          className={`flex items-center gap-2 p-3 text-xs rounded-lg border ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-red-50 text-red-800 border-red-200"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          ) : (
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+          )}
+          <span>{feedback.text}</span>
+        </div>
+      )}
+
+      {/* 1:1 Active eCommerce Filter Bar */}
+      <div className="bg-white p-4 border border-slate-200 rounded-lg shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Type name & Enter..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded text-xs text-slate-700 focus:outline-none focus:border-[#d43533]"
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded text-xs text-slate-700 focus:outline-hidden focus:border-[#d43533]"
           />
         </div>
 
-        <div className="flex items-center space-x-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2.5 text-xs">
+          {/* Dynamic Categories */}
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="border border-slate-300 rounded px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:border-[#d43533]"
+            onChange={(e) => {
+              setSelectedCategory(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:border-[#d43533]"
           >
             <option value="all">All Categories</option>
-            <option value="fashion">Fashion & Clothing</option>
-            <option value="computer">Computer & Accessories</option>
-            <option value="smartphone">Smartphone Accessories</option>
-            <option value="kitchen">Kitchen & Dining</option>
+            {categories.map((c) => (
+              <option key={c.id || c.slug} value={c.slug}>
+                {c.name}
+              </option>
+            ))}
           </select>
 
-          <span className="text-slate-500 font-medium">
-            Total: <strong>{filtered.length}</strong> items
+          {/* Seller / Added By */}
+          <select
+            value={selectedSeller}
+            onChange={(e) => {
+              setSelectedSeller(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:border-[#d43533]"
+          >
+            <option value="all">All Sellers</option>
+            <option value="inhouse">Inhouse (Admin)</option>
+            <option value="sellers">Vendor Sellers</option>
+          </select>
+
+          {/* Sort By */}
+          <select
+            value={selectedSort}
+            onChange={(e) => setSelectedSort(e.target.value)}
+            className="border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:border-[#d43533]"
+          >
+            <option value="newest">Sort: Newest</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="sales">Most Sold</option>
+            <option value="stock">High Stock</option>
+          </select>
+
+          <span className="text-slate-500 font-medium pl-1">
+            Total: <strong>{filtered.length}</strong>
           </span>
         </div>
       </div>
 
-      {/* Products Table (Active eCommerce 1:1) */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-xs overflow-hidden">
+      {/* Products Table (1:1 Active eCommerce Columns) */}
+      <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4">#</th>
                 <th className="py-3 px-4">Name</th>
-                <th className="py-3 px-4">Category</th>
+                <th className="py-3 px-4">Added By</th>
+                <th className="py-3 px-4">Num of Sale</th>
                 <th className="py-3 px-4">Base Price</th>
-                <th className="py-3 px-4">Stock</th>
+                <th className="py-3 px-4 text-center">Todays Deal</th>
                 <th className="py-3 px-4 text-center">Published</th>
                 <th className="py-3 px-4 text-center">Featured</th>
                 <th className="py-3 px-4 text-right">Options</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((prod, idx) => (
-                <tr key={prod.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3.5 px-4 text-slate-400 font-semibold">{idx + 1}</td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 relative border border-slate-200 rounded-xs flex-shrink-0 bg-white">
-                        <Image
-                          src={prod.thumbnail}
-                          alt={prod.name}
-                          fill
-                          sizes="40px"
-                          className="object-contain p-1"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <Link
-                          href={`/product/${prod.slug}`}
-                          target="_blank"
-                          className="font-bold text-slate-800 hover:text-[#d43533] line-clamp-1"
-                        >
-                          {prod.name}
-                        </Link>
-                        <span className="text-[11px] text-slate-400 block">{prod.brand}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-600 font-medium">{prod.category}</td>
-                  <td className="py-3.5 px-4 font-bold text-slate-900">৳{prod.price}</td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                        prod.stock > 10
-                          ? "bg-emerald-100 text-emerald-800"
-                          : prod.stock > 0
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {prod.stock} in stock
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-center">
-                    <button
-                      type="button"
-                      onClick={() => togglePublished(prod.id, prod.published)}
-                      className="cursor-pointer"
-                      title="Toggle published status"
-                    >
-                      {prod.published ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-slate-300 mx-auto" />
-                      )}
-                    </button>
-                  </td>
-                  <td className="py-3.5 px-4 text-center">
-                    <button
-                      type="button"
-                      onClick={() => toggleFeatured(prod.id, prod.featured)}
-                      className="cursor-pointer"
-                      title="Toggle featured status"
-                    >
-                      {prod.featured ? (
-                        <span className="inline-block w-3 h-3 rounded-full bg-amber-400 shadow-xs"></span>
-                      ) : (
-                        <span className="inline-block w-3 h-3 rounded-full bg-slate-200"></span>
-                      )}
-                    </button>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end space-x-1">
-                      <Link
-                        href={`/admin/products/create?edit=${prod.id}`}
-                        className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title="Edit"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteClick(prod.id)}
-                        className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+              {paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                    No products found matching your filter criteria.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                paginated.map((prod, idx) => (
+                  <AdminProductRowItem
+                    key={prod.id}
+                    product={prod}
+                    index={(currentPage - 1) * pageSize + idx + 1}
+                    onTogglePublished={togglePublished}
+                    onToggleFeatured={toggleFeatured}
+                    onToggleTodaysDeal={toggleTodaysDeal}
+                    onDuplicate={handleDuplicate}
+                    onDelete={handleDeleteClick}
+                  />
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        {filtered.length === 0 && (
-          <div className="p-8 text-center text-slate-500 text-xs">
-            No products found matching your filter criteria.
-          </div>
-        )}
+        {/* Pagination Bar */}
+        <AdminProductsPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={sorted.length}
+          pageSize={pageSize}
+          onPageChange={(page) => setCurrentPage(page)}
+        />
       </div>
 
       <DeleteConfirmationModal
@@ -259,8 +331,8 @@ export function AdminProductsView({ initialProducts }: AdminProductsViewProps) {
         }}
         onConfirm={handleConfirmDelete}
         isLoading={isDeleting}
-        title="Delete Confirmation"
-        description="Are you sure you want to delete this product? All related stocks and media links will be removed."
+        title="Delete Product Confirmation"
+        description="Are you sure you want to permanently delete this product? All variants, stocks, and media links will be deleted."
       />
     </div>
   )

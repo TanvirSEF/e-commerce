@@ -40,6 +40,7 @@ export interface SeedProduct {
   featured: boolean
   todaysDeal: boolean
   published?: boolean
+  addedBy?: string
   sellerName: string
   sellerSlug: string
   description: string

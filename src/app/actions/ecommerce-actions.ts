@@ -1409,6 +1409,26 @@ export async function toggleProductFeaturedAction(id: number | string, featured:
   return { success }
 }
 
+export async function toggleProductTodaysDealAction(id: number | string, todaysDeal: boolean) {
+  const { toggleProductTodaysDeal } = await import("@/services/product-service")
+  const success = await toggleProductTodaysDeal(id, todaysDeal)
+  revalidatePath("/admin/products")
+  revalidatePath("/seller/products")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return { success }
+}
+
+export async function duplicateProductAction(id: number | string) {
+  const { duplicateProduct } = await import("@/services/product-service")
+  const product = await duplicateProduct(id)
+  revalidatePath("/admin/products")
+  revalidatePath("/seller/products")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return { success: !!product, product }
+}
+
 export async function updateProductAction(id: number | string, data: any) {
   const { updateProduct } = await import("@/services/product-service")
   const success = await updateProduct(id, data)
