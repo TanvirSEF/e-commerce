@@ -19,6 +19,7 @@ export async function getCategories(): Promise<SeedCategory[]> {
         banner: c.banner || "/assets/img/placeholder-rect.jpg",
         featured: c.featured,
         orderLevel: c.orderLevel,
+        parentId: c.parentId || null,
         itemCount: 50,
       }))
     }
@@ -100,4 +101,51 @@ export async function toggleCategoryFeatured(id: number | string, featured: bool
     console.error("Error updating category featured:", err)
     return false
   }
+}
+
+export async function updateCategory(
+  id: number | string,
+  data: {
+    name?: string
+    icon?: string
+    banner?: string
+    parentId?: number | null
+    featured?: boolean
+    orderLevel?: number
+  }
+): Promise<SeedCategory | null> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return null
+  try {
+    const updateData: Record<string, any> = { updatedAt: new Date() }
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.icon !== undefined) updateData.icon = data.icon
+    if (data.banner !== undefined) updateData.banner = data.banner
+    if (data.parentId !== undefined) updateData.parentId = data.parentId
+    if (data.featured !== undefined) updateData.featured = data.featured
+    if (data.orderLevel !== undefined) updateData.orderLevel = data.orderLevel
+
+    const [updated] = await db
+      .update(categories)
+      .set(updateData)
+      .where(eq(categories.id, numericId))
+      .returning()
+
+    if (updated) {
+      return {
+        id: String(updated.id),
+        name: updated.name,
+        slug: updated.slug,
+        icon: updated.icon || "/assets/img/placeholder.jpg",
+        banner: updated.banner || "/assets/img/placeholder-rect.jpg",
+        featured: updated.featured,
+        orderLevel: updated.orderLevel,
+        parentId: updated.parentId || null,
+        itemCount: 0,
+      }
+    }
+  } catch (err) {
+    console.error("Error updating category:", err)
+  }
+  return null
 }

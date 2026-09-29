@@ -7,6 +7,7 @@ export interface SeedCategory {
   featured: boolean
   orderLevel: number
   itemCount: number
+  parentId?: number | null
 }
 
 export interface SeedBrand {

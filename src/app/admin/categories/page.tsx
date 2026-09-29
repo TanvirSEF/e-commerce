@@ -16,8 +16,10 @@ export default async function AdminCategoriesPage() {
     name: c.name,
     slug: c.slug,
     icon: c.icon,
+    banner: c.banner,
     featured: c.featured,
     orderLevel: c.orderLevel,
+    parentId: c.parentId || null,
   }))
 
   return <AdminCategoriesView initialCategories={initialCategories} />

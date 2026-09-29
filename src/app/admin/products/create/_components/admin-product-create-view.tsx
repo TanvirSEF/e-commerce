@@ -1,27 +1,17 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Save, UploadCloud, XCircle } from "lucide-react"
+import { ChevronLeft, Save, FileText, CheckCircle2, XCircle } from "lucide-react"
 import { createProductAction, updateProductAction } from "@/app/actions/ecommerce-actions"
-import { ProductVariationMatrix, VariantItem } from "./product-variation-matrix"
-import { MediaPickerModal } from "@/components/ui/media-picker-modal"
+import { ProductGeneralInfo, type CategoryOption, type BrandOption } from "./product-general-info"
+import { ProductPricingStock } from "./product-pricing-stock"
+import { ProductMediaGallery } from "./product-media-gallery"
+import { ProductVariationMatrix, type VariantItem } from "./product-variation-matrix"
 import type { ProductEditInitial } from "@/services/product-service"
 
 export type { ProductEditInitial }
-
-interface CategoryOption {
-  id: string | number
-  name: string
-  slug: string
-}
-
-interface BrandOption {
-  id: string | number
-  name: string
-  slug: string
-}
 
 interface AdminProductCreateViewProps {
   categories: CategoryOption[]
@@ -35,9 +25,10 @@ export function AdminProductCreateView({
   initialProduct,
 }: AdminProductCreateViewProps) {
   const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isPickerOpen, setIsPickerOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
   const [formData, setFormData] = useState({
     name: initialProduct?.name || "",
     categoryId: initialProduct?.categoryId || categories[0]?.id || 1,
@@ -49,9 +40,10 @@ export function AdminProductCreateView({
     discountType: (initialProduct?.discountType as "percent" | "amount") || "percent",
     stock: initialProduct ? String(initialProduct.currentStock) : "20",
     sku: initialProduct?.sku || "",
-    weight: "0.00",
+    weight: initialProduct?.weight || "0.00",
     description: initialProduct?.description || "",
     thumbnail: initialProduct?.thumbnailImg || "/assets/img/placeholder.jpg",
+    photos: initialProduct?.photos || [],
   })
 
   const [variations, setVariations] = useState<VariantItem[]>(
@@ -65,258 +57,168 @@ export function AdminProductCreateView({
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      const payload = {
-        name: formData.name,
-        categoryId: formData.categoryId,
-        brandId: formData.brandId,
-        unit: formData.unit,
-        unitPrice: parseFloat(formData.unitPrice) || 0,
-        purchasePrice: parseFloat(formData.purchasePrice) || parseFloat(formData.unitPrice) || 0,
-        discount: parseFloat(formData.discount) || 0,
-        discountType: formData.discountType,
-        currentStock: parseInt(formData.stock, 10) || 10,
-        sku: formData.sku || `SKU-${Date.now().toString().slice(-6)}`,
-        weight: parseFloat(formData.weight) || 0,
-        description: formData.description,
-        thumbnailImg: formData.thumbnail,
-        variations: variations.map((v) => ({
-          variant: v.variant,
-          sku: v.sku,
-          price: v.price,
-          stock: v.stock,
-        })),
-      }
-
-      const res = initialProduct
-        ? await updateProductAction(initialProduct.id, payload)
-        : await createProductAction(payload)
-
-      if (res && (res as any).success !== false) {
-        router.push("/admin/products")
-      } else {
-        setError("Failed to save product to database. Please try again.")
-      }
-    } catch (err) {
-      console.error("Error saving product:", err)
-      setError("An error occurred while saving the product.")
-    } finally {
-      setIsSubmitting(false)
+  const handleSaveProduct = async (shouldPublish: boolean) => {
+    if (!formData.name.trim()) {
+      setError("Product Name is required.")
+      return
     }
+    if (!formData.unitPrice || parseFloat(formData.unitPrice) <= 0) {
+      setError("Please specify a valid Unit Price.")
+      return
+    }
+
+    setError("")
+    startTransition(async () => {
+      try {
+        const payload = {
+          name: formData.name.trim(),
+          categoryId: formData.categoryId,
+          brandId: formData.brandId,
+          unit: formData.unit,
+          unitPrice: parseFloat(formData.unitPrice) || 0,
+          purchasePrice: parseFloat(formData.purchasePrice) || parseFloat(formData.unitPrice) || 0,
+          discount: parseFloat(formData.discount) || 0,
+          discountType: formData.discountType,
+          currentStock: parseInt(formData.stock, 10) || 10,
+          sku: formData.sku || `SKU-${Date.now().toString().slice(-6)}`,
+          weight: parseFloat(formData.weight) || 0,
+          description: formData.description,
+          thumbnailImg: formData.thumbnail,
+          photos: formData.photos,
+          published: initialProduct ? (initialProduct.published !== false) : shouldPublish,
+          variations: variations.map((v) => ({
+            variant: v.variant,
+            sku: v.sku,
+            price: v.price,
+            stock: v.stock,
+          })),
+        }
+
+        const res = initialProduct
+          ? await updateProductAction(initialProduct.id, payload)
+          : await createProductAction(payload)
+
+        if (res && (res as any).success !== false) {
+          setFeedback({
+            type: "success",
+            text: initialProduct
+              ? "Product updated successfully!"
+              : shouldPublish
+              ? "Product published to store catalog!"
+              : "Product saved as draft (unpublished)!",
+          })
+          setTimeout(() => {
+            router.push("/admin/products")
+          }, 800)
+        } else {
+          setError("Failed to save product to database. Please check input fields.")
+        }
+      } catch (err) {
+        console.error("Error saving product:", err)
+        setError("An error occurred while saving the product.")
+      }
+    })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+      {/* Alert Notices */}
       {error && (
-        <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
-          <XCircle className="h-4 w-4 shrink-0" />
-          {error}
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700 shadow-2xs">
+          <XCircle className="h-4 w-4 shrink-0 text-red-600" />
+          <span>{error}</span>
         </div>
       )}
-      {/* Top Header */}
-      <div className="flex items-center justify-between">
+
+      {feedback && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 shadow-2xs">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          <span>{feedback.text}</span>
+        </div>
+      )}
+
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
         <div className="flex items-center space-x-3">
           <Link
             href="/admin/products"
-            className="p-1.5 text-slate-500 hover:text-slate-800 bg-white border border-slate-200 rounded hover:bg-slate-50 transition-colors"
+            className="p-2 text-slate-500 hover:text-slate-800 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
+            title="Back to Catalog"
           >
             <ChevronLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">
+            <h1 className="text-lg font-bold text-slate-900">
               {initialProduct ? "Edit Product" : "Add New Product"}
             </h1>
             <p className="text-xs text-slate-500">
               {initialProduct
-                ? "Update product information, variations, and catalog details"
-                : "Fill in the required information to publish to catalog (Laravel 1:1)"}
+                ? "Update product information, media gallery, variations, and catalog details"
+                : "Configure product catalog details, attributes, gallery, and pricing (Active eCommerce 1:1)"}
             </p>
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex items-center space-x-2 px-5 py-2 bg-[#d43533] text-white text-xs font-bold rounded shadow-xs hover:bg-[#b82a28] transition-colors disabled:opacity-50"
-        >
-          <Save className="w-4 h-4" />
-          <span>
-            {isSubmitting
-              ? "Saving..."
-              : initialProduct
-              ? "Update Product"
-              : "Save & Publish"}
-          </span>
-        </button>
-      </div>
-
-      {/* 1. Product General Information */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-xs p-6 space-y-4">
-        <h2 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">
-          Product Information
-        </h2>
-
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            Product Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="name"
-            required
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="e.g. Slim Fit Cotton Formal Shirt"
-            className="w-full px-3.5 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Category <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="categoryId"
-              value={formData.categoryId}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 bg-white focus:outline-none focus:border-[#d43533]"
+        {/* Dual Actions: Save as Draft vs Save & Publish */}
+        <div className="flex items-center gap-2">
+          {!initialProduct && (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => handleSaveProduct(false)}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg shadow-2xs hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
             >
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              <FileText className="w-4 h-4 text-slate-500" />
+              <span>{isPending ? "Saving..." : "Save as Draft"}</span>
+            </button>
+          )}
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Brand</label>
-            <select
-              name="brandId"
-              value={formData.brandId}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 bg-white focus:outline-none focus:border-[#d43533]"
-            >
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Unit</label>
-            <input
-              type="text"
-              name="unit"
-              value={formData.unit}
-              onChange={handleChange}
-              placeholder="e.g. pc, kg, pack"
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-            />
-          </div>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleSaveProduct(true)}
+            className="inline-flex items-center space-x-1.5 px-5 py-2 bg-[#d43533] text-white text-xs font-bold rounded-lg shadow-sm hover:bg-[#b82a28] transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            <Save className="w-4 h-4" />
+            <span>
+              {isPending
+                ? "Saving..."
+                : initialProduct
+                ? "Update Product"
+                : "Save & Publish"}
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* 2. Product Pricing & Stock */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-xs p-6 space-y-4">
-        <h2 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">
-          Product Price & Stock
-        </h2>
+      {/* 1. General Info Card */}
+      <ProductGeneralInfo
+        categories={categories}
+        brands={brands}
+        name={formData.name}
+        categoryId={formData.categoryId}
+        brandId={formData.brandId}
+        unit={formData.unit}
+        sku={formData.sku}
+        weight={formData.weight}
+        onChange={handleChange}
+      />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Unit Price (৳) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="unitPrice"
-              required
-              value={formData.unitPrice}
-              onChange={handleChange}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-            />
-          </div>
+      {/* 2. Pricing & Stock Card */}
+      <ProductPricingStock
+        unitPrice={formData.unitPrice}
+        purchasePrice={formData.purchasePrice}
+        discount={formData.discount}
+        discountType={formData.discountType}
+        stock={formData.stock}
+        onChange={handleChange}
+      />
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Discount</label>
-            <input
-              type="number"
-              name="discount"
-              value={formData.discount}
-              onChange={handleChange}
-              placeholder="0"
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Discount Type</label>
-            <select
-              name="discountType"
-              value={formData.discountType}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 bg-white focus:outline-none focus:border-[#d43533]"
-            >
-              <option value="percent">Percent (%)</option>
-              <option value="amount">Flat (৳)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Total Stock Quantity <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="stock"
-              required
-              value={formData.stock}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Base SKU</label>
-            <input
-              type="text"
-              name="sku"
-              value={formData.sku}
-              onChange={handleChange}
-              placeholder="e.g. PROD-SKU-001"
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Weight (In Kg)</label>
-            <input
-              type="number"
-              step="0.01"
-              name="weight"
-              value={formData.weight}
-              onChange={handleChange}
-              placeholder="0.00"
-              className="w-full px-3 py-2 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Product Variations & SKU Combination Matrix (Laravel 1:1) */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-xs p-6 space-y-4">
-        <h2 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">
-          Product Variations & Attribute Matrix
+      {/* 3. Product Variations & Attribute Matrix */}
+      <div className="bg-white border border-slate-200 rounded-lg shadow-xs p-6 space-y-4">
+        <h2 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center justify-between">
+          <span>Product Variations & Attribute Matrix (Laravel 1:1)</span>
+          <span className="text-[11px] font-normal text-slate-400">Cartesian combinations</span>
         </h2>
         <ProductVariationMatrix
           basePrice={parseFloat(formData.unitPrice) || 0}
@@ -325,64 +227,46 @@ export function AdminProductCreateView({
         />
       </div>
 
-      {/* 4. Product Description */}
-      <div className="bg-white border border-slate-200 rounded-sm shadow-xs p-6 space-y-4">
-        <h2 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3">
-          Description & Details
-        </h2>
-
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">Product Description</label>
-          <textarea
-            name="description"
-            rows={5}
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Detailed features, specifications, and warranty info..."
-            className="w-full p-3 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">Product Thumbnail</label>
-          {formData.thumbnail && formData.thumbnail !== "/assets/img/placeholder.jpg" ? (
-            <div className="relative w-32 h-32 rounded-lg border border-slate-200 overflow-hidden group">
-              <img
-                src={formData.thumbnail}
-                alt="Product thumbnail"
-                className="w-full h-full object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => setFormData((prev) => ({ ...prev, thumbnail: "/assets/img/placeholder.jpg" }))}
-                className="absolute top-1.5 right-1.5 p-1 bg-red-600 text-white rounded-full opacity-90 hover:opacity-100 transition-opacity"
-              >
-                <XCircle className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <div
-              onClick={() => setIsPickerOpen(true)}
-              className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-[#d43533] cursor-pointer transition-colors bg-slate-50"
-            >
-              <UploadCloud className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-              <p className="text-xs font-semibold text-slate-700">Choose images to upload</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Cloudinary storage enabled</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <MediaPickerModal
-        isOpen={isPickerOpen}
-        onClose={() => setIsPickerOpen(false)}
-        title="Select Product Thumbnail"
-        onSelect={(urls) => {
-          if (urls[0]) {
-            setFormData((prev) => ({ ...prev, thumbnail: urls[0] }))
-          }
-        }}
+      {/* 4. Product Media & Gallery Card (Thumbnail + Multi Photos) */}
+      <ProductMediaGallery
+        thumbnail={formData.thumbnail}
+        photos={formData.photos}
+        description={formData.description}
+        onThumbnailChange={(url) => setFormData((prev) => ({ ...prev, thumbnail: url }))}
+        onPhotosChange={(photos) => setFormData((prev) => ({ ...prev, photos }))}
+        onDescriptionChange={(description) => setFormData((prev) => ({ ...prev, description }))}
       />
-    </form>
+
+      {/* Bottom Floating Action Bar */}
+      <div className="flex items-center justify-end gap-2 pt-2">
+        {!initialProduct && (
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleSaveProduct(false)}
+            className="inline-flex items-center space-x-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg shadow-2xs hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-slate-500" />
+            <span>Save as Draft (Unpublished)</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => handleSaveProduct(true)}
+          className="inline-flex items-center space-x-1.5 px-6 py-2.5 bg-[#d43533] text-white text-xs font-bold rounded-lg shadow-sm hover:bg-[#b82a28] transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          <Save className="w-4 h-4" />
+          <span>
+            {isPending
+              ? "Saving..."
+              : initialProduct
+              ? "Update Product"
+              : "Save & Publish"}
+          </span>
+        </button>
+      </div>
+    </div>
   )
 }

@@ -1,12 +1,27 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type DigitalProductItem } from "@/services/product-service"
-import { deleteDigitalProductAction } from "@/app/actions/ecommerce-actions"
+import {
+  deleteDigitalProductAction,
+  toggleProductPublishedAction,
+  toggleProductFeaturedAction,
+  toggleProductTodaysDealAction,
+} from "@/app/actions/ecommerce-actions"
 import { formatPrice } from "@/lib/utils"
-import { Plus, Search, Trash2, Download, ExternalLink, Package, FileCode } from "lucide-react"
+import {
+  Plus,
+  Search,
+  Trash2,
+  Download,
+  ExternalLink,
+  Edit,
+  FileCode,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react"
 
 interface DigitalProductsViewProps {
   initialProducts: DigitalProductItem[]
@@ -18,11 +33,61 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
   const [search, setSearch] = useState("")
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [, startTransition] = useTransition()
+
+  const showToast = (type: "success" | "error", text: string) => {
+    setFeedback({ type, text })
+    setTimeout(() => setFeedback(null), 3000)
+  }
 
   const filtered = productsList.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.categoryName.toLowerCase().includes(search.toLowerCase())
   )
+
+  const handleTogglePublished = async (id: number, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
+    setProductsList((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, published: nextStatus } : p))
+    )
+    startTransition(async () => {
+      const res = await toggleProductPublishedAction(id, nextStatus)
+      if (res.success) {
+        showToast("success", `Digital product ${nextStatus ? "published" : "unpublished"} successfully`)
+      } else {
+        showToast("error", "Failed to update published status")
+      }
+    })
+  }
+
+  const handleToggleTodaysDeal = async (id: number, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
+    setProductsList((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, todaysDeal: nextStatus } : p))
+    )
+    startTransition(async () => {
+      const res = await toggleProductTodaysDealAction(id, nextStatus)
+      if (res.success) {
+        showToast("success", `Today's Deal ${nextStatus ? "activated" : "deactivated"}`)
+      } else {
+        showToast("error", "Failed to update Today's Deal")
+      }
+    })
+  }
+
+  const handleToggleFeatured = async (id: number, currentStatus: boolean) => {
+    const nextStatus = !currentStatus
+    setProductsList((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, featured: nextStatus } : p))
+    )
+    startTransition(async () => {
+      const res = await toggleProductFeaturedAction(id, nextStatus)
+      if (res.success) {
+        showToast("success", `Product ${nextStatus ? "marked as featured" : "removed from featured"}`)
+      }
+    })
+  }
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -30,8 +95,11 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
     try {
       await deleteDigitalProductAction(deleteId)
       setProductsList((prev) => prev.filter((p) => p.id !== deleteId))
+      showToast("success", "Digital product deleted successfully")
       setDeleteId(null)
       router.refresh()
+    } catch {
+      showToast("error", "Failed to delete digital product")
     } finally {
       setIsDeleting(false)
     }
@@ -44,7 +112,7 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Digital Products</h1>
           <p className="text-xs text-gray-500 mt-1">
-            Manage downloadable software, source code, eBooks, and digital licenses
+            Manage downloadable software, source code, eBooks, and digital licenses (Laravel 1:1)
           </p>
         </div>
         <Link
@@ -55,6 +123,23 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
           Add New Digital Product
         </Link>
       </div>
+
+      {feedback && (
+        <div
+          className={`flex items-center gap-2 p-3 text-xs rounded-lg border ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-red-50 text-red-800 border-red-200"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          ) : (
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+          )}
+          <span>{feedback.text}</span>
+        </div>
+      )}
 
       {/* Main Card */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -107,10 +192,10 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
                           <img
                             src={item.thumbnailImg}
                             alt={item.name}
-                            className="w-10 h-10 object-cover rounded-lg border border-gray-200 flex-shrink-0"
+                            className="w-10 h-10 object-cover rounded-lg border border-gray-200 shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 flex-shrink-0">
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 shrink-0">
                             <FileCode className="w-5 h-5" />
                           </div>
                         )}
@@ -125,30 +210,63 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
                         {item.categoryName}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-bold text-gray-900">
+                    <td className="py-3.5 px-4 font-bold text-gray-900 font-mono">
                       {formatPrice(item.unitPrice)}
                     </td>
+
+                    {/* Today's Deal Switch Toggle */}
                     <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block w-2.5 h-2.5 rounded-full ${
-                          item.todaysDeal ? "bg-emerald-500" : "bg-gray-300"
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTodaysDeal(item.id, item.todaysDeal)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                          item.todaysDeal ? "bg-[#d43533]" : "bg-gray-200"
                         }`}
-                      />
+                        title="Toggle Today's Deal"
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            item.todaysDeal ? "translate-x-4" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
                     </td>
+
+                    {/* Published Switch Toggle */}
                     <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block w-2.5 h-2.5 rounded-full ${
-                          item.published ? "bg-emerald-500" : "bg-gray-300"
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePublished(item.id, item.published)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                          item.published ? "bg-emerald-500" : "bg-gray-200"
                         }`}
-                      />
+                        title="Toggle Published Status"
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            item.published ? "translate-x-4" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
                     </td>
+
+                    {/* Featured Toggle Button */}
                     <td className="py-3.5 px-4 text-center">
-                      <span
-                        className={`inline-block w-2.5 h-2.5 rounded-full ${
-                          item.featured ? "bg-emerald-500" : "bg-gray-300"
-                        }`}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => handleToggleFeatured(item.id, item.featured)}
+                        className="cursor-pointer p-1"
+                        title="Toggle Featured Status"
+                      >
+                        {item.featured ? (
+                          <span className="inline-block w-3.5 h-3.5 rounded-full bg-amber-400 shadow-xs ring-2 ring-amber-100" />
+                        ) : (
+                          <span className="inline-block w-3.5 h-3.5 rounded-full bg-slate-200" />
+                        )}
+                      </button>
                     </td>
+
+                    {/* Options */}
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {item.digitalFile && (
@@ -156,7 +274,7 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
                             href={item.digitalFile}
                             target="_blank"
                             rel="noreferrer"
-                            title="Download file"
+                            title="Download delivery asset"
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                           >
                             <Download className="w-4 h-4" />
@@ -165,15 +283,23 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
                         <Link
                           href={`/product/${item.slug}`}
                           target="_blank"
-                          title="View on store"
-                          className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                          title="View on storefront"
+                          className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </Link>
+                        <Link
+                          href={`/admin/digital-products/create?edit=${item.id}`}
+                          title="Edit digital product"
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Link>
                         <button
+                          type="button"
                           onClick={() => setDeleteId(item.id)}
-                          title="Delete"
-                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                          title="Delete digital product"
+                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -197,7 +323,7 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
             <div>
               <h3 className="text-base font-bold text-gray-900">Delete Digital Product?</h3>
               <p className="text-xs text-gray-500 mt-1">
-                Are you sure you want to remove this digital product from the catalog?
+                Are you sure you want to remove this digital product from the catalog? Download links will be revoked.
               </p>
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">
@@ -205,7 +331,7 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
                 type="button"
                 onClick={() => setDeleteId(null)}
                 disabled={isDeleting}
-                className="px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -213,7 +339,7 @@ export function DigitalProductsView({ initialProducts }: DigitalProductsViewProp
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg cursor-pointer"
               >
                 {isDeleting ? "Deleting..." : "Confirm Delete"}
               </button>

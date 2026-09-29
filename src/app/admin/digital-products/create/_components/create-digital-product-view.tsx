@@ -4,23 +4,30 @@ import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { createDigitalProductAction } from "@/app/actions/ecommerce-actions"
-import { ArrowLeft, Save, FileCode, UploadCloud, DollarSign, X } from "lucide-react"
+import { createDigitalProductAction, updateProductAction } from "@/app/actions/ecommerce-actions"
+import { ArrowLeft, Save, FileCode, UploadCloud, X } from "lucide-react"
 import { MediaPickerModal } from "@/components/ui/media-picker-modal"
+import type { ProductEditInitial } from "@/services/product-service"
 
 interface CreateDigitalProductViewProps {
   categories: { id: string | number; name: string }[]
+  initialProduct?: ProductEditInitial | null
 }
 
-export function CreateDigitalProductView({ categories }: CreateDigitalProductViewProps) {
+export function CreateDigitalProductView({
+  categories,
+  initialProduct,
+}: CreateDigitalProductViewProps) {
   const router = useRouter()
-  const [name, setName] = useState("")
-  const [categoryId, setCategoryId] = useState<string>("")
-  const [unitPrice, setUnitPrice] = useState<string>("")
-  const [thumbnailImg, setThumbnailImg] = useState("")
-  const [digitalFile, setDigitalFile] = useState("")
+  const [name, setName] = useState(initialProduct?.name || "")
+  const [categoryId, setCategoryId] = useState<string>(
+    initialProduct?.categoryId ? String(initialProduct.categoryId) : ""
+  )
+  const [unitPrice, setUnitPrice] = useState<string>(initialProduct?.unitPrice || "")
+  const [thumbnailImg, setThumbnailImg] = useState(initialProduct?.thumbnailImg || "")
+  const [digitalFile, setDigitalFile] = useState(initialProduct?.digitalFile || "")
   const [pickerTarget, setPickerTarget] = useState<"thumbnail" | "file" | null>(null)
-  const [description, setDescription] = useState("")
+  const [description, setDescription] = useState(initialProduct?.description || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
 
@@ -35,25 +42,36 @@ export function CreateDigitalProductView({ categories }: CreateDigitalProductVie
     setErrorMsg("")
 
     try {
-      await createDigitalProductAction({
-        name,
-        categoryId: categoryId ? Number(categoryId) : undefined,
-        unitPrice: parseFloat(unitPrice),
-        thumbnailImg,
-        digitalFile: digitalFile.trim() || undefined,
-        description,
-      })
+      if (initialProduct) {
+        await updateProductAction(initialProduct.id, {
+          name: name.trim(),
+          categoryId: categoryId ? Number(categoryId) : undefined,
+          unitPrice: parseFloat(unitPrice) || 0,
+          thumbnailImg,
+          digitalFile: digitalFile.trim() || undefined,
+          description,
+        })
+      } else {
+        await createDigitalProductAction({
+          name: name.trim(),
+          categoryId: categoryId ? Number(categoryId) : undefined,
+          unitPrice: parseFloat(unitPrice) || 0,
+          thumbnailImg,
+          digitalFile: digitalFile.trim() || undefined,
+          description,
+        })
+      }
       router.push("/admin/digital-products")
       router.refresh()
     } catch {
-      setErrorMsg("Failed to create digital product. Please try again.")
+      setErrorMsg("Failed to save digital product. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto">
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl mx-auto pb-12">
       {/* Title Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -64,9 +82,11 @@ export function CreateDigitalProductView({ categories }: CreateDigitalProductVie
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Add New Digital Product</h1>
+            <h1 className="text-2xl font-bold text-gray-800">
+              {initialProduct ? "Edit Digital Product" : "Add New Digital Product"}
+            </h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              Active eCommerce CMS Standard Digital Asset Publisher
+              Active eCommerce CMS Standard Digital Asset Publisher (Laravel 1:1)
             </p>
           </div>
         </div>
@@ -80,16 +100,22 @@ export function CreateDigitalProductView({ categories }: CreateDigitalProductVie
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 px-5 py-2 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-bold rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
           >
             <Save className="w-4 h-4" />
-            {isSubmitting ? "Publishing..." : "Save Digital Product"}
+            <span>
+              {isSubmitting
+                ? "Saving..."
+                : initialProduct
+                ? "Update Digital Product"
+                : "Save Digital Product"}
+            </span>
           </button>
         </div>
       </div>
 
       {errorMsg && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg font-semibold">
           {errorMsg}
         </div>
       )}
@@ -181,12 +207,13 @@ export function CreateDigitalProductView({ categories }: CreateDigitalProductVie
                   src={thumbnailImg}
                   alt="Thumbnail Preview"
                   fill
+                  sizes="80px"
                   className="object-cover"
                 />
                 <button
                   type="button"
                   onClick={() => setThumbnailImg("")}
-                  className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5"
+                  className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white rounded-full p-0.5 cursor-pointer"
                   title="Remove"
                 >
                   <X className="w-3 h-3" />
@@ -221,7 +248,7 @@ export function CreateDigitalProductView({ categories }: CreateDigitalProductVie
                 <button
                   type="button"
                   onClick={() => setDigitalFile("")}
-                  className="px-3 text-gray-400 hover:text-red-600 border-l border-gray-200"
+                  className="px-3 text-gray-400 hover:text-red-600 border-l border-gray-200 cursor-pointer"
                   title="Clear file"
                 >
                   <X className="w-3.5 h-3.5" />

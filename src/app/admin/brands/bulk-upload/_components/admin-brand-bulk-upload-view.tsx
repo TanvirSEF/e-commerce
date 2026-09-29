@@ -1,7 +1,9 @@
 "use client"
 
 import React, { useState } from "react"
-import { UploadCloud, Download, FileSpreadsheet, CheckCircle2, AlertCircle } from "lucide-react"
+import Link from "next/link"
+import { UploadCloud, Download, FileSpreadsheet, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react"
+import { bulkCreateBrandsAction } from "@/app/actions/ecommerce-actions"
 
 export function AdminBrandBulkUploadView() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -30,31 +32,80 @@ export function AdminBrandBulkUploadView() {
     document.body.removeChild(link)
   }
 
-  const handleUpload = (e: React.FormEvent) => {
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedFile) return
 
     setIsUploading(true)
-    setTimeout(() => {
-      setIsUploading(false)
+    setStatusMessage(null)
+    try {
+      const text = await selectedFile.text()
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0)
+      const items: { name: string; logo?: string }[] = []
+
+      // Row 0 is header: Name,Logo_URL,...
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(",").map((p) => p.trim())
+        if (parts[0]) {
+          items.push({
+            name: parts[0],
+            logo: parts[1] || undefined,
+          })
+        }
+      }
+
+      if (items.length === 0) {
+        setStatusMessage({
+          type: "error",
+          text: "No valid brand rows found in the uploaded file.",
+        })
+        return
+      }
+
+      const res = await bulkCreateBrandsAction(items)
+      if (res.success) {
+        setStatusMessage({
+          type: "success",
+          text: `Successfully imported ${res.count} brands from "${selectedFile.name}".`,
+        })
+        setSelectedFile(null)
+      } else {
+        setStatusMessage({
+          type: "error",
+          text: "Failed to import brands into database.",
+        })
+      }
+    } catch (err) {
+      console.error("Error bulk uploading brands:", err)
       setStatusMessage({
-        type: "success",
-        text: `Successfully imported brands from "${selectedFile.name}".`,
+        type: "error",
+        text: "Failed to parse or upload brand file.",
       })
-      setSelectedFile(null)
-    }, 1200)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <FileSpreadsheet className="w-5 h-5 text-[#d43533]" />
-          Brand Bulk Upload
-        </h1>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Import multiple product brands and metadata simultaneously via CSV or Excel spreadsheets
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5 text-[#d43533]" />
+            Brand Bulk Upload
+          </h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Import multiple product brands simultaneously via CSV spreadsheet
+          </p>
+        </div>
+
+        <Link
+          href="/admin/brands"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 hover:border-slate-400 bg-white text-slate-700 text-xs font-bold rounded shadow-2xs transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+          <span>Back to Brands</span>
+        </Link>
       </div>
 
       {statusMessage && (

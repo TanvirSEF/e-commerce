@@ -237,7 +237,9 @@ export async function createAttributeAction(data: {
   values: string[]
 }) {
   const { createAttribute } = await import("@/services/attribute-service")
-  return await createAttribute(data)
+  const res = await createAttribute(data)
+  revalidatePath("/admin/products/attributes")
+  return res
 }
 
 export async function updateAttributeAction(
@@ -245,12 +247,16 @@ export async function updateAttributeAction(
   data: { name?: string; values?: string[] }
 ) {
   const { updateAttribute } = await import("@/services/attribute-service")
-  return await updateAttribute(id, data)
+  const res = await updateAttribute(id, data)
+  revalidatePath("/admin/products/attributes")
+  return res
 }
 
 export async function deleteAttributeAction(id: number) {
   const { deleteAttribute } = await import("@/services/attribute-service")
-  return await deleteAttribute(id)
+  const res = await deleteAttribute(id)
+  revalidatePath("/admin/products/attributes")
+  return res
 }
 
 export async function createStaffAction(data: {
@@ -603,12 +609,34 @@ export async function updateCouriersSettingsAction(data: any) {
 
 export async function createColorAction(data: { name: string; code: string }) {
   const { createColor } = await import("@/services/color-service")
-  return await createColor(data)
+  const res = await createColor(data)
+  revalidatePath("/admin/products/colors")
+  return res
+}
+
+export async function updateColorAction(
+  id: number,
+  data: { name?: string; code?: string }
+) {
+  const { updateColor } = await import("@/services/color-service")
+  const res = await updateColor(id, data)
+  revalidatePath("/admin/products/colors")
+  return res
 }
 
 export async function deleteColorAction(id: number) {
   const { deleteColor } = await import("@/services/color-service")
-  return await deleteColor(id)
+  const res = await deleteColor(id)
+  revalidatePath("/admin/products/colors")
+  return res
+}
+
+export async function toggleColorFilterActivationAction(active: boolean) {
+  const { updateSetting } = await import("@/services/settings-service")
+  const success = await updateSetting("color_filter_activation", active ? "1" : "0")
+  revalidatePath("/admin/products/colors")
+  revalidatePath("/products")
+  return { success }
 }
 
 export async function createWarrantyAction(data: { text: string; logo?: string; duration?: string }) {
@@ -1369,6 +1397,8 @@ export async function createProductAction(data: {
   choiceOptions?: { attribute_id: string; values: string[] }[]
   variations?: { variant: string; sku: string; price: number; stock: number }[]
   shippingCost?: string | number
+  weight?: string | number
+  published?: boolean
 }) {
   const { createProduct } = await import("@/services/product-service")
   const res = await createProduct(data)
@@ -1474,6 +1504,25 @@ export async function toggleCategoryFeaturedAction(id: number | string, featured
   return { success }
 }
 
+export async function updateCategoryAction(
+  id: number | string,
+  data: {
+    name?: string
+    icon?: string
+    banner?: string
+    parentId?: number | null
+    featured?: boolean
+    orderLevel?: number
+  }
+) {
+  const { updateCategory } = await import("@/services/category-service")
+  const category = await updateCategory(id, data)
+  revalidatePath("/admin/categories")
+  revalidatePath("/categories")
+  revalidatePath("/")
+  return { success: !!category, category }
+}
+
 export async function createBrandAction(data: {
   name: string
   slug?: string
@@ -1505,6 +1554,45 @@ export async function toggleBrandTopAction(id: number | string, top: boolean) {
   revalidatePath("/")
   return { success }
 }
+
+export async function updateBrandAction(
+  id: number | string,
+  data: {
+    name: string
+    slug?: string
+    logo?: string
+    top?: boolean
+  }
+) {
+  const { updateBrand } = await import("@/services/brand-service")
+  const brand = await updateBrand(id, data)
+  revalidatePath("/admin/brands")
+  revalidatePath("/brands")
+  revalidatePath("/")
+  return { success: !!brand, brand }
+}
+
+export async function bulkCreateBrandsAction(
+  items: { name: string; logo?: string }[]
+) {
+  const { createBrand } = await import("@/services/brand-service")
+  let createdCount = 0
+  for (const item of items) {
+    if (item.name?.trim()) {
+      const res = await createBrand({
+        name: item.name.trim(),
+        logo: item.logo?.trim() || undefined,
+        top: false,
+      })
+      if (res) createdCount++
+    }
+  }
+  revalidatePath("/admin/brands")
+  revalidatePath("/brands")
+  revalidatePath("/")
+  return { success: true, count: createdCount }
+}
+
 
 export async function deleteCouponAction(id: number | string) {
   const { deleteCoupon } = await import("@/services/coupon-service")

@@ -502,6 +502,7 @@ export async function createProduct(data: {
   shippingCost?: string | number
   weight?: string | number
   frequentlyBoughtSelectionType?: "product" | "category"
+  published?: boolean
 }): Promise<any> {
   try {
     const slug =
@@ -530,7 +531,7 @@ export async function createProduct(data: {
         variations: data.variations || [],
         weight: data.weight ? String(data.weight) : "0.00",
         frequentlyBoughtSelectionType: data.frequentlyBoughtSelectionType || "product",
-        published: true,
+        published: data.published !== undefined ? data.published : true,
         featured: false,
         todaysDeal: false,
       })
@@ -655,8 +656,12 @@ export interface ProductEditInitial {
   discountType: string
   currentStock: number
   sku: string
+  weight?: string
   description: string
   thumbnailImg: string
+  photos?: string[]
+  digitalFile?: string | null
+  published?: boolean
   variations: {
     variant: string
     sku: string
@@ -679,9 +684,11 @@ export async function updateProduct(
     discount: string | number
     discountType: string
     currentStock: number
+    weight: string | number
     description: string
     thumbnailImg: string
     photos: string[]
+    digitalFile: string
     colors: string[]
     published: boolean
     featured: boolean
@@ -699,12 +706,14 @@ export async function updateProduct(
     if (data.discount !== undefined) updateData.discount = String(data.discount)
     if (data.discountType !== undefined) updateData.discountType = data.discountType
     if (data.currentStock !== undefined) updateData.currentStock = Number(data.currentStock)
+    if (data.weight !== undefined) updateData.weight = String(data.weight)
     if (data.description !== undefined) updateData.description = data.description
     if (data.sku !== undefined) updateData.sku = data.sku
     if (data.unit !== undefined) updateData.unit = data.unit
     if (data.variations !== undefined) updateData.variations = data.variations
     if (data.thumbnailImg !== undefined) updateData.thumbnailImg = data.thumbnailImg
     if (data.photos !== undefined) updateData.photos = data.photos
+    if (data.digitalFile !== undefined) updateData.digitalFile = data.digitalFile
     if (data.colors !== undefined) updateData.colors = data.colors
     if (data.published !== undefined) updateData.published = data.published
     if (data.featured !== undefined) updateData.featured = data.featured
@@ -718,7 +727,6 @@ export async function updateProduct(
 }
 
 export async function getProductForEdit(id: number | string): Promise<ProductEditInitial | null> {
-
   const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
   if (!numericId || isNaN(numericId)) return null
   try {
@@ -741,8 +749,12 @@ export async function getProductForEdit(id: number | string): Promise<ProductEdi
         discountType: (row.discountType as "percent" | "amount") || "percent",
         currentStock: row.currentStock || 0,
         sku: row.sku || "",
+        weight: String(row.weight || "0.00"),
         description: row.description || "",
         thumbnailImg: row.thumbnailImg || "/assets/img/placeholder.jpg",
+        photos: (row.photos as string[]) || [],
+        digitalFile: row.digitalFile || null,
+        published: row.published !== false,
         variations: (row.variations as any[]) || [],
       }
     }

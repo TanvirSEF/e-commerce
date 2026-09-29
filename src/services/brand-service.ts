@@ -82,3 +82,49 @@ export async function toggleBrandTop(id: number | string, top: boolean): Promise
     return false
   }
 }
+
+export async function updateBrand(
+  id: number | string,
+  data: {
+    name: string
+    slug?: string
+    logo?: string
+    top?: boolean
+  }
+): Promise<SeedBrand | null> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return null
+
+  const slug =
+    data.slug ||
+    data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+
+  try {
+    const [updated] = await db
+      .update(brands)
+      .set({
+        name: data.name,
+        slug,
+        ...(data.logo !== undefined ? { logo: data.logo } : {}),
+        ...(typeof data.top === "boolean" ? { top: data.top } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(brands.id, numericId))
+      .returning()
+
+    if (updated) {
+      return {
+        id: String(updated.id),
+        name: updated.name,
+        slug: updated.slug,
+        logo: updated.logo || "/assets/img/placeholder.jpg",
+        top: updated.top,
+        productCount: 0,
+      }
+    }
+  } catch (err) {
+    console.error("Error updating brand:", err)
+  }
+  return null
+}
+

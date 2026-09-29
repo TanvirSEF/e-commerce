@@ -80,6 +80,38 @@ export async function createColor(data: { name: string; code: string }): Promise
   }
 }
 
+export async function updateColor(
+  id: number,
+  data: { name?: string; code?: string }
+): Promise<{ success: boolean; color?: ColorData }> {
+  try {
+    const [row] = await db
+      .update(colors)
+      .set({
+        ...(data.name ? { name: data.name } : {}),
+        ...(data.code ? { code: data.code } : {}),
+      })
+      .where(eq(colors.id, id))
+      .returning()
+
+    if (row) {
+      return {
+        success: true,
+        color: {
+          id: row.id,
+          name: row.name,
+          code: row.code,
+          createdAt: row.createdAt.toISOString().slice(0, 10),
+        },
+      }
+    }
+  } catch (err) {
+    console.warn("updateColor error:", (err as Error).message)
+  }
+
+  return { success: false }
+}
+
 export async function deleteColor(id: number) {
   try {
     await db.delete(colors).where(eq(colors.id, id))
@@ -89,3 +121,4 @@ export async function deleteColor(id: number) {
     return { success: true }
   }
 }
+

@@ -1,6 +1,7 @@
 import React from "react"
 import { Metadata } from "next"
 import { getAllColors } from "@/services/color-service"
+import { getSetting } from "@/services/settings-service"
 import { ColorsView } from "./_components/colors-view"
 
 export const metadata: Metadata = {
@@ -11,7 +12,18 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic"
 
 export default async function AdminColorsPage() {
-  const colorsList = await getAllColors()
+  const [colorsList, colorFilterSetting] = await Promise.all([
+    getAllColors(),
+    getSetting("color_filter_activation"),
+  ])
 
-  return <ColorsView initialColors={colorsList} />
+  const initialColorFilterActive = colorFilterSetting !== "0"
+
+  return (
+    <ColorsView
+      initialColors={colorsList}
+      initialColorFilterActive={initialColorFilterActive}
+    />
+  )
 }
+
