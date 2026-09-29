@@ -1106,6 +1106,28 @@ export async function updateCategoryDiscountsAction(data: any) {
   return await updateCategoryDiscounts(data)
 }
 
+export async function setProductDiscountAction(data: {
+  categoryId: number | string
+  discount: number
+  dateRange?: string
+  sellerProductDiscount: boolean
+}) {
+  const { getCategoryDiscounts, updateCategoryDiscounts } = await import("@/services/settings-service")
+  const current = await getCategoryDiscounts()
+  const dates = data.dateRange?.split(" to ") || []
+  current[String(data.categoryId)] = {
+    categoryId: Number(data.categoryId),
+    discount: data.discount,
+    startDate: dates[0] || "",
+    endDate: dates[1] || "",
+    applyToInhouse: true,
+    applyToSeller: data.sellerProductDiscount,
+  }
+  await updateCategoryDiscounts(current)
+  revalidatePath("/admin/products/category-discount")
+  return { success: true }
+}
+
 export async function updateCustomAlertSettingsAction(data: any) {
   const { updateCustomAlertSettings } = await import("@/services/settings-service")
   return await updateCustomAlertSettings(data)

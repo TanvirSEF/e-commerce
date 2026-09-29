@@ -1,249 +1,248 @@
 "use client"
 
-import React, { useState } from "react"
-import { Percent, Search, Save, CheckCircle2, RefreshCw, Calendar, Tag } from "lucide-react"
-import { type CategoryDiscountRule } from "@/services/settings-service"
-import { updateCategoryDiscountsAction } from "@/app/actions/ecommerce-actions"
-
-interface CategoryItem {
-  id: string
-  name: string
-  icon?: string
-}
+import React, { useState, useTransition } from "react"
+import { Search, CheckCircle2, AlertCircle } from "lucide-react"
+import {
+  CategoryDiscountTable,
+  type CategoryDiscountTableItem,
+} from "./category-discount-table"
+import {
+  ConfirmDiscountModal,
+  ConfirmSwitchModal,
+} from "./category-discount-modals"
+import { setProductDiscountAction } from "@/app/actions/ecommerce-actions"
 
 interface CategoryDiscountViewProps {
-  categories: CategoryItem[]
-  initialDiscounts: Record<string, CategoryDiscountRule>
+  initialCategories: CategoryDiscountTableItem[]
 }
 
-export function CategoryDiscountView({
-  categories,
-  initialDiscounts,
-}: CategoryDiscountViewProps) {
-  const [discounts, setDiscounts] = useState(initialDiscounts)
+export function CategoryDiscountView({ initialCategories }: CategoryDiscountViewProps) {
+  const [categories, setCategories] = useState<CategoryDiscountTableItem[]>(initialCategories)
   const [search, setSearch] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
-  const [feedback, setFeedback] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [isPending, startTransition] = useTransition()
 
-  const handleDiscountChange = (catId: string, val: number) => {
-    setDiscounts((prev) => ({
-      ...prev,
-      [catId]: {
-        categoryId: Number(catId),
-        discount: val,
-        applyToInhouse: prev[catId]?.applyToInhouse ?? true,
-        applyToSeller: prev[catId]?.applyToSeller ?? true,
-        startDate: prev[catId]?.startDate || "2026-03-01",
-        endDate: prev[catId]?.endDate || "2026-04-30",
-      },
-    }))
+  // Modal states
+  const [pendingDiscountCatId, setPendingDiscountCatId] = useState<string | null>(null)
+  const [pendingSwitch, setPendingSwitch] = useState<{ catId: string; enabling: boolean } | null>(null)
+
+  const showToast = (type: "success" | "error", text: string) => {
+    setFeedback({ type, text })
+    setTimeout(() => setFeedback(null), 3500)
   }
 
-  const handleToggleInhouse = (catId: string) => {
-    setDiscounts((prev) => ({
-      ...prev,
-      [catId]: {
-        ...(prev[catId] || {
-          categoryId: Number(catId),
-          discount: 0,
-          startDate: "2026-03-01",
-          endDate: "2026-04-30",
-        }),
-        applyToInhouse: !(prev[catId]?.applyToInhouse ?? true),
-        applyToSeller: prev[catId]?.applyToSeller ?? true,
-      },
-    }))
+  // Handle in-memory discount update
+  const handleDiscountChange = (id: string, val: number) => {
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, discount: val } : c))
+    )
   }
 
-  const handleToggleSeller = (catId: string) => {
-    setDiscounts((prev) => ({
-      ...prev,
-      [catId]: {
-        ...(prev[catId] || {
-          categoryId: Number(catId),
-          discount: 0,
-          startDate: "2026-03-01",
-          endDate: "2026-04-30",
-        }),
-        applyToInhouse: prev[catId]?.applyToInhouse ?? true,
-        applyToSeller: !(prev[catId]?.applyToSeller ?? true),
-      },
-    }))
+  // Trigger modal on Enter
+  const handleDiscountEnter = (id: string) => {
+    setPendingDiscountCatId(id)
   }
 
-  const handleSaveAll = async () => {
-    setIsSaving(true)
-    setFeedback(null)
-    try {
-      await updateCategoryDiscountsAction(discounts)
-      setFeedback("Category-wise product discounts saved successfully!")
-      setTimeout(() => setFeedback(null), 3000)
-    } catch {
-      setFeedback("Failed to update category discounts.")
-    } finally {
-      setIsSaving(false)
+  // Confirm Discount Save
+  const handleConfirmDiscount = () => {
+    if (!pendingDiscountCatId) return
+    const cat = categories.find((c) => c.id === pendingDiscountCatId)
+    if (!cat) return
+
+    startTransition(async () => {
+      const res = await setProductDiscountAction({
+        categoryId: cat.id,
+        discount: cat.discount,
+        dateRange: cat.startDate && cat.endDate ? `${cat.startDate} to ${cat.endDate}` : undefined,
+        sellerProductDiscount: cat.sellerDiscount,
+      })
+
+      if (res.success) {
+        showToast("success", `Discount updated successfully for "${cat.name}"`)
+      } else {
+        showToast("error", "Failed to update category discount")
+      }
+      setPendingDiscountCatId(null)
+    })
+  }
+
+  // Clear Discount
+  const handleClearDiscount = (id: string) => {
+    const cat = categories.find((c) => c.id === id)
+    if (!cat) return
+
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, discount: 0 } : c))
+    )
+
+    startTransition(async () => {
+      await setProductDiscountAction({
+        categoryId: id,
+        discount: 0,
+        dateRange: cat.startDate && cat.endDate ? `${cat.startDate} to ${cat.endDate}` : undefined,
+        sellerProductDiscount: cat.sellerDiscount,
+      })
+      showToast("success", `Discount cleared for "${cat.name}"`)
+    })
+  }
+
+  // Handle Date Range change & autosave
+  const handleDateRangeChange = (id: string, start: string, end: string) => {
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, startDate: start, endDate: end } : c))
+    )
+
+    if (start && end) {
+      const cat = categories.find((c) => c.id === id)
+      startTransition(async () => {
+        await setProductDiscountAction({
+          categoryId: id,
+          discount: cat ? cat.discount : 0,
+          dateRange: `${start} to ${end}`,
+          sellerProductDiscount: cat ? cat.sellerDiscount : false,
+        })
+        showToast("success", "Discount date range updated successfully")
+      })
     }
   }
 
-  const filteredCategories = categories.filter((c) =>
+  // Clear Date Range
+  const handleClearDateRange = (id: string) => {
+    const cat = categories.find((c) => c.id === id)
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, startDate: "", endDate: "" } : c))
+    )
+
+    startTransition(async () => {
+      await setProductDiscountAction({
+        categoryId: id,
+        discount: cat ? cat.discount : 0,
+        dateRange: "",
+        sellerProductDiscount: cat ? cat.sellerDiscount : false,
+      })
+      showToast("success", "Date range cleared successfully")
+    })
+  }
+
+  // Seller switch modal trigger
+  const handleToggleSellerSwitch = (id: string, enabling: boolean) => {
+    setPendingSwitch({ catId: id, enabling })
+  }
+
+  // Confirm seller switch change
+  const handleConfirmSwitch = () => {
+    if (!pendingSwitch) return
+    const { catId, enabling } = pendingSwitch
+    const cat = categories.find((c) => c.id === catId)
+    if (!cat) return
+
+    setCategories((prev) =>
+      prev.map((c) => (c.id === catId ? { ...c, sellerDiscount: enabling } : c))
+    )
+
+    startTransition(async () => {
+      await setProductDiscountAction({
+        categoryId: catId,
+        discount: cat.discount,
+        dateRange: cat.startDate && cat.endDate ? `${cat.startDate} to ${cat.endDate}` : undefined,
+        sellerProductDiscount: enabling,
+      })
+      showToast(
+        "success",
+        enabling
+          ? "Seller product discount enabled successfully"
+          : "Seller product discount disabled successfully"
+      )
+      setPendingSwitch(null)
+    })
+  }
+
+  const filtered = categories.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
     <div className="space-y-6">
-      {/* Titlebar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-gray-200">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-            Set Category Wise Product Discount
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Apply global promotional percentage discounts across entire product categories
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleSaveAll}
-          disabled={isSaving}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#d43533] hover:bg-[#b82d2b] disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition-colors"
-        >
-          {isSaving ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              <span>Save All Discounts</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {feedback && (
-        <div className="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-xs sm:text-sm flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-          <span>{feedback}</span>
-        </div>
-      )}
-
-      {/* Info Notice */}
-      <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl p-4 text-xs sm:text-sm space-y-1">
-        <p className="font-bold">Discount Rule Application:</p>
-        <p className="text-blue-800">
-          When a discount is set on a category, products under that category will display the promotional badge and calculate discounted prices during checkout for the specified date range.
+      {/* Title Bar */}
+      <div>
+        <h1 className="text-xl font-bold text-slate-800">
+          Set Category Wise Product Discount
+        </h1>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Configure global category-level promotional discounts across store products (Active eCommerce 1:1)
         </p>
       </div>
 
-      {/* Table Card */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between gap-4">
-          <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-            Categories ({filteredCategories.length})
-          </span>
-          <div className="relative w-64">
+      {feedback && (
+        <div
+          className={`flex items-center gap-2 p-3 text-xs rounded-lg border shadow-2xs ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-red-50 text-red-800 border-red-200"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          ) : (
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+          )}
+          <span>{feedback.text}</span>
+        </div>
+      )}
+
+      {/* Main Card */}
+      <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
+        {/* Nav Tab (Active eCommerce 1:1) */}
+        <div className="border-b border-slate-200 px-4 pt-3">
+          <button
+            type="button"
+            className="px-3 pb-3 text-xs font-semibold text-[#d43533] border-b-2 border-[#d43533] cursor-pointer"
+          >
+            All Categories
+          </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="p-4 border-b border-slate-100 bg-[#fafbfc]">
+          <div className="relative w-full max-w-sm">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search category name..."
-              className="w-full pl-9 pr-4 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#d43533]"
+              placeholder="Search Categories ..."
+              className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded text-xs text-slate-800 focus:outline-hidden focus:border-[#d43533]"
             />
-            <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-2" />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs sm:text-sm text-left text-gray-600">
-            <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
-              <tr>
-                <th className="p-4 w-12">#</th>
-                <th className="p-4">Category Name</th>
-                <th className="p-4 text-center">In-house</th>
-                <th className="p-4 text-center">Seller</th>
-                <th className="p-4">Discount (%)</th>
-                <th className="p-4">Date Range</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredCategories.map((cat, index) => {
-                const rule = discounts[cat.id] || {
-                  categoryId: Number(cat.id),
-                  discount: 0,
-                  applyToInhouse: true,
-                  applyToSeller: true,
-                  startDate: "2026-03-01",
-                  endDate: "2026-04-30",
-                }
-
-                return (
-                  <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4 font-medium text-gray-500">{index + 1}</td>
-                    <td className="p-4 font-bold text-gray-800 flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-[#d43533]" />
-                      <span>{cat.name}</span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleInhouse(cat.id)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          rule.applyToInhouse ? "bg-green-500" : "bg-gray-200"
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            rule.applyToInhouse ? "translate-x-4" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td className="p-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleSeller(cat.id)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          rule.applyToSeller ? "bg-green-500" : "bg-gray-200"
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            rule.applyToSeller ? "translate-x-4" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5 w-28">
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={rule.discount}
-                          onChange={(e) =>
-                            handleDiscountChange(cat.id, Number(e.target.value))
-                          }
-                          className="w-16 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 focus:outline-none focus:border-[#d43533] focus:bg-white"
-                        />
-                        <span className="font-semibold text-gray-500">%</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{rule.startDate || "2026-03-01"}</span>
-                        <span>to</span>
-                        <span>{rule.endDate || "2026-04-30"}</span>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        {/* Table */}
+        <CategoryDiscountTable
+          categories={filtered}
+          onDiscountChange={handleDiscountChange}
+          onDiscountEnter={handleDiscountEnter}
+          onClearDiscount={handleClearDiscount}
+          onDateRangeChange={handleDateRangeChange}
+          onClearDateRange={handleClearDateRange}
+          onToggleSellerSwitch={handleToggleSellerSwitch}
+        />
       </div>
+
+      {/* Modals */}
+      <ConfirmDiscountModal
+        isOpen={pendingDiscountCatId !== null}
+        onClose={() => setPendingDiscountCatId(null)}
+        onConfirm={handleConfirmDiscount}
+        isLoading={isPending}
+      />
+
+      <ConfirmSwitchModal
+        isOpen={pendingSwitch !== null}
+        isEnabling={pendingSwitch?.enabling ?? false}
+        onClose={() => setPendingSwitch(null)}
+        onConfirm={handleConfirmSwitch}
+        isLoading={isPending}
+      />
     </div>
   )
 }
