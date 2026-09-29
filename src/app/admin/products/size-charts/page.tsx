@@ -25,8 +25,10 @@ export default async function SizeChartsPage() {
       name: c.name,
       categoryId: c.categoryId,
       categoryName: cat ? cat.name : "—",
-      fitType: c.fitType || "Regular",
-      stretchType: "Slight",
+      fitType: c.fitType || "regular_fit",
+      stretchType: c.stretchType || "slight",
+      photos: c.photos ? c.photos.split(",") : [],
+      description: c.description || undefined,
       unit: c.unit || "in",
       measurements: c.measurements || [],
     }

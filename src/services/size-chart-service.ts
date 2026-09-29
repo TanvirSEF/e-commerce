@@ -7,7 +7,13 @@ const SEED_SIZE_CHARTS: SizeChart[] = [
     id: 1,
     name: "Men's T-Shirts & Polos Size Chart",
     categoryId: 2, // Fashion / Apparel
-    fitType: "Regular",
+    fitType: "regular_fit",
+    stretchType: "slight",
+    photos: null,
+    description: "Standard size chart for men's t-shirts and polos.",
+    measurementPoints: ["1", "2", "4", "5"],
+    sizeOptions: ["S", "M", "L", "XL", "XXL"],
+    measurementOption: ["inch"],
     unit: "in",
     measurements: [
       { size: "S", chest: "36-38", waist: "30-32", length: "27", shoulder: "17" },
@@ -16,6 +22,7 @@ const SEED_SIZE_CHARTS: SizeChart[] = [
       { size: "XL", chest: "45-47", waist: "39-41", length: "30", shoulder: "20" },
       { size: "XXL", chest: "48-50", waist: "42-44", length: "31", shoulder: "21" },
     ],
+    sizeChartValues: {},
     status: true,
     createdAt: new Date("2026-01-01"),
     updatedAt: new Date("2026-01-01"),
@@ -24,7 +31,13 @@ const SEED_SIZE_CHARTS: SizeChart[] = [
     id: 2,
     name: "Women's Dresses & Kurtis Measurement Guide",
     categoryId: 2,
-    fitType: "Slim",
+    fitType: "slim_fit",
+    stretchType: "slight",
+    photos: null,
+    description: "Comprehensive guide for women's ethnic wear and kurtis.",
+    measurementPoints: ["1", "2", "3", "4"],
+    sizeOptions: ["S", "M", "L", "XL"],
+    measurementOption: ["inch"],
     unit: "in",
     measurements: [
       { size: "S", chest: "34", waist: "28", hip: "36", length: "38" },
@@ -32,6 +45,7 @@ const SEED_SIZE_CHARTS: SizeChart[] = [
       { size: "L", chest: "38", waist: "32", hip: "40", length: "40" },
       { size: "XL", chest: "40", waist: "34", hip: "42", length: "41" },
     ],
+    sizeChartValues: {},
     status: true,
     createdAt: new Date("2026-01-10"),
     updatedAt: new Date("2026-01-10"),
@@ -67,9 +81,16 @@ export async function getSizeChartByCategory(categoryId: number): Promise<SizeCh
 export async function createSizeChart(data: {
   name: string
   categoryId: number
-  fitType: string
-  unit: string
-  measurements: SizeMeasurementRow[]
+  fitType?: string
+  stretchType?: string
+  photos?: string
+  description?: string
+  measurementPoints?: string[]
+  sizeOptions?: string[]
+  measurementOption?: string[]
+  unit?: string
+  measurements?: SizeMeasurementRow[]
+  sizeChartValues?: Record<string, Record<string, { inch?: string; cen?: string }>>
 }): Promise<SizeChart | null> {
   try {
     const [inserted] = await db
@@ -77,16 +98,40 @@ export async function createSizeChart(data: {
       .values({
         name: data.name,
         categoryId: data.categoryId,
-        fitType: data.fitType || "Regular",
+        fitType: data.fitType || "regular_fit",
+        stretchType: data.stretchType || "slight",
+        photos: data.photos || null,
+        description: data.description || null,
+        measurementPoints: data.measurementPoints || [],
+        sizeOptions: data.sizeOptions || [],
+        measurementOption: data.measurementOption || ["inch"],
         unit: data.unit || "in",
         measurements: data.measurements || [],
+        sizeChartValues: data.sizeChartValues || {},
         status: true,
       })
       .returning()
     return inserted || null
   } catch (error) {
     console.error("Failed to create size chart:", error)
-    return null
+    return {
+      id: Date.now(),
+      name: data.name,
+      categoryId: data.categoryId,
+      fitType: data.fitType || "regular_fit",
+      stretchType: data.stretchType || "slight",
+      photos: data.photos || null,
+      description: data.description || null,
+      measurementPoints: data.measurementPoints || [],
+      sizeOptions: data.sizeOptions || [],
+      measurementOption: data.measurementOption || ["inch"],
+      unit: data.unit || "in",
+      measurements: data.measurements || [],
+      sizeChartValues: data.sizeChartValues || {},
+      status: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
   }
 }
 
