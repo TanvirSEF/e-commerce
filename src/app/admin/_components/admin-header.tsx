@@ -40,6 +40,8 @@ export function AdminHeader({ onToggleSidebar, initialProfile }: AdminHeaderProp
     if (pathname.startsWith("/admin/brands")) return ["Products", "Brands"]
     if (pathname.startsWith("/admin/customers")) return ["Customers", "All Customers"]
     if (pathname.startsWith("/admin/sellers")) return ["Sellers", "All Sellers"]
+    if (pathname.startsWith("/admin/custom-labels/create")) return ["Marketing", "Custom Labels", "Create"]
+    if (pathname.startsWith("/admin/custom-labels")) return ["Marketing", "Custom Labels"]
     if (pathname.startsWith("/admin/settings")) return ["Settings", "General Settings"]
 
     const clean = pathname.replace(/^\/admin\/?/, "")

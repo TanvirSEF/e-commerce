@@ -140,6 +140,52 @@ export async function toggleCustomLabelSellerAccess(id: number, sellerAccess: bo
   }
 }
 
+export async function getCustomLabelById(id: number): Promise<CustomLabel | null> {
+  try {
+    const [row] = await db
+      .select()
+      .from(customLabels)
+      .where(eq(customLabels.id, id))
+      .limit(1)
+    if (row) return row
+  } catch (error) {
+    console.warn("DB getCustomLabelById error:", error)
+  }
+  return SEED_LABELS.find((l) => l.id === id) || null
+}
+
+export async function updateCustomLabel(
+  id: number,
+  data: {
+    text?: string
+    backgroundColor?: string
+    textColor?: string
+    productIds?: number[]
+    sellerAccess?: boolean
+    status?: boolean
+  }
+): Promise<CustomLabel | null> {
+  try {
+    const [updated] = await db
+      .update(customLabels)
+      .set({
+        ...(data.text ? { text: data.text } : {}),
+        ...(data.backgroundColor ? { backgroundColor: data.backgroundColor } : {}),
+        ...(data.textColor ? { textColor: data.textColor } : {}),
+        ...(data.productIds ? { productIds: data.productIds } : {}),
+        ...(typeof data.sellerAccess === "boolean" ? { sellerAccess: data.sellerAccess } : {}),
+        ...(typeof data.status === "boolean" ? { status: data.status } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(customLabels.id, id))
+      .returning()
+    return updated || null
+  } catch (error) {
+    console.error("Failed to update custom label:", error)
+    return null
+  }
+}
+
 export async function deleteCustomLabel(id: number): Promise<boolean> {
   try {
     await db.delete(customLabels).where(eq(customLabels.id, id))
@@ -149,3 +195,4 @@ export async function deleteCustomLabel(id: number): Promise<boolean> {
     return false
   }
 }
+

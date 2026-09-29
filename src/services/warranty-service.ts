@@ -104,6 +104,44 @@ export async function createWarranty(data: {
   }
 }
 
+export async function updateWarranty(
+  id: number,
+  data: {
+    text?: string
+    logo?: string
+    duration?: string
+  }
+): Promise<{ success: boolean; warranty?: WarrantyData }> {
+  try {
+    const [row] = await db
+      .update(warranties)
+      .set({
+        ...(data.text ? { text: data.text } : {}),
+        ...(data.logo !== undefined ? { logo: data.logo } : {}),
+        ...(data.duration ? { duration: data.duration } : {}),
+      })
+      .where(eq(warranties.id, id))
+      .returning()
+
+    if (row) {
+      return {
+        success: true,
+        warranty: {
+          id: row.id,
+          text: row.text,
+          logo: row.logo,
+          duration: row.duration,
+          createdAt: row.createdAt.toISOString().slice(0, 10),
+        },
+      }
+    }
+  } catch (err) {
+    console.warn("updateWarranty error:", (err as Error).message)
+  }
+
+  return { success: false }
+}
+
 export async function deleteWarranty(id: number) {
   try {
     await db.delete(warranties).where(eq(warranties.id, id))
@@ -113,3 +151,4 @@ export async function deleteWarranty(id: number) {
     return { success: true }
   }
 }
+

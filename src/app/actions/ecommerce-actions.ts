@@ -646,12 +646,23 @@ export async function createWarrantyAction(data: { text: string; logo?: string; 
   return result
 }
 
+export async function updateWarrantyAction(
+  id: number,
+  data: { text?: string; logo?: string; duration?: string }
+) {
+  const { updateWarranty } = await import("@/services/warranty-service")
+  const result = await updateWarranty(id, data)
+  revalidatePath("/admin/products/warranties")
+  return result
+}
+
 export async function deleteWarrantyAction(id: number) {
   const { deleteWarranty } = await import("@/services/warranty-service")
   const result = await deleteWarranty(id)
   revalidatePath("/admin/products/warranties")
   return result
 }
+
 
 export async function createCustomPageAction(data: {
   title: string
@@ -848,23 +859,66 @@ export async function createCustomLabelAction(data: {
   sellerAccess?: boolean
 }) {
   const { createCustomLabel } = await import("@/services/custom-label-service")
-  return await createCustomLabel(data)
+  const res = await createCustomLabel(data)
+  revalidatePath("/admin/custom-labels")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
+}
+
+export async function updateCustomLabelAction(
+  id: number,
+  data: {
+    text?: string
+    backgroundColor?: string
+    textColor?: string
+    productIds?: number[]
+    sellerAccess?: boolean
+    status?: boolean
+  }
+) {
+  const { updateCustomLabel } = await import("@/services/custom-label-service")
+  const res = await updateCustomLabel(id, data)
+  revalidatePath("/admin/custom-labels")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
 }
 
 export async function toggleCustomLabelStatusAction(id: number, status: boolean) {
   const { toggleCustomLabelStatus } = await import("@/services/custom-label-service")
-  return await toggleCustomLabelStatus(id, status)
+  const res = await toggleCustomLabelStatus(id, status)
+  revalidatePath("/admin/custom-labels")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
 }
 
 export async function toggleCustomLabelSellerAccessAction(id: number, sellerAccess: boolean) {
   const { toggleCustomLabelSellerAccess } = await import("@/services/custom-label-service")
-  return await toggleCustomLabelSellerAccess(id, sellerAccess)
+  const res = await toggleCustomLabelSellerAccess(id, sellerAccess)
+  revalidatePath("/admin/custom-labels")
+  revalidatePath("/seller/custom-labels")
+  return res
 }
 
 export async function deleteCustomLabelAction(id: number) {
   const { deleteCustomLabel } = await import("@/services/custom-label-service")
-  return await deleteCustomLabel(id)
+  const res = await deleteCustomLabel(id)
+  revalidatePath("/admin/custom-labels")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
 }
+
+export async function toggleSellerCanAddCustomLabelAction(active: boolean) {
+  const { updateSetting } = await import("@/services/settings-service")
+  const success = await updateSetting("seller_can_add_custom_label", active ? "1" : "0")
+  revalidatePath("/admin/custom-labels")
+  revalidatePath("/seller/custom-labels")
+  return { success }
+}
+
 
 export async function createTaxAction(name: string) {
   const { createTax } = await import("@/services/tax-service")

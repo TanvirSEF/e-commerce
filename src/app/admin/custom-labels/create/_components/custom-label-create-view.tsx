@@ -4,7 +4,11 @@ import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Save, Tag, RefreshCw } from "lucide-react"
-import { createCustomLabelAction } from "@/app/actions/ecommerce-actions"
+import {
+  createCustomLabelAction,
+  updateCustomLabelAction,
+} from "@/app/actions/ecommerce-actions"
+import type { CustomLabel } from "@/db/schema"
 
 interface ProductItem {
   id: number
@@ -14,14 +18,26 @@ interface ProductItem {
 
 interface CustomLabelCreateViewProps {
   products: ProductItem[]
+  initialLabel?: CustomLabel
 }
 
-export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) {
+export function CustomLabelCreateView({
+  products,
+  initialLabel,
+}: CustomLabelCreateViewProps) {
   const router = useRouter()
-  const [text, setText] = useState("")
-  const [backgroundColor, setBackgroundColor] = useState("#e62e04")
-  const [textColor, setTextColor] = useState<"white" | "dark">("white")
-  const [selectedProductIds, setSelectedProductIds] = useState<number[]>([])
+  const isEdit = Boolean(initialLabel)
+
+  const [text, setText] = useState(initialLabel?.text || "")
+  const [backgroundColor, setBackgroundColor] = useState(
+    initialLabel?.backgroundColor || "#e62e04"
+  )
+  const [textColor, setTextColor] = useState<"white" | "dark">(
+    initialLabel?.textColor === "dark" ? "dark" : "white"
+  )
+  const [selectedProductIds, setSelectedProductIds] = useState<number[]>(
+    initialLabel?.productIds || []
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,22 +57,36 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
     setIsSubmitting(true)
     setError(null)
     try {
-      const res = await createCustomLabelAction({
-        text: text.trim(),
-        backgroundColor,
-        textColor,
-        productIds: selectedProductIds,
-        userType: "admin",
-        addedBy: "Admin",
-        sellerAccess: true,
-      })
-      if (res) {
-        router.push("/admin/custom-labels")
+      if (isEdit && initialLabel) {
+        const res = await updateCustomLabelAction(initialLabel.id, {
+          text: text.trim(),
+          backgroundColor,
+          textColor,
+          productIds: selectedProductIds,
+        })
+        if (res) {
+          router.push("/admin/custom-labels")
+        } else {
+          setError("Failed to update custom label. Please try again.")
+        }
       } else {
-        setError("Failed to create custom label. Please try again.")
+        const res = await createCustomLabelAction({
+          text: text.trim(),
+          backgroundColor,
+          textColor,
+          productIds: selectedProductIds,
+          userType: "admin",
+          addedBy: "Admin",
+          sellerAccess: true,
+        })
+        if (res) {
+          router.push("/admin/custom-labels")
+        } else {
+          setError("Failed to create custom label. Please try again.")
+        }
       }
     } catch {
-      setError("Server error while creating label.")
+      setError("Server error while saving label.")
     } finally {
       setIsSubmitting(false)
     }
@@ -69,14 +99,18 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
         <div className="flex items-center gap-3">
           <Link
             href="/admin/custom-labels"
-            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Create Custom Label</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+              {isEdit ? "Edit Custom Label" : "Create Custom Label"}
+            </h1>
             <p className="text-xs sm:text-sm text-gray-500">
-              Configure promotional text, background badge styling, and assigned products
+              {isEdit
+                ? `Update "${initialLabel?.text}" promotional badge and assigned products`
+                : "Configure promotional text, background badge styling, and assigned products"}
             </p>
           </div>
         </div>
@@ -90,7 +124,7 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Form: Label Attributes (7 cols) */}
-        <div className="lg:col-span-7 bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-6">
+        <div className="lg:col-span-7 bg-white border border-gray-200 rounded-xl shadow-xs p-6 space-y-6">
           <h2 className="text-base font-bold text-gray-800">Label Details</h2>
 
           {/* Text */}
@@ -118,7 +152,7 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
                 type="color"
                 value={backgroundColor}
                 onChange={(e) => setBackgroundColor(e.target.value)}
-                className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5 bg-white"
+                className="w-10 h-10 rounded-lg border border-gray-200 cursor-pointer p-0.5 bg-white shrink-0"
               />
               <input
                 type="text"
@@ -190,7 +224,7 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
                       : products.map((p) => p.id)
                   )
                 }
-                className="text-xs text-blue-600 hover:underline font-semibold"
+                className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
               >
                 {selectedProductIds.length === products.length ? "Deselect All" : "Select All"}
               </button>
@@ -205,7 +239,7 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
                     type="checkbox"
                     checked={selectedProductIds.includes(p.id)}
                     onChange={() => handleToggleProduct(p.id)}
-                    className="w-4 h-4 text-[#d43533] rounded border-gray-300 focus:ring-[#d43533]"
+                    className="w-4 h-4 text-[#d43533] rounded border-gray-300 focus:ring-[#d43533] cursor-pointer"
                   />
                   <span className="text-xs text-gray-800 font-medium line-clamp-1">{p.name}</span>
                 </label>
@@ -216,7 +250,7 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
 
         {/* Right Column: Live Badge Preview (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xs p-6 space-y-4">
             <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
               <Tag className="w-4 h-4 text-[#d43533]" />
               <span>Live Badge Preview</span>
@@ -224,7 +258,7 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
 
             <div className="p-8 bg-gray-100 rounded-xl flex flex-col items-center justify-center gap-4 text-center border border-dashed border-gray-300">
               <span
-                className="inline-block px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider shadow-sm transition-all"
+                className="inline-block px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider shadow-2xs transition-all"
                 style={{
                   backgroundColor,
                   color: textColor === "dark" ? "#1f2937" : "#ffffff",
@@ -241,17 +275,17 @@ export function CustomLabelCreateView({ products }: CustomLabelCreateViewProps) 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 py-3 bg-[#d43533] hover:bg-[#b82d2b] disabled:bg-gray-300 text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 py-3 bg-[#d43533] hover:bg-[#b82d2b] disabled:bg-gray-300 text-white text-xs sm:text-sm font-bold rounded-lg shadow-xs transition-colors cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Saving Label...</span>
+                    <span>{isEdit ? "Updating Label..." : "Saving Label..."}</span>
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    <span>Save Custom Label</span>
+                    <span>{isEdit ? "Update Custom Label" : "Save Custom Label"}</span>
                   </>
                 )}
               </button>
