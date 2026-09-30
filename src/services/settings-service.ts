@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { businessSettings, flashDeals } from "../db/schema"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { SEED_FLASH_DEALS } from "../db/seed/data"
 
 export async function getSetting(type: string): Promise<string | null> {
@@ -567,50 +567,104 @@ export interface SmartBarSettings {
   showSmartBar: boolean
   backgroundDesign: "plain" | "blur"
   backgroundColor: string
-  textColor: string
+  textColor: "white" | "dark"
+  buttonColor: string
+  buttonTextColor: "white" | "dark"
 }
 
 export const DEFAULT_SMART_BAR_SETTINGS: SmartBarSettings = {
   showSmartBar: true,
   backgroundDesign: "plain",
   backgroundColor: "#ffffff",
-  textColor: "#1f2937",
+  textColor: "dark",
+  buttonColor: "#d43533",
+  buttonTextColor: "white",
 }
 
 export async function getSmartBarSettings(): Promise<SmartBarSettings> {
   try {
-    const raw = await getSetting("smart_bar_settings")
-    if (raw) return { ...DEFAULT_SMART_BAR_SETTINGS, ...JSON.parse(raw) }
+    const rows = await db
+      .select()
+      .from(businessSettings)
+      .where(
+        inArray(businessSettings.type, [
+          "smart_bar_status",
+          "smart_bar_background_design",
+          "smart_bar_background_color",
+          "smart_bar_text_color",
+          "smart_bar_button_color",
+          "smart_bar_button_text_color",
+          "smart_bar_settings",
+        ])
+      )
+
+    const map = new Map(rows.map((r) => [r.type, r.value]))
+
+    let jsonFallback: Partial<SmartBarSettings> = {}
+    if (map.has("smart_bar_settings")) {
+      try {
+        jsonFallback = JSON.parse(map.get("smart_bar_settings") || "{}")
+      } catch {}
+    }
+
+    return {
+      showSmartBar: map.has("smart_bar_status")
+        ? map.get("smart_bar_status") === "1"
+        : (jsonFallback.showSmartBar ?? DEFAULT_SMART_BAR_SETTINGS.showSmartBar),
+      backgroundDesign:
+        ((map.get("smart_bar_background_design") || jsonFallback.backgroundDesign) as "plain" | "blur") ||
+        DEFAULT_SMART_BAR_SETTINGS.backgroundDesign,
+      backgroundColor:
+        map.get("smart_bar_background_color") ||
+        jsonFallback.backgroundColor ||
+        DEFAULT_SMART_BAR_SETTINGS.backgroundColor,
+      textColor:
+        ((map.get("smart_bar_text_color") || jsonFallback.textColor) as "white" | "dark") ||
+        DEFAULT_SMART_BAR_SETTINGS.textColor,
+      buttonColor:
+        map.get("smart_bar_button_color") ||
+        jsonFallback.buttonColor ||
+        DEFAULT_SMART_BAR_SETTINGS.buttonColor,
+      buttonTextColor:
+        ((map.get("smart_bar_button_text_color") || jsonFallback.buttonTextColor) as "white" | "dark") ||
+        DEFAULT_SMART_BAR_SETTINGS.buttonTextColor,
+    }
   } catch (err) {
     console.warn("DB getSmartBarSettings fallback:", (err as Error).message)
+    return DEFAULT_SMART_BAR_SETTINGS
   }
-  return DEFAULT_SMART_BAR_SETTINGS
 }
 
 export async function updateSmartBarSettings(data: SmartBarSettings) {
   try {
-    const jsonVal = JSON.stringify(data)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "smart_bar_settings"))
-      .limit(1)
+    const entries: [string, string][] = [
+      ["smart_bar_background_design", data.backgroundDesign],
+      ["smart_bar_background_color", data.backgroundColor],
+      ["smart_bar_text_color", data.textColor],
+      ["smart_bar_button_color", data.buttonColor],
+      ["smart_bar_button_text_color", data.buttonTextColor],
+      ["smart_bar_status", data.showSmartBar ? "1" : "0"],
+      ["smart_bar_settings", JSON.stringify(data)],
+    ]
 
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "smart_bar_settings",
-        value: jsonVal,
-      })
+    for (const [type, val] of entries) {
+      await updateSetting(type, val)
     }
+
     return { success: true }
   } catch (err) {
     console.warn("updateSmartBarSettings error:", (err as Error).message)
+    return { success: false }
+  }
+}
+
+export async function updateSmartBarStatus(status: boolean) {
+  try {
+    await updateSetting("smart_bar_status", status ? "1" : "0")
     return { success: true }
+  } catch (err) {
+    console.warn("updateSmartBarStatus error:", (err as Error).message)
+    return { success: false }
   }
 }
 

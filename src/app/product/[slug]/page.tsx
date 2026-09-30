@@ -12,7 +12,7 @@ import type { ProductCardProps } from "@/components/product/product-card"
 import { getProductBySlug } from "@/lib/data-service"
 import { getProductReviews } from "@/services/review-service"
 import { getWholesaleTiersForProduct } from "@/services/wholesale-service"
-import { getCustomProductVisitorsSettings } from "@/services/settings-service"
+import { getCustomProductVisitorsSettings, getSmartBarSettings } from "@/services/settings-service"
 import { getFrequentlyBoughtProducts } from "@/services/frequently-bought-service"
 
 interface ProductPageProps {
@@ -210,10 +210,11 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
       ? product.id
       : parseInt(String(product.id).replace(/\D/g, "")) || 1
 
-  const [wholesaleTiers, visitorsConfig, frequentlyBought] = await Promise.all([
+  const [wholesaleTiers, visitorsConfig, frequentlyBought, smartBarSettings] = await Promise.all([
     getWholesaleTiersForProduct(product.id),
     getCustomProductVisitorsSettings(),
     getFrequentlyBoughtProducts(numericProductId),
+    getSmartBarSettings(),
   ])
   const productWithWholesale = { ...product, wholesaleTiers }
 
@@ -282,6 +283,7 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
           price={product.price}
           originalPrice={product.originalPrice}
           thumbnail={product.thumbnail}
+          settings={smartBarSettings}
         />
       </div>
     </div>

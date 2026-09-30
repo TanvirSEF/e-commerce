@@ -838,10 +838,17 @@ export async function updateSmartBarSettingsAction(data: {
   showSmartBar: boolean
   backgroundDesign: "plain" | "blur"
   backgroundColor: string
-  textColor: string
+  textColor: "white" | "dark"
+  buttonColor: string
+  buttonTextColor: "white" | "dark"
 }) {
   const { updateSmartBarSettings } = await import("@/services/settings-service")
   return await updateSmartBarSettings(data)
+}
+
+export async function updateSmartBarStatusAction(status: boolean) {
+  const { updateSmartBarStatus } = await import("@/services/settings-service")
+  return await updateSmartBarStatus(status)
 }
 
 export async function updateFeatureActivationsAction(data: any) {
