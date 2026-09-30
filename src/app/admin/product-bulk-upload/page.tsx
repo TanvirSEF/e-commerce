@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Bulk upload products using CSV spreadsheets in Active eCommerce CMS",
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function ProductBulkUploadPage() {
   const [categories, brands] = await Promise.all([
     getCategories(),
@@ -16,7 +18,7 @@ export default async function ProductBulkUploadPage() {
   ])
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
       <ProductBulkUploadView
         categories={categories.map((c) => ({ id: c.id, name: c.name }))}
         brands={brands.map((b) => ({ id: b.id, name: b.name }))}

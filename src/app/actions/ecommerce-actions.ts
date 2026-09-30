@@ -981,8 +981,11 @@ export async function bulkUploadProductsAction(items: Array<{
   unitPrice: number
   currentStock?: number
   description?: string
+  unit?: string
+  sku?: string
 }>) {
   const { createProduct } = await import("@/services/product-service")
+  const { revalidatePath } = await import("next/cache")
   let successCount = 0
   for (const item of items) {
     try {
@@ -993,6 +996,8 @@ export async function bulkUploadProductsAction(items: Array<{
         unitPrice: String(item.unitPrice),
         currentStock: item.currentStock || 10,
         description: item.description || item.name,
+        unit: item.unit || "pc",
+        sku: item.sku || undefined,
         thumbnailImg: "/assets/img/placeholder.jpg",
       })
       successCount++
@@ -1000,6 +1005,9 @@ export async function bulkUploadProductsAction(items: Array<{
       console.error("Bulk upload item error:", e)
     }
   }
+  try {
+    revalidatePath("/admin/products")
+  } catch {}
   return { success: true, count: successCount }
 }
 
