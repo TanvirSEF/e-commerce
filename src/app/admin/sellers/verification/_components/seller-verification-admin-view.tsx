@@ -17,14 +17,14 @@ import { updateSellerVerificationAction } from "@/app/actions/ecommerce-actions"
 import type { SellerVerificationItem } from "@/services/seller-service"
 
 interface SellerVerificationAdminViewProps {
-  initialVerifications: SellerVerificationItem[]
+  initialVerifications?: SellerVerificationItem[]
 }
 
 export function SellerVerificationAdminView({
-  initialVerifications,
+  initialVerifications = [],
 }: SellerVerificationAdminViewProps) {
   const [verifications, setVerifications] =
-    useState<SellerVerificationItem[]>(initialVerifications)
+    useState<SellerVerificationItem[]>(initialVerifications || [])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedSeller, setSelectedSeller] =
     useState<SellerVerificationItem | null>(null)

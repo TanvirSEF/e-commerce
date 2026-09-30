@@ -23,20 +23,20 @@ interface SellerData {
 }
 
 interface SellerBasedCommissionViewProps {
-  sellers: SellerData[]
-  initialOverrides: Record<string, number>
+  sellers?: SellerData[]
+  initialOverrides?: Record<string, number>
 }
 
 export function SellerBasedCommissionView({
-  sellers,
-  initialOverrides,
+  sellers = [],
+  initialOverrides = {},
 }: SellerBasedCommissionViewProps) {
-  const [overrides, setOverrides] = useState<Record<string, number>>(initialOverrides)
+  const [overrides, setOverrides] = useState<Record<string, number>>(initialOverrides || {})
   const [search, setSearch] = useState("")
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const filteredSellers = sellers.filter((s) =>
+  const filteredSellers = (sellers || []).filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
     (s.ownerName && s.ownerName.toLowerCase().includes(search.toLowerCase()))
   )

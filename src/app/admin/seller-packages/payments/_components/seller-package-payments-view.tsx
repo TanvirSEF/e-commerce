@@ -13,15 +13,15 @@ interface PaymentItem {
   paymentDetails: string | null
   offlinePayment: boolean
   approval: boolean
-  createdAt: Date
+  createdAt: Date | string
 }
 
 interface SellerPackagePaymentsViewProps {
-  initialPayments: PaymentItem[]
+  initialPayments?: PaymentItem[]
 }
 
-export function SellerPackagePaymentsView({ initialPayments }: SellerPackagePaymentsViewProps) {
-  const [payments] = useState<PaymentItem[]>(initialPayments)
+export function SellerPackagePaymentsView({ initialPayments = [] }: SellerPackagePaymentsViewProps) {
+  const [payments] = useState<PaymentItem[]>(initialPayments || [])
   const [search, setSearch] = useState("")
 
   const filtered = payments.filter(
@@ -96,7 +96,7 @@ export function SellerPackagePaymentsView({ initialPayments }: SellerPackagePaym
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right font-mono text-gray-400">
-                    {new Date(item.createdAt).toLocaleDateString()}
+                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Recent"}
                   </td>
                 </tr>
               ))}

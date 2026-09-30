@@ -88,7 +88,10 @@ export async function createTicketAction(data: {
 
 export async function updateSellerVerificationAction(shopId: number, status: boolean) {
   const { updateSellerVerification } = await import("@/services/seller-service")
-  return await updateSellerVerification(shopId, status)
+  const res = await updateSellerVerification(shopId, status)
+  revalidatePath("/admin/sellers")
+  revalidatePath("/admin/sellers/verification")
+  return res
 }
 
 export async function processWithdrawRequestAction(data: {
@@ -99,7 +102,10 @@ export async function processWithdrawRequestAction(data: {
   adminNote?: string
 }) {
   const { processWithdrawRequestAdmin } = await import("@/services/seller-service")
-  return await processWithdrawRequestAdmin(data)
+  const res = await processWithdrawRequestAdmin(data)
+  revalidatePath("/admin/sellers/payout-requests")
+  revalidatePath("/admin/sellers")
+  return res
 }
 
 export async function createSellerWithdrawAction(data: {
@@ -110,7 +116,36 @@ export async function createSellerWithdrawAction(data: {
   paymentMethod: string
 }) {
   const { createSellerWithdrawRequest } = await import("@/services/seller-service")
-  return await createSellerWithdrawRequest(data)
+  const res = await createSellerWithdrawRequest(data)
+  revalidatePath("/admin/sellers/payout-requests")
+  revalidatePath("/admin/sellers")
+  return res
+}
+
+export async function paySellerDirectAction(data: {
+  shopId: number
+  amount: number
+  paymentMethod: string
+}) {
+  const { processWithdrawRequestAdmin, createSellerWithdrawRequest } = await import("@/services/seller-service")
+  const withdraw = await createSellerWithdrawRequest({
+    shopId: data.shopId,
+    userId: "usr_seller_default_01",
+    amount: data.amount,
+    message: "Admin direct payout disbursement",
+    paymentMethod: data.paymentMethod,
+  })
+  if (withdraw.success && withdraw.item) {
+    await processWithdrawRequestAdmin({
+      requestId: withdraw.item.id,
+      status: "paid",
+      paymentMethod: data.paymentMethod,
+      adminNote: "Direct settlement from Admin Sellers Panel",
+    })
+  }
+  revalidatePath("/admin/sellers")
+  revalidatePath("/admin/sellers/payout-requests")
+  return { success: true }
 }
 
 export async function updateTicketStatusAction(ticketId: number, status: string) {

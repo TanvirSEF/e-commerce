@@ -7,11 +7,11 @@ import { toggleSellerPackageStatusAction } from "@/app/actions/ecommerce-actions
 import type { SellerPackage } from "@/db/schema"
 
 interface SellerPackagesViewProps {
-  initialPackages: SellerPackage[]
+  initialPackages?: SellerPackage[]
 }
 
-export function SellerPackagesView({ initialPackages }: SellerPackagesViewProps) {
-  const [packages, setPackages] = useState<SellerPackage[]>(initialPackages)
+export function SellerPackagesView({ initialPackages = [] }: SellerPackagesViewProps) {
+  const [packages, setPackages] = useState<SellerPackage[]>(initialPackages || [])
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
 

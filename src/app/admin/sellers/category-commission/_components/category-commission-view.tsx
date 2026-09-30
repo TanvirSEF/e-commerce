@@ -14,21 +14,21 @@ import { updateCategoryCommissionsAction } from "@/app/actions/ecommerce-actions
 import type { SeedCategory } from "@/db/seed/data"
 
 interface CategoryCommissionViewProps {
-  categories: SeedCategory[]
-  initialCommissions: Record<string, number>
+  categories?: SeedCategory[]
+  initialCommissions?: Record<string, number>
 }
 
 export function CategoryCommissionView({
-  categories,
-  initialCommissions,
+  categories = [],
+  initialCommissions = {},
 }: CategoryCommissionViewProps) {
-  const [commissions, setCommissions] = useState<Record<string, number>>(initialCommissions)
+  const [commissions, setCommissions] = useState<Record<string, number>>(initialCommissions || {})
   const [search, setSearch] = useState("")
   const [bulkRate, setBulkRate] = useState("")
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const filteredCategories = categories.filter((c) =>
+  const filteredCategories = (categories || []).filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   )
 

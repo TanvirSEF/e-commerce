@@ -4,6 +4,7 @@ import {
   sellerPackagePayments,
   customerPackages,
   customerPackagePayments,
+  shops,
   type SellerPackage,
   type SellerPackagePayment,
   type CustomerPackage,
@@ -173,10 +174,37 @@ export async function toggleSellerPackageStatus(id: number, status: boolean): Pr
   return true
 }
 
-export async function getAllSellerPackagePayments() {
+export async function getAllSellerPackagePayments(): Promise<
+  (SellerPackagePayment & { sellerName?: string; packageName?: string })[]
+> {
   try {
-    const rows = await db.select().from(sellerPackagePayments).orderBy(desc(sellerPackagePayments.createdAt))
-    if (rows && rows.length > 0) return rows
+    const rows = await db
+      .select({
+        id: sellerPackagePayments.id,
+        sellerId: sellerPackagePayments.sellerId,
+        sellerPackageId: sellerPackagePayments.sellerPackageId,
+        amount: sellerPackagePayments.amount,
+        paymentMethod: sellerPackagePayments.paymentMethod,
+        paymentDetails: sellerPackagePayments.paymentDetails,
+        offlinePayment: sellerPackagePayments.offlinePayment,
+        approval: sellerPackagePayments.approval,
+        receipt: sellerPackagePayments.receipt,
+        createdAt: sellerPackagePayments.createdAt,
+        sellerName: shops.name,
+        packageName: sellerPackages.name,
+      })
+      .from(sellerPackagePayments)
+      .leftJoin(shops, eq(sellerPackagePayments.sellerId, shops.id))
+      .leftJoin(sellerPackages, eq(sellerPackagePayments.sellerPackageId, sellerPackages.id))
+      .orderBy(desc(sellerPackagePayments.createdAt))
+
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        ...r,
+        sellerName: r.sellerName || "Registered Seller",
+        packageName: r.packageName || "Subscription Plan",
+      }))
+    }
   } catch (err) {
     console.warn("getAllSellerPackagePayments fallback:", (err as Error).message)
   }

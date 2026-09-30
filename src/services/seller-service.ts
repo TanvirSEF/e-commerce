@@ -1,5 +1,5 @@
 import { db } from "../db"
-import { shops, sellerWithdrawRequests, products, orders, orderItems } from "../db/schema"
+import { shops, sellerWithdrawRequests, products, orders, orderItems, users } from "../db/schema"
 import { eq, desc, sql } from "drizzle-orm"
 import { SEED_SHOPS, SeedShop, SEED_PRODUCTS, SeedProduct } from "../db/seed/data"
 
@@ -131,26 +131,65 @@ export async function getAllSellersAdmin(): Promise<{
   sellers: (SeedShop & { dueToSeller: number; productCount: number; ownerName: string })[]
 }> {
   try {
-    const rows = await db.select().from(shops).orderBy(desc(shops.rating))
+    const rows = await db
+      .select({
+        id: shops.id,
+        name: shops.name,
+        slug: shops.slug,
+        logo: shops.logo,
+        topBanner: shops.topBanner,
+        sliders: shops.sliders,
+        address: shops.address,
+        phone: shops.phone,
+        rating: shops.rating,
+        numOfReviews: shops.numOfReviews,
+        verificationStatus: shops.verificationStatus,
+        createdAt: shops.createdAt,
+        ownerName: users.name,
+      })
+      .from(shops)
+      .leftJoin(users, eq(shops.userId, users.id))
+      .where(sql`${shops.slug} != 'inhouse-products'`)
+      .orderBy(desc(shops.rating))
+
     if (rows.length > 0) {
-      const sellers = rows.map((s, idx) => ({
-        id: String(s.id),
-        name: s.name,
-        slug: s.slug,
-        logo: s.logo || "/assets/img/placeholder.jpg",
-        topBanner: s.topBanner || "/assets/img/placeholder-rect.jpg",
-        sliders: s.sliders || ["/assets/img/placeholder-rect.jpg"],
-        address: s.address || "Dhaka, Bangladesh",
-        phone: s.phone || "+880 1700 000000",
-        rating: Number(s.rating || 0),
-        reviewCount: s.numOfReviews,
-        followersCount: 350 + idx * 80,
-        verificationStatus: s.verificationStatus,
-        memberSince: "15 Jan 2023",
-        dueToSeller: idx === 0 ? 15400 : idx === 1 ? 32000 : 7500,
-        productCount: idx === 0 ? 24 : idx === 1 ? 42 : 12,
-        ownerName: idx === 0 ? "Tanvir Ahmed" : idx === 1 ? "Rafiqul Islam" : "Nazmul Hossain",
-      }))
+      const withdrawRows = await db
+        .select({
+          shopId: sellerWithdrawRequests.shopId,
+          amount: sellerWithdrawRequests.amount,
+          status: sellerWithdrawRequests.status,
+        })
+        .from(sellerWithdrawRequests)
+
+      const sellers = rows.map((s, idx) => {
+        const pendingWithdraw = withdrawRows
+          .filter((w) => w.shopId === s.id && w.status === "pending")
+          .reduce((sum, w) => sum + Number(w.amount || 0), 0)
+
+        const defaultDue = idx === 0 ? 15400 : idx === 1 ? 32000 : 7500
+        const dueToSeller = pendingWithdraw > 0 ? pendingWithdraw : defaultDue
+
+        return {
+          id: String(s.id),
+          name: s.name,
+          slug: s.slug,
+          logo: s.logo || "/assets/img/placeholder.jpg",
+          topBanner: s.topBanner || "/assets/img/placeholder-rect.jpg",
+          sliders: s.sliders || ["/assets/img/placeholder-rect.jpg"],
+          address: s.address || "Dhaka, Bangladesh",
+          phone: s.phone || "+880 1700 000000",
+          rating: Number(s.rating || 0),
+          reviewCount: s.numOfReviews,
+          followersCount: 350 + idx * 80,
+          verificationStatus: s.verificationStatus,
+          memberSince: s.createdAt
+            ? new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+            : "Jan 2024",
+          dueToSeller,
+          productCount: idx === 0 ? 24 : idx === 1 ? 42 : 12,
+          ownerName: s.ownerName || (idx === 0 ? "Tanvir Ahmed" : idx === 1 ? "Rafiqul Islam" : "Nazmul Hossain"),
+        }
+      })
       return { sellers }
     }
   } catch (err) {
@@ -180,9 +219,11 @@ export async function getAllWithdrawRequestsAdmin(): Promise<SellerWithdrawItem[
         createdAt: sellerWithdrawRequests.createdAt,
         shopName: shops.name,
         shopSlug: shops.slug,
+        ownerName: users.name,
       })
       .from(sellerWithdrawRequests)
       .leftJoin(shops, eq(sellerWithdrawRequests.shopId, shops.id))
+      .leftJoin(users, eq(sellerWithdrawRequests.userId, users.id))
       .orderBy(desc(sellerWithdrawRequests.createdAt))
 
     if (rows.length > 0) {
@@ -190,14 +231,16 @@ export async function getAllWithdrawRequestsAdmin(): Promise<SellerWithdrawItem[
         id: r.id,
         shopName: r.shopName || "Partner Shop",
         shopSlug: r.shopSlug || "partner-shop",
-        sellerName: "Merchant Owner",
+        sellerName: r.ownerName || r.shopName || "Merchant Owner",
         amount: Number(r.amount),
         message: r.message || undefined,
         status: (r.status as "pending" | "paid" | "rejected") || "pending",
         paymentMethod: r.paymentMethod || "bKash",
         transactionId: r.transactionId || undefined,
         adminNote: r.adminNote || undefined,
-        date: r.createdAt.toISOString().slice(0, 16).replace("T", " "),
+        date: r.createdAt
+          ? new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " ")
+          : "2026-03-20 14:30",
       }))
     }
   } catch (err) {
@@ -324,27 +367,36 @@ export async function getPendingVerificationsAdmin(): Promise<SellerVerification
         shopId: shops.id,
         shopName: shops.name,
         shopSlug: shops.slug,
+        phone: shops.phone,
         verificationStatus: shops.verificationStatus,
         verificationInfo: shops.verificationInfo,
+        ownerName: users.name,
+        ownerEmail: users.email,
+        createdAt: shops.createdAt,
       })
       .from(shops)
+      .leftJoin(users, eq(shops.userId, users.id))
+      .where(sql`${shops.slug} != 'inhouse-products'`)
+      .orderBy(shops.verificationStatus, desc(shops.createdAt))
 
     if (rows.length > 0) {
-      return rows.map((r) => ({
+      return rows.map((r, idx) => ({
         shopId: r.shopId,
         shopName: r.shopName,
         shopSlug: r.shopSlug,
-        ownerName: "Tanvir Ahmed",
-        ownerPhone: "+880 1711 223344",
-        ownerEmail: "seller@active.com",
+        ownerName: r.ownerName || (idx === 0 ? "Tanvir Ahmed" : idx === 1 ? "Rafiqul Islam" : "Nazmul Hossain"),
+        ownerPhone: r.phone || "+880 1711 223344",
+        ownerEmail: r.ownerEmail || "seller@active.com",
         nidNumber: r.verificationInfo?.nidNumber || "19942691234567890",
         tradeLicense: r.verificationInfo?.tradeLicense || "TRAD/DNCC/029141",
-        documentType: r.verificationInfo?.documentType || "Trade License + NID",
+        documentType: r.verificationInfo?.documentType || "Trade License & NID",
         documentUrl: r.verificationInfo?.documentUrl || "/assets/img/placeholder.jpg",
         bankName: r.verificationInfo?.bankName || "City Bank PLC",
         bankAccount: r.verificationInfo?.bankAccount || "1102948192001",
         verificationStatus: r.verificationStatus,
-        submittedAt: r.verificationInfo?.submittedAt || "2026-03-20 12:45",
+        submittedAt:
+          r.verificationInfo?.submittedAt ||
+          (r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " ") : "2026-03-20 12:45"),
         rejectionReason: r.verificationInfo?.rejectionReason,
       }))
     }

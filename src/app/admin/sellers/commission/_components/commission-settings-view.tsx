@@ -6,19 +6,24 @@ import { updateSellerCommissionAction } from "@/app/actions/ecommerce-actions"
 import type { SellerCommissionSettings } from "@/services/settings-service"
 
 interface CommissionSettingsViewProps {
-  initialSettings: SellerCommissionSettings
+  initialSettings?: SellerCommissionSettings
 }
 
 export function CommissionSettingsView({
-  initialSettings,
+  initialSettings = {
+    commissionActivation: true,
+    commissionType: "fixed_rate",
+    fixedCommissionRate: 10,
+    minimumWithdrawalAmount: 1000,
+  },
 }: CommissionSettingsViewProps) {
-  const [activation, setActivation] = useState(initialSettings.commissionActivation)
+  const [activation, setActivation] = useState(initialSettings?.commissionActivation ?? true)
   const [commissionType, setCommissionType] = useState<
     "fixed_rate" | "seller_based" | "category_based"
-  >(initialSettings.commissionType)
-  const [fixedRate, setFixedRate] = useState(initialSettings.fixedCommissionRate)
+  >(initialSettings?.commissionType ?? "fixed_rate")
+  const [fixedRate, setFixedRate] = useState(initialSettings?.fixedCommissionRate ?? 10)
   const [minWithdraw, setMinWithdraw] = useState(
-    initialSettings.minimumWithdrawalAmount
+    initialSettings?.minimumWithdrawalAmount ?? 1000
   )
   const [isSaving, setIsSaving] = useState(false)
   const [successMsg, setSuccessMsg] = useState("")
