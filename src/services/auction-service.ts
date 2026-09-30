@@ -1,6 +1,6 @@
 import { db } from "@/db"
 import { auctionProducts, auctionBids, auctionOrders, type AuctionProduct, type AuctionBid, type AuctionOrder } from "@/db/schema/auction"
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, and, or, ilike, sql, count, inArray } from "drizzle-orm"
 
 export interface AuctionProductWithBids extends AuctionProduct {
   bids?: AuctionBid[]
@@ -344,3 +344,264 @@ export async function placeAuctionBid(
 
   return { success: true, message: "Your bid has been placed successfully!", bid: newBid }
 }
+
+export interface AuctionProductListResult {
+  products: AuctionProduct[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  counts: {
+    all: number
+    inhouse: number
+    seller: number
+  }
+}
+
+export async function getAuctionProductsAdmin(params?: {
+  userType?: "all" | "inhouse" | "seller"
+  status?: string
+  search?: string
+  page?: number
+  limit?: number
+}): Promise<AuctionProductListResult> {
+  const page = Math.max(1, params?.page || 1)
+  const limit = Math.max(1, Math.min(100, params?.limit || 15))
+  const offset = (page - 1) * limit
+  const userType = params?.userType || "all"
+  const status = params?.status || "all"
+  const search = params?.search?.trim() || ""
+
+  try {
+    const conditions = []
+
+    if (userType === "inhouse") {
+      conditions.push(eq(auctionProducts.sellerSlug, "inhouse"))
+    } else if (userType === "seller") {
+      conditions.push(sql`${auctionProducts.sellerSlug} != 'inhouse'`)
+    }
+
+    if (status === "active") {
+      conditions.push(sql`${auctionProducts.auctionEndDate} > NOW()`)
+    } else if (status === "ended") {
+      conditions.push(sql`${auctionProducts.auctionEndDate} <= NOW()`)
+    } else if (status === "published") {
+      conditions.push(eq(auctionProducts.status, true))
+    }
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(auctionProducts.name, `%${search}%`),
+          ilike(auctionProducts.sellerName, `%${search}%`),
+          ilike(auctionProducts.slug, `%${search}%`)
+        )
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    const rows = await db
+      .select()
+      .from(auctionProducts)
+      .where(whereClause)
+      .orderBy(desc(auctionProducts.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [countRow] = await db
+      .select({ count: count() })
+      .from(auctionProducts)
+      .where(whereClause)
+
+    const total = Number(countRow?.count || 0)
+    const totalPages = Math.ceil(total / limit) || 1
+
+    const [countsRow] = await db
+      .select({
+        all: count(),
+        inhouse: sql<number>`count(case when ${auctionProducts.sellerSlug} = 'inhouse' then 1 end)`,
+        seller: sql<number>`count(case when ${auctionProducts.sellerSlug} != 'inhouse' then 1 end)`,
+      })
+      .from(auctionProducts)
+
+    return {
+      products: rows,
+      total,
+      page,
+      limit,
+      totalPages,
+      counts: {
+        all: Number(countsRow?.all || 0),
+        inhouse: Number(countsRow?.inhouse || 0),
+        seller: Number(countsRow?.seller || 0),
+      },
+    }
+  } catch (err) {
+    console.warn("getAuctionProductsAdmin error:", err)
+    return {
+      products: [],
+      total: 0,
+      page: 1,
+      limit,
+      totalPages: 1,
+      counts: { all: 0, inhouse: 0, seller: 0 },
+    }
+  }
+}
+
+export async function toggleAuctionPublished(id: number, status: boolean): Promise<boolean> {
+  try {
+    await db.update(auctionProducts).set({ status }).where(eq(auctionProducts.id, id))
+    return true
+  } catch (err) {
+    console.error("toggleAuctionPublished error:", err)
+    return false
+  }
+}
+
+export async function toggleAuctionFeatured(id: number, featured: boolean): Promise<boolean> {
+  try {
+    await db.update(auctionProducts).set({ featured }).where(eq(auctionProducts.id, id))
+    return true
+  } catch (err) {
+    console.error("toggleAuctionFeatured error:", err)
+    return false
+  }
+}
+
+export async function deleteAuctionProduct(id: number): Promise<boolean> {
+  try {
+    await db.delete(auctionProducts).where(eq(auctionProducts.id, id))
+    return true
+  } catch (err) {
+    console.error("deleteAuctionProduct error:", err)
+    return false
+  }
+}
+
+export async function bulkDeleteAuctionProducts(ids: number[]): Promise<boolean> {
+  if (!ids || ids.length === 0) return true
+  try {
+    await db.delete(auctionProducts).where(inArray(auctionProducts.id, ids))
+    return true
+  } catch (err) {
+    console.error("bulkDeleteAuctionProducts error:", err)
+    return false
+  }
+}
+
+export async function bulkPublishAuctionProducts(ids: number[]): Promise<boolean> {
+  if (!ids || ids.length === 0) return true
+  try {
+    await db.update(auctionProducts).set({ status: true }).where(inArray(auctionProducts.id, ids))
+    return true
+  } catch (err) {
+    console.error("bulkPublishAuctionProducts error:", err)
+    return false
+  }
+}
+
+export async function bulkFeaturedAuctionProducts(ids: number[]): Promise<boolean> {
+  if (!ids || ids.length === 0) return true
+  try {
+    await db.update(auctionProducts).set({ featured: true }).where(inArray(auctionProducts.id, ids))
+    return true
+  } catch (err) {
+    console.error("bulkFeaturedAuctionProducts error:", err)
+    return false
+  }
+}
+
+export interface AuctionOrderListResult {
+  orders: AuctionOrder[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export async function getAuctionOrdersAdmin(params?: {
+  search?: string
+  page?: number
+  limit?: number
+}): Promise<AuctionOrderListResult> {
+  const page = Math.max(1, params?.page || 1)
+  const limit = Math.max(1, Math.min(100, params?.limit || 15))
+  const offset = (page - 1) * limit
+  const search = params?.search?.trim() || ""
+
+  try {
+    const conditions = []
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(auctionOrders.orderCode, `%${search}%`),
+          ilike(auctionOrders.customerName, `%${search}%`),
+          ilike(auctionOrders.customerEmail, `%${search}%`),
+          ilike(auctionOrders.productName, `%${search}%`)
+        )
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    const rows = await db
+      .select()
+      .from(auctionOrders)
+      .where(whereClause)
+      .orderBy(desc(auctionOrders.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [countRow] = await db
+      .select({ count: count() })
+      .from(auctionOrders)
+      .where(whereClause)
+
+    const total = Number(countRow?.count || 0)
+    const totalPages = Math.ceil(total / limit) || 1
+
+    return {
+      orders: rows,
+      total,
+      page,
+      limit,
+      totalPages,
+    }
+  } catch (err) {
+    console.error("getAuctionOrdersAdmin error:", err)
+    return {
+      orders: [],
+      total: 0,
+      page: 1,
+      limit,
+      totalPages: 1,
+    }
+  }
+}
+
+export async function updateAuctionOrderStatus(
+  id: number,
+  data: { paymentStatus?: string; deliveryStatus?: string }
+): Promise<boolean> {
+  try {
+    await db.update(auctionOrders).set(data).where(eq(auctionOrders.id, id))
+    return true
+  } catch (err) {
+    console.error("updateAuctionOrderStatus error:", err)
+    return false
+  }
+}
+
+export async function deleteAuctionOrder(id: number): Promise<boolean> {
+  try {
+    await db.delete(auctionOrders).where(eq(auctionOrders.id, id))
+    return true
+  } catch (err) {
+    console.error("deleteAuctionOrder error:", err)
+    return false
+  }
+}
+

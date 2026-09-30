@@ -3,63 +3,129 @@
 import React, { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Clock, ArrowLeft, Save, AlertCircle } from "lucide-react"
-import { createPreorderProductAction } from "@/app/actions/ecommerce-actions"
+import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { createPreorderProductAction } from "@/app/actions/preorder-actions"
+import { CreateProductInfoCard } from "./create-product-info-card"
+import { CreateProductMediaCard } from "./create-product-media-card"
+import { CreateProductPricingCard } from "./create-product-pricing-card"
+import { CreateProductSidebar } from "./create-product-sidebar"
 
-export function AdminPreorderCreateView() {
+interface AdminPreorderCreateViewProps {
+  categories?: { id: string | number; name: string; slug?: string }[]
+  brands?: { id: string | number; name: string; slug?: string }[]
+}
+
+export function AdminPreorderCreateView({
+  categories = [],
+  brands = [],
+}: AdminPreorderCreateViewProps) {
   const router = useRouter()
-  const [name, setName] = useState("")
-  const [sku, setSku] = useState("")
-  const [price, setPrice] = useState("99.00")
-  const [prepaymentAmount, setPrepaymentAmount] = useState("20.00")
-  const [releaseDate, setReleaseDate] = useState(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-  )
-  const [preorderBatchLimit, setPreorderBatchLimit] = useState(100)
-  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Form states
+  const [name, setName] = useState("")
+  const [brandId, setBrandId] = useState(
+    brands && brands.length > 0 && brands[0]?.id ? String(brands[0].id) : ""
+  )
+  const [unit, setUnit] = useState("Pc")
+  const [minQty, setMinQty] = useState(1)
+  const [tags, setTags] = useState("")
+  const [barcode, setBarcode] = useState("")
+
+  const [thumbnail, setThumbnail] = useState("/assets/img/placeholder.jpg")
+  const [galleryImages, setGalleryImages] = useState<string[]>([])
+  const [videoProvider, setVideoProvider] = useState("youtube")
+  const [videoLink, setVideoLink] = useState("")
+
+  const [price, setPrice] = useState("99.00")
+  const [isPrepayment, setIsPrepayment] = useState(true)
+  const [prepaymentAmount, setPrepaymentAmount] = useState("20.00")
+  const [preorderBatchLimit, setPreorderBatchLimit] = useState(100)
+  const [discount, setDiscount] = useState("0.00")
+  const [discountType, setDiscountType] = useState("percent")
+  const [isCoupon, setIsCoupon] = useState(false)
+  const [couponCode, setCouponCode] = useState("")
+  const [couponAmount, setCouponAmount] = useState("0")
+
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    categories && categories.length > 0 && categories[0]?.id ? String(categories[0].id) : ""
+  )
+  const [isPublished, setIsPublished] = useState(true)
+  const [isFeatured, setIsFeatured] = useState(false)
+  const [isAvailable, setIsAvailable] = useState(false)
+  const [availableDate, setAvailableDate] = useState(
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  )
+  const [isRefundable, setIsRefundable] = useState(true)
+  const [shippingType, setShippingType] = useState<"free" | "flat">("free")
+  const [isCod, setIsCod] = useState(true)
+
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const handleSubmit = (buttonType: "publish" | "unpublish") => {
     if (!name.trim()) {
-      setError("Product Name is required")
+      setError("Product Name is required.")
+      return
+    }
+    if (!price || Number(price) <= 0) {
+      setError("Please specify a valid unit price.")
+      return
+    }
+    if (isPrepayment && (!prepaymentAmount || Number(prepaymentAmount) <= 0)) {
+      setError("Prepayment deposit amount is required when Prepayment is enabled.")
       return
     }
 
+    setError(null)
+    const selectedCategory = categories.find((c) => String(c.id) === selectedCategoryId)
+
     startTransition(async () => {
       try {
-        await createPreorderProductAction({
+        const res = await createPreorderProductAction({
           name: name.trim(),
-          sku: sku.trim(),
           price: String(price),
-          prepaymentAmount: String(prepaymentAmount),
-          releaseDate: new Date(releaseDate),
-          preorderBatchLimit: Number(preorderBatchLimit),
+          prepaymentAmount: isPrepayment ? String(prepaymentAmount) : "0.00",
+          releaseDate: new Date(availableDate),
+          preorderBatchLimit: Number(preorderBatchLimit) || 100,
+          sku: barcode.trim() || undefined,
+          sellerSlug: "inhouse",
+          categoryName: selectedCategory?.name || "Consumer Electronics",
+          unit: unit.trim() || "Pc",
+          minQty: Number(minQty) || 1,
+          isRefundable,
+          discount: String(discount),
+          discountType,
+          isAvailable,
+          availableDate,
         })
-        router.push("/admin/preorder/products")
-        router.refresh()
-      } catch (err) {
-        setError("Failed to create pre-order product")
+
+        if (res) {
+          setSuccess("Product has been created successfully!")
+          setTimeout(() => {
+            router.push("/admin/preorder/products")
+            router.refresh()
+          }, 600)
+        } else {
+          setError("Failed to create product in database.")
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to create pre-order product")
       }
     })
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="space-y-4">
+      {/* Title bar: 1:1 Active eCommerce */}
+      <div className="flex items-center justify-between">
+        <h5 className="text-base font-bold text-gray-800">Add New Product</h5>
         <Link
           href="/admin/preorder/products"
-          className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-gray-900 transition-colors"
+          className="text-xs text-gray-500 hover:text-gray-900 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          ← Back to Preorder Products
         </Link>
-        <div>
-          <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#d43533]" />
-            Add New Pre-Order Product
-          </h1>
-          <p className="text-xs text-gray-500">Configure advance booking deposit and target launch delivery date</p>
-        </div>
       </div>
 
       {error && (
@@ -69,112 +135,108 @@ export function AdminPreorderCreateView() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="rounded-xl border border-gray-200 bg-white p-6 shadow-xs space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
-            Product Title <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            required
-            placeholder="e.g. Next-Gen Gaming Handheld Pro"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs text-gray-900 focus:border-[#d43533] focus:outline-hidden"
+      {success && (
+        <div className="flex items-center gap-2 p-3 text-xs rounded-lg border bg-emerald-50 text-emerald-800 border-emerald-200">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          <span>{success}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Left Column: col-lg-8 */}
+        <div className="lg:col-span-8 space-y-5">
+          <CreateProductInfoCard
+            name={name}
+            setName={setName}
+            brandId={brandId}
+            setBrandId={setBrandId}
+            brands={brands}
+            unit={unit}
+            setUnit={setUnit}
+            minQty={minQty}
+            setMinQty={setMinQty}
+            tags={tags}
+            setTags={setTags}
+            barcode={barcode}
+            setBarcode={setBarcode}
+          />
+
+          <CreateProductMediaCard
+            thumbnail={thumbnail}
+            setThumbnail={setThumbnail}
+            galleryImages={galleryImages}
+            setGalleryImages={setGalleryImages}
+            videoProvider={videoProvider}
+            setVideoProvider={setVideoProvider}
+            videoLink={videoLink}
+            setVideoLink={setVideoLink}
+          />
+
+          <CreateProductPricingCard
+            price={price}
+            setPrice={setPrice}
+            isPrepayment={isPrepayment}
+            setIsPrepayment={setIsPrepayment}
+            prepaymentAmount={prepaymentAmount}
+            setPrepaymentAmount={setPrepaymentAmount}
+            preorderBatchLimit={preorderBatchLimit}
+            setPreorderBatchLimit={setPreorderBatchLimit}
+            discount={discount}
+            setDiscount={setDiscount}
+            discountType={discountType}
+            setDiscountType={setDiscountType}
+            isCoupon={isCoupon}
+            setIsCoupon={setIsCoupon}
+            couponCode={couponCode}
+            setCouponCode={setCouponCode}
+            couponAmount={couponAmount}
+            setCouponAmount={setCouponAmount}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              SKU (Stock Keeping Unit)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. PO-HH-2026"
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs font-mono text-gray-900 focus:border-[#d43533] focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Target Release / Delivery Date <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              required
-              value={releaseDate}
-              onChange={(e) => setReleaseDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs text-gray-900 focus:border-[#d43533] focus:outline-hidden"
-            />
-          </div>
+        {/* Right Column: col-lg-4 */}
+        <div className="lg:col-span-4">
+          <CreateProductSidebar
+            categories={categories}
+            selectedCategoryId={selectedCategoryId}
+            setSelectedCategoryId={setSelectedCategoryId}
+            isPublished={isPublished}
+            setIsPublished={setIsPublished}
+            isFeatured={isFeatured}
+            setIsFeatured={setIsFeatured}
+            isAvailable={isAvailable}
+            setIsAvailable={setIsAvailable}
+            availableDate={availableDate}
+            setAvailableDate={setAvailableDate}
+            isRefundable={isRefundable}
+            setIsRefundable={setIsRefundable}
+            shippingType={shippingType}
+            setShippingType={setShippingType}
+            isCod={isCod}
+            setIsCod={setIsCod}
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Full Retail Price ($) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="1"
-              required
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs text-gray-900 focus:border-[#d43533] focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Prepayment Deposit ($) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              required
-              value={prepaymentAmount}
-              onChange={(e) => setPrepaymentAmount(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs text-gray-900 focus:border-[#d43533] focus:outline-hidden"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Pre-Order Batch Cap <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              min="1"
-              required
-              value={preorderBatchLimit}
-              onChange={(e) => setPreorderBatchLimit(Number(e.target.value))}
-              className="w-full rounded-lg border border-gray-200 px-3.5 py-2 text-xs text-gray-900 focus:border-[#d43533] focus:outline-hidden"
-            />
-          </div>
-        </div>
-
-        <div className="pt-2 flex items-center justify-end gap-3">
-          <Link
-            href="/admin/preorder/products"
-            className="px-4 py-2 text-xs font-medium text-gray-600 hover:text-gray-900"
-          >
-            Cancel
-          </Link>
+        {/* Bottom Toolbar: 1:1 Active eCommerce */}
+        <div className="col-span-12 flex justify-end gap-3 pt-2 pb-6">
           <button
-            type="submit"
+            type="button"
             disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#d43533] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#b82a28] transition-colors disabled:opacity-50"
+            onClick={() => handleSubmit("unpublish")}
+            className="px-4 py-2 rounded text-xs font-semibold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 shadow-xs transition-colors disabled:opacity-50"
           >
-            <Save className="w-4 h-4" />
-            {isPending ? "Creating..." : "Save Pre-Order Product"}
+            Save & Unpublish
+          </button>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => handleSubmit("publish")}
+            className="px-5 py-2 rounded text-xs font-semibold text-white bg-[#28a745] hover:bg-[#218838] shadow-xs transition-colors disabled:opacity-50"
+          >
+            {isPending ? "Saving..." : "Save & Publish"}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   )
 }

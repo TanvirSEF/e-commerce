@@ -1,68 +1,134 @@
 "use client"
 
 import React, { useState, useTransition } from "react"
-import Link from "next/link"
-import { Clock, ArrowLeft, Search, CheckCircle2, AlertCircle } from "lucide-react"
-import { updatePreorderOrderStatusAction } from "@/app/actions/ecommerce-actions"
+import { useRouter, useSearchParams } from "next/navigation"
 import type { PreorderOrder } from "@/db/schema"
+import {
+  deletePreorderOrderAction,
+  bulkDeletePreorderOrdersAction,
+} from "@/app/actions/preorder-actions"
+import { PreorderOrdersFilterBar } from "./preorder-orders-filter-bar"
+import { PreorderOrdersTable } from "./preorder-orders-table"
+import { PreorderOrderDetailModal } from "./preorder-order-detail-modal"
+import { AlertCircle, CheckCircle2 } from "lucide-react"
 
 interface AdminPreorderOrdersViewProps {
   initialOrders: PreorderOrder[]
+  counts: {
+    all: number
+    requested: number
+    acceptedRequests: number
+    prepaymentRequests: number
+    confirmedPrepayments: number
+    finalPreorders: number
+    inShipping: number
+    delivered: number
+    refund: number
+  }
 }
 
-const TABS = [
-  { id: "all", label: "All Bookings" },
-  { id: "deposit_paid", label: "Deposit Paid" },
-  { id: "final_payment_pending", label: "Final Payment Pending" },
-  { id: "ready_to_ship", label: "Ready to Ship" },
-  { id: "dispatched", label: "Dispatched" },
-]
+export function AdminPreorderOrdersView({ initialOrders, counts }: AdminPreorderOrdersViewProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const currentStatus = searchParams.get("status") || "all"
+  const currentSearch = searchParams.get("search") || ""
 
-export function AdminPreorderOrdersView({ initialOrders }: AdminPreorderOrdersViewProps) {
   const [orders, setOrders] = useState<PreorderOrder[]>(initialOrders)
-  const [activeTab, setActiveTab] = useState("all")
-  const [search, setSearch] = useState("")
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [search, setSearch] = useState(currentSearch)
+  const [bulkAction, setBulkAction] = useState("")
+  const [activeModalOrder, setActiveModalOrder] = useState<PreorderOrder | null>(null)
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const handleStatusChange = (id: number, status: string) => {
+  // Keep state synced when props change
+  React.useEffect(() => {
+    setOrders(initialOrders)
+  }, [initialOrders])
+
+  const showToast = (type: "success" | "error", text: string) => {
+    setFeedback({ type, text })
+    setTimeout(() => setFeedback(null), 3000)
+  }
+
+  const handleStatusChange = (status: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (status === "all") {
+      params.delete("status")
+    } else {
+      params.set("status", status)
+    }
+    params.delete("page")
+    router.push(`/admin/preorder/orders?${params.toString()}`)
+  }
+
+  const handleSearchSubmit = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (search.trim()) {
+      params.set("search", search.trim())
+    } else {
+      params.delete("search")
+    }
+    params.delete("page")
+    router.push(`/admin/preorder/orders?${params.toString()}`)
+  }
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === orders.length) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(orders.map((o) => o.id))
+    }
+  }
+
+  const handleToggleSelectOne = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
+  const handleDeleteOne = (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this preorder reservation?")) return
     startTransition(async () => {
-      const ok = await updatePreorderOrderStatusAction(id, status)
+      const ok = await deletePreorderOrderAction(id)
       if (ok) {
-        setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, preorderStatus: status } : o)))
-        setFeedback({ type: "success", text: "Pre-order reservation status updated" })
+        setOrders((prev) => prev.filter((o) => o.id !== id))
+        setSelectedIds((prev) => prev.filter((item) => item !== id))
+        showToast("success", "Preorder order deleted successfully.")
+        router.refresh()
       } else {
-        setFeedback({ type: "error", text: "Failed to update status" })
+        showToast("error", "Failed to delete order.")
       }
-      setTimeout(() => setFeedback(null), 3000)
     })
   }
 
-  const filtered = orders.filter((o) => {
-    const matchTab = activeTab === "all" || o.preorderStatus === activeTab
-    const matchSearch =
-      o.orderCode.toLowerCase().includes(search.toLowerCase()) ||
-      o.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      o.productName.toLowerCase().includes(search.toLowerCase())
-    return matchTab && matchSearch
-  })
+  const handleBulkActionApply = () => {
+    if (bulkAction !== "bulk_delete" || selectedIds.length === 0) return
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} preorder orders?`)) return
+    startTransition(async () => {
+      const ok = await bulkDeletePreorderOrdersAction(selectedIds)
+      if (ok) {
+        setOrders((prev) => prev.filter((o) => !selectedIds.includes(o.id)))
+        setSelectedIds([])
+        setBulkAction("")
+        showToast("success", "Selected preorder orders deleted successfully.")
+        router.refresh()
+      } else {
+        showToast("error", "Failed to delete selected orders.")
+      }
+    })
+  }
+
+  const handleOrderUpdated = (updated: PreorderOrder) => {
+    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)))
+    router.refresh()
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link
-          href="/admin/preorder/products"
-          className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#d43533]" />
-            Pre-Order Reservations Ledger
-          </h1>
-          <p className="text-xs text-gray-500">Track advance customer deposits, remaining balances, and dispatch schedules</p>
-        </div>
+    <div className="space-y-4">
+      {/* Title bar */}
+      <div className="flex items-center justify-between">
+        <h5 className="text-base font-bold text-gray-800">All Preorders</h5>
       </div>
 
       {feedback && (
@@ -82,93 +148,39 @@ export function AdminPreorderOrdersView({ initialOrders }: AdminPreorderOrdersVi
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 bg-white rounded-t-xl px-4 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? "border-[#d43533] text-[#d43533]"
-                : "border-transparent text-gray-500 hover:text-gray-900"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Main card */}
+      <div className="card rounded-2 border border-gray-200 bg-white shadow-xs overflow-hidden p-4 space-y-4">
+        <PreorderOrdersFilterBar
+          currentStatus={currentStatus}
+          onStatusChange={handleStatusChange}
+          counts={counts}
+          search={search}
+          onSearchChange={setSearch}
+          onSearchSubmit={handleSearchSubmit}
+          bulkAction={bulkAction}
+          onBulkActionChange={setBulkAction}
+          onBulkActionApply={handleBulkActionApply}
+          selectedCount={selectedIds.length}
+        />
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Filter by order code, customer, product..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 bg-white focus:border-[#d43533] focus:outline-hidden"
+        <PreorderOrdersTable
+          orders={orders}
+          selectedIds={selectedIds}
+          onToggleSelectAll={handleToggleSelectAll}
+          onToggleSelectOne={handleToggleSelectOne}
+          onViewOrder={setActiveModalOrder}
+          onDeleteOrder={handleDeleteOne}
         />
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-gray-600">
-            <thead className="bg-gray-50 text-gray-700 uppercase font-semibold border-b border-gray-200">
-              <tr>
-                <th className="py-3 px-4 w-12">#</th>
-                <th className="py-3 px-4">Order Code</th>
-                <th className="py-3 px-4">Customer</th>
-                <th className="py-3 px-4">Product Name</th>
-                <th className="py-3 px-4">Total</th>
-                <th className="py-3 px-4">Deposit Paid</th>
-                <th className="py-3 px-4">Balance Due</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((order, idx) => (
-                <tr key={order.id} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="py-3 px-4 font-mono text-gray-400">{idx + 1}</td>
-                  <td className="py-3 px-4 font-mono font-bold text-gray-900">{order.orderCode}</td>
-                  <td className="py-3 px-4">
-                    <span className="font-semibold text-gray-900 block">{order.customerName}</span>
-                    <span className="text-[11px] text-gray-400">{order.customerEmail}</span>
-                  </td>
-                  <td className="py-3 px-4 font-medium text-gray-800">{order.productName}</td>
-                  <td className="py-3 px-4 font-bold text-gray-900">${order.totalPrice}</td>
-                  <td className="py-3 px-4 font-semibold text-emerald-700">${order.prepaymentPaid}</td>
-                  <td className="py-3 px-4 font-semibold text-amber-700">${order.remainingDue}</td>
-                  <td className="py-3 px-4 text-center">
-                    <select
-                      value={order.preorderStatus}
-                      onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      disabled={isPending}
-                      className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 focus:border-[#d43533] focus:outline-hidden"
-                    >
-                      <option value="deposit_paid">Deposit Paid</option>
-                      <option value="final_payment_pending">Final Payment Pending</option>
-                      <option value="ready_to_ship">Ready to Ship</option>
-                      <option value="dispatched">Dispatched</option>
-                      <option value="canceled">Canceled</option>
-                    </select>
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-400">
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="py-8 text-center text-xs text-gray-400">
-                    No pre-order reservations match your search or filter.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* View Detail Modal */}
+      {activeModalOrder && (
+        <PreorderOrderDetailModal
+          order={activeModalOrder}
+          onClose={() => setActiveModalOrder(null)}
+          onOrderUpdated={handleOrderUpdated}
+        />
+      )}
     </div>
   )
 }

@@ -37,15 +37,22 @@ export const preorderProducts = pgTable("preorder_products", {
 export const preorderOrders = pgTable("preorder_orders", {
   id: serial("id").primaryKey(),
   orderCode: varchar("order_code", { length: 50 }).notNull().unique(),
-  customerName: varchar("150").notNull(),
-  customerEmail: varchar("150").notNull(),
+  customerName: varchar("customer_name", { length: 150 }).notNull(),
+  customerEmail: varchar("customer_email", { length: 150 }).notNull(),
+  customerPhone: varchar("customer_phone", { length: 50 }),
   productId: integer("product_id").notNull(),
   productName: varchar("product_name", { length: 255 }).notNull(),
+  productThumbnail: varchar("product_thumbnail", { length: 500 }),
   quantity: integer("quantity").default(1).notNull(),
   totalPrice: numeric("total_price", { precision: 10, scale: 2 }).notNull(),
   prepaymentPaid: numeric("prepayment_paid", { precision: 10, scale: 2 }).notNull(),
   remainingDue: numeric("remaining_due", { precision: 10, scale: 2 }).notNull(),
-  preorderStatus: varchar("preorder_status", { length: 50 }).default("deposit_paid").notNull(),
+  sellerName: varchar("seller_name", { length: 150 }).default("Inhouse"),
+  isRefundable: boolean("is_refundable").default(true).notNull(),
+  isViewed: boolean("is_viewed").default(false).notNull(),
+  preorderStatus: varchar("preorder_status", { length: 50 }).default("requested").notNull(),
+  shippingAddress: varchar("shipping_address", { length: 500 }),
+  paymentMethod: varchar("payment_method", { length: 100 }).default("bKash"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
@@ -53,3 +60,4 @@ export type PreorderProduct = typeof preorderProducts.$inferSelect
 export type NewPreorderProduct = typeof preorderProducts.$inferInsert
 export type PreorderOrder = typeof preorderOrders.$inferSelect
 export type NewPreorderOrder = typeof preorderOrders.$inferInsert
+

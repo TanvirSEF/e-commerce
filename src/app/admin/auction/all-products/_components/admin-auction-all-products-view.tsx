@@ -1,190 +1,227 @@
 "use client"
 
-import React, { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import {
-  Gavel,
-  Plus,
-  Search,
-  Eye,
-  Trash2,
-  Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
-  ExternalLink,
-} from "lucide-react"
+import React, { useState, useTransition } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import type { AuctionProduct } from "@/db/schema/auction"
+import {
+  toggleAuctionPublishedAction,
+  toggleAuctionFeaturedAction,
+  deleteAuctionProductAction,
+  bulkDeleteAuctionProductsAction,
+  bulkPublishAuctionProductsAction,
+  bulkFeaturedAuctionProductsAction,
+} from "@/app/actions/auction-actions"
+import { AuctionProductsNavTabs } from "./auction-products-nav-tabs"
+import { AuctionProductsFilterBar } from "./auction-products-filter-bar"
+import { AuctionProductsTable } from "./auction-products-table"
+import { CheckCircle2, AlertCircle } from "lucide-react"
 
 interface AdminAuctionAllProductsViewProps {
   products: AuctionProduct[]
-  title?: string
-  subtitle?: string
+  activeType: "all" | "inhouse" | "seller"
+  title: string
+  counts?: {
+    all?: number
+    inhouse?: number
+    seller?: number
+  }
 }
 
 export function AdminAuctionAllProductsView({
   products: initialProducts,
-  title = "All Auction Products",
-  subtitle = "Manage live bidding products, starting bids, and real-time bidder participation",
+  activeType,
+  title,
+  counts = { all: 0, inhouse: 0, seller: 0 },
 }: AdminAuctionAllProductsViewProps) {
-  const [products, setProducts] = useState(initialProducts)
-  const [search, setSearch] = useState("")
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const currentSearch = searchParams.get("search") || ""
+  const currentStatus = searchParams.get("status") || "all"
 
-  const filtered = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sellerName.toLowerCase().includes(search.toLowerCase())
-  )
+  const [products, setProducts] = useState<AuctionProduct[]>(initialProducts)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [search, setSearch] = useState(currentSearch)
+  const [status, setStatus] = useState(currentStatus)
+  const [bulkAction, setBulkAction] = useState("")
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  React.useEffect(() => {
+    setProducts(initialProducts)
+  }, [initialProducts])
+
+  const showToast = (type: "success" | "error", text: string) => {
+    setFeedback({ type, text })
+    setTimeout(() => setFeedback(null), 3000)
+  }
+
+  const handleSearchSubmit = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (search.trim()) {
+      params.set("search", search.trim())
+    } else {
+      params.delete("search")
+    }
+    router.push(`?${params.toString()}`)
+  }
+
+  const handleStatusChange = (val: string) => {
+    setStatus(val)
+    const params = new URLSearchParams(searchParams.toString())
+    if (val === "all") {
+      params.delete("status")
+    } else {
+      params.set("status", val)
+    }
+    router.push(`?${params.toString()}`)
+  }
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === products.length) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(products.map((p) => p.id))
+    }
+  }
+
+  const handleToggleSelectOne = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    )
+  }
+
+  const handleTogglePublished = (id: number, current: boolean) => {
+    startTransition(async () => {
+      const ok = await toggleAuctionPublishedAction(id, !current)
+      if (ok) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, status: !current } : p))
+        )
+        showToast("success", "Published status updated.")
+      } else {
+        showToast("error", "Failed to update published status.")
+      }
+    })
+  }
+
+  const handleToggleFeatured = (id: number, current: boolean) => {
+    startTransition(async () => {
+      const ok = await toggleAuctionFeaturedAction(id, !current)
+      if (ok) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, featured: !current } : p))
+        )
+        showToast("success", "Featured status updated.")
+      } else {
+        showToast("error", "Failed to update featured status.")
+      }
+    })
+  }
+
+  const handleDeleteProduct = (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this auction product?")) return
+    startTransition(async () => {
+      const ok = await deleteAuctionProductAction(id)
+      if (ok) {
+        setProducts((prev) => prev.filter((p) => p.id !== id))
+        setSelectedIds((prev) => prev.filter((i) => i !== id))
+        showToast("success", "Auction product deleted successfully.")
+        router.refresh()
+      } else {
+        showToast("error", "Failed to delete product.")
+      }
+    })
+  }
+
+  const handleBulkActionApply = () => {
+    if (!bulkAction || selectedIds.length === 0) return
+    startTransition(async () => {
+      if (bulkAction === "delete") {
+        if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} auction products?`)) return
+        const ok = await bulkDeleteAuctionProductsAction(selectedIds)
+        if (ok) {
+          setProducts((prev) => prev.filter((p) => !selectedIds.includes(p.id)))
+          setSelectedIds([])
+          setBulkAction("")
+          showToast("success", "Selected products deleted successfully.")
+          router.refresh()
+        }
+      } else if (bulkAction === "publish") {
+        const ok = await bulkPublishAuctionProductsAction(selectedIds)
+        if (ok) {
+          setProducts((prev) =>
+            prev.map((p) => (selectedIds.includes(p.id) ? { ...p, status: true } : p))
+          )
+          setSelectedIds([])
+          setBulkAction("")
+          showToast("success", "Selected products marked published.")
+        }
+      } else if (bulkAction === "featured") {
+        const ok = await bulkFeaturedAuctionProductsAction(selectedIds)
+        if (ok) {
+          setProducts((prev) =>
+            prev.map((p) => (selectedIds.includes(p.id) ? { ...p, featured: true } : p))
+          )
+          setSelectedIds([])
+          setBulkAction("")
+          showToast("success", "Selected products marked featured.")
+        }
+      }
+    })
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <Gavel className="w-7 h-7 text-[#d43533]" />
-            {title}
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
-        </div>
-        <Link
-          href="/admin/auction/products/create"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#d43533] hover:bg-red-700 text-white font-medium text-sm rounded-lg transition-colors shadow-sm self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Add Auction Product
-        </Link>
+    <div className="space-y-4">
+      {/* Title bar */}
+      <div className="flex items-center justify-between">
+        <h5 className="text-base font-bold text-gray-800">{title}</h5>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search auction product or seller..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d43533]/20 focus:border-[#d43533]"
-            />
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="font-semibold text-slate-800">{filtered.length}</span> Products Registered
-          </div>
+      {feedback && (
+        <div
+          className={`flex items-center gap-2 p-3 text-xs rounded-lg border ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-red-50 text-red-800 border-red-200"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          ) : (
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+          )}
+          <span>{feedback.text}</span>
         </div>
+      )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3.5">#</th>
-                <th className="px-4 py-3.5">Product</th>
-                <th className="px-4 py-3.5">Seller</th>
-                <th className="px-4 py-3.5">Starting Bid</th>
-                <th className="px-4 py-3.5">Current Bid</th>
-                <th className="px-4 py-3.5">Total Bids</th>
-                <th className="px-4 py-3.5">Auction Period</th>
-                <th className="px-4 py-3.5 text-center">Status</th>
-                <th className="px-4 py-3.5 text-right">Options</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="text-center py-12 text-slate-500">
-                    No auction products found matching your search.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((item, idx) => {
-                  const endDate = new Date(item.auctionEndDate)
-                  const isExpired = endDate.getTime() < Date.now()
-                  return (
-                    <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="px-4 py-3.5 text-slate-400 font-medium">{idx + 1}</td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shrink-0 relative border border-slate-200">
-                            <Image
-                              src={item.thumbnail}
-                              alt={item.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div>
-                            <span className="font-semibold text-slate-800 line-clamp-1">
-                              {item.name}
-                            </span>
-                            <span className="text-xs text-slate-400 block">Min Inc: +${item.minBidIncrement}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                          {item.sellerName}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 font-medium text-slate-600">${item.startingBid}</td>
-                      <td className="px-4 py-3.5">
-                        <span className="font-bold text-[#d43533] text-base">${item.currentBid}</span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <Link
-                          href={`/admin/auction/bids/${item.id}`}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-50 text-amber-800 font-semibold text-xs hover:bg-amber-100 transition-colors"
-                        >
-                          <Gavel className="w-3.5 h-3.5 text-amber-600" />
-                          {item.totalBids} Bids
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-slate-500">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{new Date(item.auctionStartDate).toLocaleDateString()}</span>
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5 font-medium text-slate-700">
-                          <Clock className="w-3.5 h-3.5 text-red-500" />
-                          <span>Ends: {endDate.toLocaleDateString()}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        {isExpired ? (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-                            Ended
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Active
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Link
-                            href={`/auction-product/${item.slug}`}
-                            target="_blank"
-                            title="View Public Auction Page"
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Link>
-                          <Link
-                            href={`/admin/auction/bids/${item.id}`}
-                            title="Inspect Bids"
-                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Main card */}
+      <div className="card rounded-2 border border-gray-200 bg-white shadow-xs overflow-hidden">
+        {/* Nav Tabs */}
+        <AuctionProductsNavTabs activeType={activeType} counts={counts} />
+
+        {/* Filter Bar */}
+        <AuctionProductsFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          onSearchSubmit={handleSearchSubmit}
+          status={status}
+          onStatusChange={handleStatusChange}
+          bulkAction={bulkAction}
+          onBulkActionChange={setBulkAction}
+          onBulkActionApply={handleBulkActionApply}
+          selectedCount={selectedIds.length}
+        />
+
+        {/* Table */}
+        <AuctionProductsTable
+          products={products}
+          selectedIds={selectedIds}
+          onToggleSelectAll={handleToggleSelectAll}
+          onToggleSelectOne={handleToggleSelectOne}
+          onTogglePublished={handleTogglePublished}
+          onToggleFeatured={handleToggleFeatured}
+          onDeleteProduct={handleDeleteProduct}
+        />
       </div>
     </div>
   )

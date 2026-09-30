@@ -7,6 +7,10 @@ import {
   deletePreorderProduct,
   bulkDeletePreorderProducts,
   createPreorderProduct,
+  deletePreorderOrder,
+  bulkDeletePreorderOrders,
+  updatePreorderOrderStatus,
+  updatePreorderBusinessSetting,
 } from "@/services/preorder-service"
 
 export async function togglePreorderPublishedAction(id: number, status: boolean) {
@@ -54,3 +58,36 @@ export async function createPreorderProductAction(data: {
   revalidatePath("/admin/preorder/products")
   return result
 }
+
+export async function deletePreorderOrderAction(id: number) {
+  const result = await deletePreorderOrder(id)
+  revalidatePath("/admin/preorder/orders")
+  return result
+}
+
+export async function bulkDeletePreorderOrdersAction(ids: number[]) {
+  const result = await bulkDeletePreorderOrders(ids)
+  revalidatePath("/admin/preorder/orders")
+  return result
+}
+
+export async function updatePreorderOrderStatusAction(id: number, status: string) {
+  const result = await updatePreorderOrderStatus(id, status)
+  revalidatePath("/admin/preorder/orders")
+  return result
+}
+
+export async function updatePreorderBusinessSettingAction(type: string, value: string) {
+  const result = await updatePreorderBusinessSetting(type, value)
+  revalidatePath("/admin/preorder/settings")
+  return result
+}
+
+export async function updatePreorderBusinessSettingsBatchAction(entries: { type: string; value: string }[]) {
+  for (const entry of entries) {
+    await updatePreorderBusinessSetting(entry.type, entry.value)
+  }
+  revalidatePath("/admin/preorder/settings")
+  return { success: true }
+}
+

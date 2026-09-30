@@ -9,13 +9,13 @@ interface PreorderProductsFilterBarProps {
   sortPrice: string
   search: string
   selectedCount: number
-  counts: {
-    all: number
-    inHouse: number
-    seller: number
-    published: number
-    unpublished: number
-    discounted: number
+  counts?: {
+    all?: number
+    inHouse?: number
+    seller?: number
+    published?: number
+    unpublished?: number
+    discounted?: number
   }
   onUserTypeChange: (val: string) => void
   onStatusFilterChange: (val: string) => void
@@ -30,7 +30,7 @@ export function PreorderProductsFilterBar({
   sortPrice,
   search,
   selectedCount,
-  counts,
+  counts = { all: 0, inHouse: 0, seller: 0, published: 0, unpublished: 0, discounted: 0 },
   onUserTypeChange,
   onStatusFilterChange,
   onSortChange,
@@ -69,7 +69,7 @@ export function PreorderProductsFilterBar({
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            In-house ({counts.inHouse})
+            In-house ({counts?.inHouse ?? 0})
           </button>
           <button
             type="button"
@@ -80,7 +80,7 @@ export function PreorderProductsFilterBar({
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Seller&apos;s ({counts.seller})
+            Seller&apos;s ({counts?.seller ?? 0})
           </button>
         </div>
 
@@ -95,7 +95,7 @@ export function PreorderProductsFilterBar({
                 : "border-slate-300 text-slate-600 hover:border-slate-400 bg-white"
             }`}
           >
-            Published ({counts.published})
+            Published ({counts?.published ?? 0})
           </button>
 
           <button
@@ -107,7 +107,7 @@ export function PreorderProductsFilterBar({
                 : "border-slate-300 text-slate-600 hover:border-slate-400 bg-white"
             }`}
           >
-            Unpublished ({counts.unpublished})
+            Unpublished ({counts?.unpublished ?? 0})
           </button>
 
           <button
@@ -119,7 +119,7 @@ export function PreorderProductsFilterBar({
                 : "border-slate-300 text-slate-600 hover:border-slate-400 bg-white"
             }`}
           >
-            Discounted ({counts.discounted})
+            Discounted ({counts?.discounted ?? 0})
           </button>
         </div>
       </div>

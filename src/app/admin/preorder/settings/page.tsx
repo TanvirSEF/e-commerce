@@ -1,15 +1,15 @@
 import React from "react"
 import { Metadata } from "next"
-import { getPreorderSettings } from "@/services/preorder-service"
+import { getPreorderBusinessSettings } from "@/services/preorder-service"
 import { AdminPreorderSettingsView } from "./_components/admin-preorder-settings-view"
 
 export const metadata: Metadata = {
-  title: "Pre-Order Configuration | Admin Dashboard",
-  description: "Configure systemwide pre-order deposits and policies",
+  title: "Preorder Settings | Admin Control Panel",
+  description: "Configure seller commission, preorder shipping, and request payment instructions",
 }
 
 export default async function AdminPreorderSettingsPage() {
-  const settings = await getPreorderSettings()
+  const settings = await getPreorderBusinessSettings()
 
   return (
     <div className="p-4 md:p-6">

@@ -108,13 +108,20 @@ export const SEED_PREORDER_ORDERS: PreorderOrder[] = [
     orderCode: "PO-2026-8812",
     customerName: "Tanvir Hasan",
     customerEmail: "tanvir@example.com",
+    customerPhone: "+880 1711-223344",
     productId: 1,
     productName: "PlayStation 5 Pro 2TB Edition",
+    productThumbnail: "/assets/img/placeholder.jpg",
     quantity: 1,
     totalPrice: "799.00",
     prepaymentPaid: "159.80",
     remainingDue: "639.20",
-    preorderStatus: "deposit_paid",
+    sellerName: "Inhouse",
+    isRefundable: true,
+    isViewed: false,
+    preorderStatus: "requested",
+    shippingAddress: "House 24, Road 8, Dhanmondi, Dhaka",
+    paymentMethod: "bKash",
     createdAt: new Date(),
   },
 ]
@@ -371,6 +378,129 @@ export async function bulkDeletePreorderProducts(ids: number[]): Promise<boolean
   }
 }
 
+export interface PreorderOrderListResult {
+  orders: PreorderOrder[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  counts: {
+    all: number
+    requested: number
+    acceptedRequests: number
+    prepaymentRequests: number
+    confirmedPrepayments: number
+    finalPreorders: number
+    inShipping: number
+    delivered: number
+    refund: number
+  }
+}
+
+export async function getPreorderOrdersAdmin(params?: {
+  status?: string
+  date?: string
+  search?: string
+  page?: number
+  limit?: number
+}): Promise<PreorderOrderListResult> {
+  const page = Math.max(1, params?.page || 1)
+  const limit = Math.max(1, Math.min(100, params?.limit || 15))
+  const offset = (page - 1) * limit
+  const status = params?.status || "all"
+  const search = params?.search?.trim() || ""
+
+  try {
+    const conditions = []
+
+    if (status && status !== "all") {
+      conditions.push(eq(preorderOrders.preorderStatus, status))
+    }
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(preorderOrders.orderCode, `%${search}%`),
+          ilike(preorderOrders.customerName, `%${search}%`),
+          ilike(preorderOrders.customerEmail, `%${search}%`),
+          ilike(preorderOrders.productName, `%${search}%`)
+        )
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    const rows = await db
+      .select()
+      .from(preorderOrders)
+      .where(whereClause)
+      .orderBy(desc(preorderOrders.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    const [countRow] = await db
+      .select({ count: count() })
+      .from(preorderOrders)
+      .where(whereClause)
+
+    const total = Number(countRow?.count || 0)
+    const totalPages = Math.ceil(total / limit) || 1
+
+    const [countsRow] = await db
+      .select({
+        all: count(),
+        requested: sql<number>`count(case when ${preorderOrders.preorderStatus} = 'requested' then 1 end)`,
+        acceptedRequests: sql<number>`count(case when ${preorderOrders.preorderStatus} = 'accepted_requests' then 1 end)`,
+        prepaymentRequests: sql<number>`count(case when ${preorderOrders.preorderStatus} = 'prepayment_requests' then 1 end)`,
+        confirmedPrepayments: sql<number>`count(case when ${preorderOrders.preorderStatus} = 'confirmed_prepayments' then 1 end)`,
+        finalPreorders: sql<number>`count(case when ${preorderOrders.preorderStatus} = 'final_preorders' then 1 end)`,
+        inShipping: sql<number>`count(case when ${preorderOrders.preorderStatus} = 'in_shipping' then 1 end)`,
+        delivered: sql<number>`count(case when ${preorderOrders.preorderStatus} = 'delivered' then 1 end)`,
+        refund: sql<number>`count(case when ${preorderOrders.preorderStatus} = 'refund' then 1 end)`,
+      })
+      .from(preorderOrders)
+
+    return {
+      orders: rows,
+      total,
+      page,
+      limit,
+      totalPages,
+      counts: {
+        all: Number(countsRow?.all || 0),
+        requested: Number(countsRow?.requested || 0),
+        acceptedRequests: Number(countsRow?.acceptedRequests || 0),
+        prepaymentRequests: Number(countsRow?.prepaymentRequests || 0),
+        confirmedPrepayments: Number(countsRow?.confirmedPrepayments || 0),
+        finalPreorders: Number(countsRow?.finalPreorders || 0),
+        inShipping: Number(countsRow?.inShipping || 0),
+        delivered: Number(countsRow?.delivered || 0),
+        refund: Number(countsRow?.refund || 0),
+      },
+    }
+  } catch (err) {
+    console.error("getPreorderOrdersAdmin error:", err)
+    return {
+      orders: [],
+      total: 0,
+      page: 1,
+      limit,
+      totalPages: 1,
+      counts: {
+        all: 0,
+        requested: 0,
+        acceptedRequests: 0,
+        prepaymentRequests: 0,
+        confirmedPrepayments: 0,
+        finalPreorders: 0,
+        inShipping: 0,
+        delivered: 0,
+        refund: 0,
+      },
+    }
+  }
+}
+
 export async function getAllPreorderOrders(tab?: string): Promise<PreorderOrder[]> {
   try {
     const rows = await db.select().from(preorderOrders).orderBy(desc(preorderOrders.createdAt))
@@ -381,6 +511,27 @@ export async function getAllPreorderOrders(tab?: string): Promise<PreorderOrder[
   } catch (err) {
     console.error("getAllPreorderOrders error:", err)
     return []
+  }
+}
+
+export async function deletePreorderOrder(id: number): Promise<boolean> {
+  try {
+    await db.delete(preorderOrders).where(eq(preorderOrders.id, id))
+    return true
+  } catch (err) {
+    console.error("deletePreorderOrder error:", err)
+    return false
+  }
+}
+
+export async function bulkDeletePreorderOrders(ids: number[]): Promise<boolean> {
+  if (!ids || ids.length === 0) return true
+  try {
+    await db.delete(preorderOrders).where(inArray(preorderOrders.id, ids))
+    return true
+  } catch (err) {
+    console.error("bulkDeletePreorderOrders error:", err)
+    return false
   }
 }
 
@@ -408,7 +559,7 @@ export async function createPreorderOrder(data: {
         totalPrice: data.totalPrice,
         prepaymentPaid: data.prepaymentPaid,
         remainingDue: data.remainingDue,
-        preorderStatus: "deposit_paid",
+        preorderStatus: "requested",
       })
       .returning()
 
@@ -438,6 +589,67 @@ export async function updatePreorderOrderStatus(id: number, status: string): Pro
   }
 }
 
+export interface PreorderBusinessSettings {
+  sellerPreorderProduct: string
+  preorderSellerCommission: string
+  imageForFaqAdvertisement: string
+  preorderFlatRateShipping: string
+  preorderRequestInstruction: string
+  imageForPaymentQrcode: string
+  prePaymentInstruction: string
+}
+
+export async function getPreorderBusinessSettings(): Promise<PreorderBusinessSettings> {
+  try {
+    const [
+      sellerPreorderProduct,
+      preorderSellerCommission,
+      imageForFaqAdvertisement,
+      preorderFlatRateShipping,
+      preorderRequestInstruction,
+      imageForPaymentQrcode,
+      prePaymentInstruction,
+    ] = await Promise.all([
+      getSetting("seller_preorder_product"),
+      getSetting("preorder_seller_commission"),
+      getSetting("image_for_faq_advertisement"),
+      getSetting("preorder_flat_rate_shipping"),
+      getSetting("preorder_request_instruction"),
+      getSetting("image_for_payment_qrcode"),
+      getSetting("pre_payment_instruction"),
+    ])
+
+    return {
+      sellerPreorderProduct: sellerPreorderProduct ?? "1",
+      preorderSellerCommission: preorderSellerCommission ?? "10",
+      imageForFaqAdvertisement: imageForFaqAdvertisement ?? "",
+      preorderFlatRateShipping: preorderFlatRateShipping ?? "50",
+      preorderRequestInstruction:
+        preorderRequestInstruction ??
+        "Please note that pre-orders reserve your unit with priority allocation once manufacturing finishes.",
+      imageForPaymentQrcode: imageForPaymentQrcode ?? "",
+      prePaymentInstruction:
+        prePaymentInstruction ??
+        "Please make the deposit prepayment via bKash / Nagad / Bank transfer using your Preorder Code as reference.",
+    }
+  } catch (err) {
+    console.error("getPreorderBusinessSettings error:", err)
+    return {
+      sellerPreorderProduct: "1",
+      preorderSellerCommission: "10",
+      imageForFaqAdvertisement: "",
+      preorderFlatRateShipping: "50",
+      preorderRequestInstruction: "",
+      imageForPaymentQrcode: "",
+      prePaymentInstruction: "",
+    }
+  }
+}
+
+export async function updatePreorderBusinessSetting(type: string, value: string): Promise<boolean> {
+  return await updateSetting(type, value)
+}
+
 export async function getPreorderSettings(): Promise<PreorderSettings> {
   try {
     const raw = await getSetting("preorder_settings")
@@ -459,3 +671,4 @@ export async function updatePreorderSettings(data: Partial<PreorderSettings>) {
     return { success: false, error: (err as Error).message }
   }
 }
+
