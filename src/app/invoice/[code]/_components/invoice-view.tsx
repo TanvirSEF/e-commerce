@@ -1,6 +1,7 @@
 "use client"
 
-import { Printer, ArrowLeft } from "lucide-react"
+import React, { useEffect } from "react"
+import { Printer, ArrowLeft, Download, Tag } from "lucide-react"
 import Link from "next/link"
 
 export interface InvoiceData {
@@ -31,54 +32,113 @@ export interface InvoiceData {
 
 interface InvoiceViewProps {
   invoice: InvoiceData
+  hideControls?: boolean
 }
 
-export function InvoiceView({ invoice }: InvoiceViewProps) {
+export function InvoiceView({ invoice, hideControls = false }: InvoiceViewProps) {
+  useEffect(() => {
+    // If URL has ?print=1 or query param print, automatically trigger print dialog
+    if (typeof window !== "undefined" && window.location.search.includes("print=1")) {
+      const timer = setTimeout(() => {
+        window.print()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [])
+
   const handlePrint = () => {
-    window.print()
+    if (typeof window !== "undefined") {
+      window.print()
+    }
   }
 
   return (
-    <div className="bg-[#f2f3f8] min-h-screen py-6 print:bg-white print:py-0">
-      <div className="max-w-4xl mx-auto px-4 print:max-w-full print:px-0">
-        {/* Top bar (Hidden during printing) */}
-        <div className="flex items-center justify-between gap-4 mb-6 print:hidden">
-          <Link
-            href="/dashboard/purchase-history"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="size-4" />
-            <span>Back to Orders</span>
-          </Link>
+    <div className="bg-[#f0f2f5] min-h-screen py-6 print:bg-white print:py-0 print:min-h-0">
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .invoice-card {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+          .avoid-break {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
 
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/shipping-label/${invoice.code}`}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 transition-colors"
-            >
-              <Printer className="size-4 text-gray-600" />
-              <span>Thermal Shipping Label</span>
-            </Link>
+      <div className="max-w-[210mm] mx-auto px-4 print:max-w-full print:px-0">
+        {/* Top Control Toolbar (Hidden during print) */}
+        {!hideControls && (
+          <div className="flex items-center justify-between gap-3 mb-5 print:hidden bg-white p-3 rounded-lg border border-slate-200 shadow-xs">
             <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs transition-colors cursor-pointer"
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  window.history.back()
+                } else {
+                  window.location.href = "/admin/orders"
+                }
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 transition-colors"
             >
-              <Printer className="size-4" />
-              <span>Print Invoice</span>
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Orders</span>
             </button>
-          </div>
-        </div>
 
-        {/* Invoice Printable Card */}
-        <div className="bg-white border border-gray-200 rounded-lg p-8 sm:p-12 shadow-sm print:border-none print:shadow-none print:p-0">
-          {/* Header Row: Brand & Invoice Meta */}
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 border-b border-gray-200 pb-8 mb-8">
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/shipping-label/${invoice.code}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+              >
+                <Tag className="w-3.5 h-3.5 text-slate-500" />
+                <span>Thermal Shipping Label</span>
+              </Link>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded text-xs font-bold bg-[#d43533] hover:bg-[#b82a28] text-white shadow-xs transition-colors cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Invoice</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Invoice Printable Card (Strict A4 Layout matching Active eCommerce) */}
+        <div className="invoice-card bg-white border border-slate-200 rounded-lg p-8 sm:p-10 shadow-sm print:p-0 print:border-none print:shadow-none text-slate-800 font-sans">
+          {/* Header Row: Company Brand + Invoice Meta */}
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-slate-200 pb-6 mb-6">
             <div>
-              <div className="text-2xl font-black tracking-tight text-primary">
-                Active<span className="text-gray-900">Shop</span>
+              <div className="text-2xl font-black tracking-tight text-[#d43533]">
+                Active<span className="text-slate-900">Shop</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Active eCommerce CMS Standard</p>
-              <div className="text-xs text-gray-500 mt-2 space-y-0.5">
+              <p className="text-[11px] font-semibold text-slate-400 mt-0.5">Active eCommerce CMS Standard</p>
+              <div className="text-xs text-slate-500 mt-2 space-y-0.5">
                 <p>House #12, Road #4, Dhanmondi, Dhaka</p>
                 <p>Phone: +880 1700-000000</p>
                 <p>Email: support@active-ecom.com</p>
@@ -86,19 +146,19 @@ export function InvoiceView({ invoice }: InvoiceViewProps) {
             </div>
 
             <div className="text-left sm:text-right">
-              <span className="text-xs font-bold text-primary uppercase tracking-wider block">
+              <span className="text-xs font-extrabold text-[#d43533] uppercase tracking-wider block">
                 Official Invoice
               </span>
-              <h1 className="text-xl sm:text-2xl font-mono font-black text-gray-900 mt-0.5">
+              <h1 className="text-xl sm:text-2xl font-mono font-black text-slate-900 mt-0.5">
                 #{invoice.code}
               </h1>
-              <div className="text-xs text-gray-500 mt-2 space-y-1">
+              <div className="text-xs text-slate-600 mt-2 space-y-1">
                 <p>
-                  Order Date: <strong className="font-semibold text-gray-800">{invoice.date}</strong>
+                  Order Date: <strong className="font-semibold text-slate-900">{invoice.date}</strong>
                 </p>
                 <p>
                   Payment Method:{" "}
-                  <span className="font-semibold text-gray-800 capitalize">
+                  <span className="font-semibold text-slate-900 capitalize">
                     {invoice.paymentMethod.replace(/_/g, " ")}
                   </span>
                 </p>
@@ -106,7 +166,7 @@ export function InvoiceView({ invoice }: InvoiceViewProps) {
                   Payment Status:{" "}
                   <span
                     className={`font-bold uppercase ${
-                      invoice.paymentStatus === "paid" ? "text-green-600" : "text-amber-600"
+                      invoice.paymentStatus.toLowerCase() === "paid" ? "text-emerald-700" : "text-rose-600"
                     }`}
                   >
                     {invoice.paymentStatus}
@@ -117,56 +177,58 @@ export function InvoiceView({ invoice }: InvoiceViewProps) {
           </div>
 
           {/* Customer & Shipping Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-8 border-b border-gray-100 mb-8 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-100 mb-6 text-xs avoid-break">
             <div>
-              <h3 className="font-bold uppercase tracking-wider text-gray-400 mb-2">Billed To</h3>
-              <p className="font-bold text-sm text-gray-900">{invoice.customerName}</p>
-              <p className="text-gray-600 mt-0.5">{invoice.customerPhone}</p>
-              {invoice.customerEmail && <p className="text-gray-600">{invoice.customerEmail}</p>}
+              <h3 className="font-bold uppercase tracking-wider text-slate-400 mb-1.5 text-[10px]">Billed To</h3>
+              <p className="font-bold text-sm text-slate-900">{invoice.customerName}</p>
+              <p className="text-slate-600 mt-0.5">{invoice.customerPhone}</p>
+              {invoice.customerEmail && <p className="text-slate-600">{invoice.customerEmail}</p>}
             </div>
 
             <div>
-              <h3 className="font-bold uppercase tracking-wider text-gray-400 mb-2">Shipping Destination</h3>
-              <p className="text-gray-800 leading-relaxed">{invoice.shippingAddress}</p>
-              {invoice.city && <p className="text-gray-600">{invoice.city}, {invoice.country || "Bangladesh"}</p>}
+              <h3 className="font-bold uppercase tracking-wider text-slate-400 mb-1.5 text-[10px]">Shipping Destination</h3>
+              <p className="text-slate-800 leading-relaxed font-medium">{invoice.shippingAddress}</p>
+              {invoice.city && (
+                <p className="text-slate-600 mt-0.5">{invoice.city}, {invoice.country || "Bangladesh"}</p>
+              )}
               {invoice.trackingCode && (
-                <p className="font-mono text-[11px] text-primary mt-1">
-                  Tracking No: {invoice.trackingCode}
+                <p className="font-mono text-[11px] font-semibold text-[#1492e6] mt-1">
+                  Tracking Code: {invoice.trackingCode}
                 </p>
               )}
             </div>
           </div>
 
           {/* Items Table */}
-          <div className="overflow-x-auto mb-8">
+          <div className="overflow-x-auto mb-6 avoid-break">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold uppercase text-gray-600">
-                  <th className="py-3 px-4">#</th>
-                  <th className="py-3 px-4">Item Details</th>
-                  <th className="py-3 px-4 text-center">Qty</th>
-                  <th className="py-3 px-4 text-right">Unit Price</th>
-                  <th className="py-3 px-4 text-right">Total</th>
+                <tr className="border-b-2 border-slate-300 bg-slate-50 text-[11px] font-bold uppercase text-slate-700">
+                  <th className="py-2.5 px-3">#</th>
+                  <th className="py-2.5 px-3">Item Details</th>
+                  <th className="py-2.5 px-3 text-center">Qty</th>
+                  <th className="py-2.5 px-3 text-right">Unit Price</th>
+                  <th className="py-2.5 px-3 text-right">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-xs">
+              <tbody className="divide-y divide-slate-200 text-xs">
                 {invoice.items.map((item, idx) => (
-                  <tr key={item.id}>
-                    <td className="py-3 px-4 font-semibold text-gray-400">
+                  <tr key={item.id} className="avoid-break">
+                    <td className="py-3 px-3 font-semibold text-slate-400">
                       {String(idx + 1).padStart(2, "0")}
                     </td>
-                    <td className="py-3 px-4 font-semibold text-gray-800">
+                    <td className="py-3 px-3 font-semibold text-slate-800">
                       {item.name}
                       {item.variation && (
-                        <span className="block text-[11px] text-gray-400 font-normal">
+                        <span className="block text-[11px] text-slate-400 font-normal">
                           Variant: {item.variation}
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-center font-bold text-gray-700">{item.quantity}</td>
-                    <td className="py-3 px-4 text-right text-gray-600">৳{item.price.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right font-bold text-gray-900">
-                      ৳{(item.price * item.quantity).toLocaleString()}
+                    <td className="py-3 px-3 text-center font-bold text-slate-700">{item.quantity}</td>
+                    <td className="py-3 px-3 text-right text-slate-600">৳{item.price.toLocaleString("en-BD", { minimumFractionDigits: 2 })}</td>
+                    <td className="py-3 px-3 text-right font-bold text-slate-900">
+                      ৳{(item.price * item.quantity).toLocaleString("en-BD", { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
                 ))}
@@ -174,39 +236,39 @@ export function InvoiceView({ invoice }: InvoiceViewProps) {
             </table>
           </div>
 
-          {/* Summary Row */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-t border-gray-200 pt-6">
-            <div className="text-xs text-gray-400 max-w-sm">
-              <p className="font-semibold text-gray-700 mb-1">Notes & Terms:</p>
+          {/* Summary & Notes */}
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-t border-slate-200 pt-6 avoid-break">
+            <div className="text-xs text-slate-500 max-w-sm">
+              <p className="font-bold text-slate-700 mb-1">Notes & Terms:</p>
               <p>
                 All physical orders are covered by standard 7-day customer satisfaction warranty. Please retain this invoice for warranty claiming.
               </p>
             </div>
 
-            <div className="w-full sm:w-64 space-y-2 text-xs">
-              <div className="flex justify-between text-gray-600">
+            <div className="w-full sm:w-64 space-y-1.5 text-xs">
+              <div className="flex justify-between text-slate-600">
                 <span>Subtotal:</span>
-                <span className="font-semibold">৳{invoice.subtotal.toLocaleString()}</span>
+                <span className="font-semibold text-slate-800">৳{invoice.subtotal.toLocaleString("en-BD", { minimumFractionDigits: 2 })}</span>
               </div>
               {invoice.couponDiscount > 0 && (
-                <div className="flex justify-between text-green-600">
+                <div className="flex justify-between text-emerald-600">
                   <span>Coupon Discount:</span>
-                  <span>-৳{invoice.couponDiscount.toLocaleString()}</span>
+                  <span>-৳{invoice.couponDiscount.toLocaleString("en-BD", { minimumFractionDigits: 2 })}</span>
                 </div>
               )}
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-slate-600">
                 <span>Shipping Cost:</span>
-                <span>৳{invoice.shippingCost.toLocaleString()}</span>
+                <span className="font-semibold text-slate-800">৳{invoice.shippingCost.toLocaleString("en-BD", { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between border-t border-gray-200 pt-2 text-sm font-bold text-gray-900">
+              <div className="flex justify-between border-t border-slate-300 pt-2 text-sm font-bold text-slate-900">
                 <span>Grand Total:</span>
-                <span className="text-primary text-base">৳{invoice.grandTotal.toLocaleString()}</span>
+                <span className="text-[#d43533] text-base">৳{invoice.grandTotal.toLocaleString("en-BD", { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
 
-          {/* Footer Thank You */}
-          <div className="mt-12 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
+          {/* Footer Note */}
+          <div className="mt-10 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
             Thank you for shopping with Active eCommerce CMS!
           </div>
         </div>

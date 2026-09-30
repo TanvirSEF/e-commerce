@@ -2,24 +2,24 @@ import React from "react"
 import { Metadata } from "next"
 import { getOrdersAdmin, getOrderByCode } from "@/services/order-service"
 import { getShippingLabelSettings } from "@/services/settings-service"
-import {
-  ShippingLabelView,
-  type ShippingLabelData,
-} from "@/app/shipping-label/[code]/_components/shipping-label-view"
+import { type ShippingLabelData } from "@/app/shipping-label/[code]/_components/shipping-label-view"
+import { BulkShippingLabelClient } from "./_components/bulk-shipping-label-client"
 
 export const metadata: Metadata = {
   title: "Bulk Shipping Label Print | Admin Orders | Active eCommerce",
-  description: "Print multiple thermal shipping labels simultaneously",
+  description: "Print multiple thermal shipping labels simultaneously in 4x6 format",
 }
 
+export const dynamic = "force-dynamic"
+
 interface BulkShippingLabelPrintPageProps {
-  searchParams: Promise<{ ids?: string }>
+  searchParams: Promise<{ ids?: string; print?: string }>
 }
 
 export default async function BulkShippingLabelPrintPage({
   searchParams,
 }: BulkShippingLabelPrintPageProps) {
-  const { ids } = await searchParams
+  const { ids, print } = await searchParams
   const rawIds = ids ? ids.split(",").map((s) => s.trim()).filter(Boolean) : []
 
   const settings = await getShippingLabelSettings()
@@ -64,17 +64,10 @@ export default async function BulkShippingLabelPrintPage({
   }
 
   return (
-    <div className="bg-slate-100 min-h-screen py-8 print:bg-white print:py-0">
-      <div className="max-w-2xl mx-auto space-y-8 print:space-y-0 print:max-w-none">
-        {labels.map((lbl) => (
-          <div
-            key={lbl.orderCode}
-            className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 print:border-none print:shadow-none print:break-after-page"
-          >
-            <ShippingLabelView labelData={lbl} settings={settings} />
-          </div>
-        ))}
-      </div>
-    </div>
+    <BulkShippingLabelClient
+      labels={labels}
+      settings={settings}
+      autoPrint={print === "1"}
+    />
   )
 }

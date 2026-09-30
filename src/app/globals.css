@@ -193,3 +193,21 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s ease-in-out;
 }
+
+/* Print Rules - Standardized for Invoices & Thermal Shipping Labels */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  header, footer, nav, aside,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+}

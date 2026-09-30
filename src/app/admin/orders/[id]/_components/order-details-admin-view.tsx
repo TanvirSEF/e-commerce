@@ -99,13 +99,14 @@ export function OrderDetailsAdminView({ order }: OrderDetailsAdminViewProps) {
             <FileText className="w-3.5 h-3.5" />
             View Invoice
           </Link>
-          <button
-            onClick={() => window.print()}
+          <Link
+            href={`/invoice/${order.code}?print=1`}
+            target="_blank"
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded shadow-sm transition-colors"
           >
             <Printer className="w-3.5 h-3.5" />
-            Print Order
-          </button>
+            Print Invoice
+          </Link>
         </div>
       </div>
 

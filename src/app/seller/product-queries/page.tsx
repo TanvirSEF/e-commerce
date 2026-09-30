@@ -7,7 +7,7 @@ export const metadata = {
 }
 
 export default async function SellerProductQueriesPage() {
-  const queries = await getAllQueriesAdmin()
+  const { queries } = await getAllQueriesAdmin()
 
   return <SellerQueriesView initialQueries={queries} />
 }

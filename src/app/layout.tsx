@@ -4,14 +4,7 @@ import "./globals.css"
 import { cn } from "@/lib/utils"
 import { CartProvider } from "@/lib/context/cart-context"
 import { AuthProvider } from "@/lib/context/auth-context"
-import { SiteHeader } from "@/components/layout/site-header"
-import { Footer } from "@/components/layout/footer"
-import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav"
-import { CartDrawer } from "@/components/cart/cart-drawer"
-import { StorefrontSaleAlert } from "@/components/layout/storefront-sale-alert"
-import { StorefrontDynamicPopup } from "@/components/layout/storefront-dynamic-popup"
-import { FloatingButtons } from "@/components/layout/floating-buttons"
-import { CookieAlert } from "@/components/layout/cookie-alert"
+import { StorefrontChrome } from "@/components/layout/storefront-chrome"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
@@ -37,15 +30,7 @@ export default function RootLayout({
       <body className="flex min-h-screen flex-col bg-white text-[#292933]">
         <AuthProvider>
           <CartProvider>
-            <SiteHeader />
-            <main className="flex-1 pb-14 lg:pb-0">{children}</main>
-            <Footer />
-            <MobileBottomNav />
-            <CartDrawer />
-            <FloatingButtons />
-            <StorefrontSaleAlert />
-            <StorefrontDynamicPopup />
-            <CookieAlert />
+            <StorefrontChrome>{children}</StorefrontChrome>
           </CartProvider>
         </AuthProvider>
       </body>

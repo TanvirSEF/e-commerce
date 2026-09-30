@@ -1,19 +1,22 @@
 import React from "react"
 import { Metadata } from "next"
 import { getOrdersAdmin, getOrderByCode } from "@/services/order-service"
-import { InvoiceView, type InvoiceData } from "@/app/invoice/[code]/_components/invoice-view"
+import { type InvoiceData } from "@/app/invoice/[code]/_components/invoice-view"
+import { BulkInvoicePrintClient } from "./_components/bulk-invoice-print-client"
 
 export const metadata: Metadata = {
   title: "Bulk Invoice Print | Admin Orders | Active eCommerce",
-  description: "Print multiple invoices simultaneously",
+  description: "Print multiple invoices simultaneously in standard A4 format",
 }
 
+export const dynamic = "force-dynamic"
+
 interface BulkInvoicePrintPageProps {
-  searchParams: Promise<{ ids?: string }>
+  searchParams: Promise<{ ids?: string; print?: string }>
 }
 
 export default async function BulkInvoicePrintPage({ searchParams }: BulkInvoicePrintPageProps) {
-  const { ids } = await searchParams
+  const { ids, print } = await searchParams
   const rawIds = ids ? ids.split(",").map((s) => s.trim()).filter(Boolean) : []
 
   let invoices: InvoiceData[] = []
@@ -70,18 +73,5 @@ export default async function BulkInvoicePrintPage({ searchParams }: BulkInvoice
     }))
   }
 
-  return (
-    <div className="bg-slate-100 min-h-screen py-8 print:bg-white print:py-0">
-      <div className="max-w-4xl mx-auto space-y-8 print:space-y-0 print:max-w-none">
-        {invoices.map((inv) => (
-          <div
-            key={inv.code}
-            className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none print:break-after-page"
-          >
-            <InvoiceView invoice={inv} />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  return <BulkInvoicePrintClient invoices={invoices} autoPrint={print === "1"} />
 }

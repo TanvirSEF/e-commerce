@@ -1,245 +1,315 @@
 "use client"
 
-import React, { useState } from "react"
-import Link from "next/link"
-import { Search, Eye, Printer } from "lucide-react"
-
-export interface AdminOrderItem {
-  id: string
-  code: string
-  trackingCode: string
-  customerName: string
-  customerPhone: string
-  amount: number
-  deliveryStatus: string
-  paymentStatus: string
-  paymentType: string
-  date: string
-  shippingAddress: string
-}
+import React, { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { OrdersFilterBar } from "./orders-filter-bar"
+import { OrdersTable } from "./orders-table"
+import { OrdersPagination } from "./orders-pagination"
+import { QuickOrderManageModal } from "./quick-order-manage-modal"
+import { OrderDeleteModal } from "./order-delete-modal"
+import { exportOrdersToCsv } from "./orders-export-utils"
+import {
+  AdminOrderListItem,
+  AdminOrdersResponse,
+} from "@/services/admin-orders-service"
+import {
+  fetchAdminOrdersAction,
+  updateOrderQuickManagementAction,
+  deleteAdminOrderAction,
+  bulkDeleteAdminOrdersAction,
+} from "@/app/actions/order-admin-actions"
 
 interface AdminOrdersViewProps {
-  initialOrders: AdminOrderItem[]
+  initialData: AdminOrdersResponse
 }
 
-const DELIVERY_STATUSES = ["all", "pending", "confirmed", "picked_up", "on_the_way", "delivered", "cancelled"]
+export function AdminOrdersView({ initialData }: AdminOrdersViewProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
 
-export function AdminOrdersView({ initialOrders }: AdminOrdersViewProps) {
-  const [ordersList, setOrdersList] = useState<AdminOrderItem[]>(initialOrders)
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedOrder, setSelectedOrder] = useState<AdminOrderItem | null>(null)
+  // State
+  const [data, setData] = useState<AdminOrdersResponse>(initialData)
+  const [tab, setTab] = useState<"all" | "inhouse" | "seller">("all")
+  const [search, setSearch] = useState("")
+  const [deliveryStatuses, setDeliveryStatuses] = useState<string[]>([])
+  const [paymentStatus, setPaymentStatus] = useState("")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
-  const handleStatusChange = (orderId: string, newStatus: string) => {
-    setOrdersList((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, deliveryStatus: newStatus } : o))
+  // Modal states
+  const [quickManageOrder, setQuickManageOrder] = useState<AdminOrderListItem | null>(null)
+  const [deleteTargetOrder, setDeleteTargetOrder] = useState<AdminOrderListItem | null>(null)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+
+  // Fetch / Refetch helper
+  const reloadData = (overrides: Record<string, any> = {}) => {
+    startTransition(async () => {
+      const res = await fetchAdminOrdersAction({
+        tab: overrides.tab !== undefined ? overrides.tab : tab,
+        search: overrides.search !== undefined ? overrides.search : search,
+        deliveryStatuses:
+          overrides.deliveryStatuses !== undefined ? overrides.deliveryStatuses : deliveryStatuses,
+        paymentStatus:
+          overrides.paymentStatus !== undefined ? overrides.paymentStatus : paymentStatus,
+        dateFrom: overrides.dateFrom !== undefined ? overrides.dateFrom : dateFrom,
+        dateTo: overrides.dateTo !== undefined ? overrides.dateTo : dateTo,
+        page: overrides.page !== undefined ? overrides.page : data.currentPage,
+        limit: 15,
+      })
+      setData(res)
+    })
+  }
+
+  // Tab change
+  const handleTabChange = (newTab: "all" | "inhouse" | "seller") => {
+    setTab(newTab)
+    reloadData({ tab: newTab, page: 1 })
+  }
+
+  // Search with debounce
+  const handleSearchChange = (val: string) => {
+    setSearch(val)
+    reloadData({ search: val, page: 1 })
+  }
+
+  // Delivery status filter
+  const handleDeliveryStatusChange = (statuses: string[]) => {
+    setDeliveryStatuses(statuses)
+    reloadData({ deliveryStatuses: statuses, page: 1 })
+  }
+
+  // Payment status filter
+  const handlePaymentStatusChange = (status: string) => {
+    setPaymentStatus(status)
+    reloadData({ paymentStatus: status, page: 1 })
+  }
+
+  // Date range filter
+  const handleDateRangeChange = (from: string, to: string) => {
+    setDateFrom(from)
+    setDateTo(to)
+    reloadData({ dateFrom: from, dateTo: to, page: 1 })
+  }
+
+  // Pagination
+  const handlePageChange = (newPage: number) => {
+    reloadData({ page: newPage })
+  }
+
+  // Selection
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     )
-    if (selectedOrder && selectedOrder.id === orderId) {
-      setSelectedOrder((prev) => (prev ? { ...prev, deliveryStatus: newStatus } : null))
+  }
+
+  const handleToggleSelectAll = () => {
+    if (data.orders.every((o) => selectedIds.includes(o.id))) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(data.orders.map((o) => o.id))
     }
   }
 
-  const handlePaymentStatusToggle = (orderId: string) => {
-    setOrdersList((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? { ...o, paymentStatus: o.paymentStatus === "paid" ? "unpaid" : "paid" }
-          : o
-      )
-    )
+  // Quick Order Save
+  const handleSaveQuickManage = async (
+    orderId: number,
+    updateData: { deliveryStatus: string; paymentStatus: string }
+  ) => {
+    const success = await updateOrderQuickManagementAction(orderId, updateData)
+    if (success) {
+      setData((prev) => ({
+        ...prev,
+        orders: prev.orders.map((o) =>
+          o.id === orderId
+            ? { ...o, deliveryStatus: updateData.deliveryStatus, paymentStatus: updateData.paymentStatus }
+            : o
+        ),
+      }))
+    }
   }
 
-  const filtered = ordersList.filter((o) => {
-    const matchesStatus = statusFilter === "all" || o.deliveryStatus === statusFilter
-    const matchesSearch =
-      o.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customerName.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesStatus && matchesSearch
-  })
+  // Single Delete
+  const handleConfirmSingleDelete = async () => {
+    if (!deleteTargetOrder) return
+    const success = await deleteAdminOrderAction(deleteTargetOrder.id)
+    if (success) {
+      setData((prev) => ({
+        ...prev,
+        orders: prev.orders.filter((o) => o.id !== deleteTargetOrder.id),
+        totalCount: Math.max(0, prev.totalCount - 1),
+      }))
+      setSelectedIds((prev) => prev.filter((id) => id !== deleteTargetOrder.id))
+    }
+  }
+
+  // Bulk Delete
+  const handleConfirmBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    const success = await bulkDeleteAdminOrdersAction(selectedIds)
+    if (success) {
+      setData((prev) => ({
+        ...prev,
+        orders: prev.orders.filter((o) => !selectedIds.includes(o.id)),
+        totalCount: Math.max(0, prev.totalCount - selectedIds.length),
+      }))
+      setSelectedIds([])
+    }
+  }
+
+  // Bulk Actions
+  const handleBulkExport = () => {
+    const targetOrders =
+      selectedIds.length > 0
+        ? data.orders.filter((o) => selectedIds.includes(o.id))
+        : data.orders
+    exportOrdersToCsv(targetOrders)
+  }
+
+  const getSelectedCodes = () => {
+    const list = selectedIds.length > 0
+      ? data.orders.filter((o) => selectedIds.includes(o.id)).map((o) => o.code)
+      : data.orders.map((o) => o.code)
+    return list.join(",")
+  }
+
+  const handleBulkDownloadShippingLabel = () => {
+    const codes = getSelectedCodes()
+    window.open(`/admin/orders/bulk-shipping-label-print?ids=${codes}&print=1`, "_blank")
+  }
+
+  const handleBulkPrintShippingLabel = () => {
+    const codes = getSelectedCodes()
+    window.open(`/admin/orders/bulk-shipping-label-print?ids=${codes}&print=1`, "_blank")
+  }
+
+  const handleBulkDownloadInvoice = () => {
+    const codes = getSelectedCodes()
+    window.open(`/admin/orders/bulk-invoice-print?ids=${codes}&print=1`, "_blank")
+  }
+
+  const handleBulkPrintInvoice = () => {
+    const codes = getSelectedCodes()
+    window.open(`/admin/orders/bulk-invoice-print?ids=${codes}&print=1`, "_blank")
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Title */}
-      <div>
+    <div className="space-y-4">
+      {/* Titlebar matching Laravel aiz-titlebar */}
+      <div className="pb-1">
         <h1 className="text-xl font-bold text-slate-800">All Orders</h1>
-        <p className="text-xs text-slate-500 mt-0.5">Manage customer orders, shipments, and invoice statuses</p>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-4 border border-slate-200 rounded-sm shadow-xs space-y-3">
-        {/* Status Tabs */}
-        <div className="flex items-center space-x-1 overflow-x-auto pb-1 border-b border-slate-100 text-xs">
-          {DELIVERY_STATUSES.map((st) => (
-            <button
-              key={st}
-              type="button"
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded font-semibold capitalize whitespace-nowrap transition-colors ${
-                statusFilter === st
-                  ? "bg-[#d43533] text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {st.replace(/_/g, " ")}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by code or customer..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded text-xs text-slate-700 focus:outline-none focus:border-[#d43533]"
-            />
-          </div>
-          <span className="text-xs text-slate-500">
-            Showing <strong>{filtered.length}</strong> orders
-          </span>
-        </div>
-      </div>
-
-      {/* Orders Table (Active eCommerce 1:1) */}
+      {/* Main Card Container */}
       <div className="bg-white border border-slate-200 rounded-sm shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] border-b border-slate-200">
-              <tr>
-                <th className="py-3 px-4">Order Code</th>
-                <th className="py-3 px-4">Customer</th>
-                <th className="py-3 px-4">Amount</th>
-                <th className="py-3 px-4">Payment Status</th>
-                <th className="py-3 px-4">Delivery Status</th>
-                <th className="py-3 px-4 text-right">Options</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((order) => (
-                <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-3.5 px-4 font-bold text-slate-800">{order.code}</td>
-                  <td className="py-3.5 px-4">
-                    <p className="font-semibold text-slate-800">{order.customerName}</p>
-                    <span className="text-[11px] text-slate-400">{order.customerPhone}</span>
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-slate-900">৳{order.amount}</td>
-                  <td className="py-3.5 px-4">
-                    <button
-                      type="button"
-                      onClick={() => handlePaymentStatusToggle(order.id)}
-                      className={`inline-block px-2.5 py-0.5 text-[10px] font-bold rounded uppercase cursor-pointer ${
-                        order.paymentStatus === "paid"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      }`}
-                    >
-                      {order.paymentStatus}
-                    </button>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <select
-                      value={order.deliveryStatus}
-                      onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      className="border border-slate-300 rounded px-2 py-1 text-xs bg-white capitalize font-medium text-slate-800 focus:outline-none focus:border-[#d43533]"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="picked_up">Picked Up</option>
-                      <option value="on_the_way">On The Way</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Link
-                        href={`/admin/orders/${order.id}`}
-                        className="p-1.5 text-slate-500 hover:text-[#d43533] hover:bg-red-50 rounded inline-flex items-center transition-colors"
-                        title="Manage Order"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </Link>
-                      <Link
-                        href={`/invoice/${order.code}`}
-                        target="_blank"
-                        className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded inline-flex items-center transition-colors"
-                        title="Print Invoice"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Nav Tabs */}
+        <div className="border-b border-slate-200 px-4 pt-3 flex items-center gap-6">
+          <button
+            type="button"
+            onClick={() => handleTabChange("all")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors capitalize ${
+              tab === "all"
+                ? "border-[#d43533] text-[#d43533]"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("inhouse")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors capitalize ${
+              tab === "inhouse"
+                ? "border-[#d43533] text-[#d43533]"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Inhouse
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("seller")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors capitalize ${
+              tab === "seller"
+                ? "border-[#d43533] text-[#d43533]"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Seller
+          </button>
         </div>
 
-        {filtered.length === 0 && (
-          <div className="p-8 text-center text-slate-500 text-xs">
-            No orders found under this status.
-          </div>
-        )}
+        {/* Filter Bar */}
+        <OrdersFilterBar
+          search={search}
+          onSearchChange={handleSearchChange}
+          deliveryStatuses={deliveryStatuses}
+          onDeliveryStatusChange={handleDeliveryStatusChange}
+          paymentStatus={paymentStatus}
+          onPaymentStatusChange={handlePaymentStatusChange}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateRangeChange={handleDateRangeChange}
+          selectedCount={selectedIds.length}
+          onBulkExport={handleBulkExport}
+          onBulkDownloadShippingLabel={handleBulkDownloadShippingLabel}
+          onBulkPrintShippingLabel={handleBulkPrintShippingLabel}
+          onBulkDownloadInvoice={handleBulkDownloadInvoice}
+          onBulkPrintInvoice={handleBulkPrintInvoice}
+          onBulkDelete={() => {
+            if (selectedIds.length === 0) return
+            setIsBulkDeleteOpen(true)
+          }}
+        />
+
+        {/* Orders Table */}
+        <div className={isPending ? "opacity-60 pointer-events-none transition-opacity" : ""}>
+          <OrdersTable
+            orders={data.orders}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
+            onQuickManage={(order) => setQuickManageOrder(order)}
+            onDeleteSingle={(order) => setDeleteTargetOrder(order)}
+          />
+        </div>
+
+        {/* Pagination Footer */}
+        <OrdersPagination
+          currentPage={data.currentPage}
+          totalPages={data.totalPages}
+          totalCount={data.totalCount}
+          perPage={data.perPage}
+          currentCount={data.orders.length}
+          onPageChange={handlePageChange}
+        />
       </div>
 
-      {/* Invoice Details Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white max-w-lg w-full rounded border shadow-xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h2 className="text-sm font-bold text-slate-800">
-                Order Details: {selectedOrder.code}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="text-slate-400 hover:text-slate-700 text-lg font-bold"
-              >
-                &times;
-              </button>
-            </div>
+      {/* Quick Order Manage Modal */}
+      <QuickOrderManageModal
+        order={quickManageOrder}
+        isOpen={Boolean(quickManageOrder)}
+        onClose={() => setQuickManageOrder(null)}
+        onSave={handleSaveQuickManage}
+      />
 
-            <div className="space-y-2 text-xs text-slate-700">
-              <div className="flex justify-between py-1 border-b">
-                <span className="font-semibold text-slate-500">Tracking Code:</span>
-                <span className="font-bold">{selectedOrder.trackingCode}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b">
-                <span className="font-semibold text-slate-500">Customer Name:</span>
-                <span>{selectedOrder.customerName}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b">
-                <span className="font-semibold text-slate-500">Phone:</span>
-                <span>{selectedOrder.customerPhone}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b">
-                <span className="font-semibold text-slate-500">Shipping Address:</span>
-                <span className="text-right max-w-xs">{selectedOrder.shippingAddress}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b">
-                <span className="font-semibold text-slate-500">Payment Method:</span>
-                <span className="uppercase">{selectedOrder.paymentType}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b">
-                <span className="font-semibold text-slate-500">Grand Total:</span>
-                <span className="font-bold text-sm text-[#d43533]">৳{selectedOrder.amount}</span>
-              </div>
-            </div>
+      {/* Single Delete Modal */}
+      <OrderDeleteModal
+        isOpen={Boolean(deleteTargetOrder)}
+        isBulk={false}
+        onClose={() => setDeleteTargetOrder(null)}
+        onConfirm={handleConfirmSingleDelete}
+      />
 
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="px-4 py-2 bg-slate-800 text-white rounded text-xs font-bold"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Bulk Delete Modal */}
+      <OrderDeleteModal
+        isOpen={isBulkDeleteOpen}
+        isBulk={true}
+        selectedCount={selectedIds.length}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={handleConfirmBulkDelete}
+      />
     </div>
   )
 }
