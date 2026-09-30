@@ -14,6 +14,9 @@ export const reviews = pgTable("reviews", {
   photos: text("photos").array(),
   status: boolean("status").notNull().default(true), // published
   viewed: boolean("viewed").notNull().default(false),
+  type: varchar("type", { length: 20 }).notNull().default("real"), // 'real' | 'custom'
+  customReviewerName: varchar("custom_reviewer_name", { length: 255 }),
+  customReviewerImage: text("custom_reviewer_image"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })
