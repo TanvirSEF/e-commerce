@@ -1302,12 +1302,22 @@ export async function addWholesaleTierAction(data: {
   price: number
 }) {
   const { addWholesaleTier } = await import("@/services/wholesale-service")
-  return await addWholesaleTier(data)
+  const { revalidatePath } = await import("next/cache")
+  const result = await addWholesaleTier(data)
+  try {
+    revalidatePath("/admin/wholesale/all-products")
+  } catch {}
+  return result
 }
 
 export async function deleteWholesaleTierAction(id: number) {
   const { deleteWholesaleTier } = await import("@/services/wholesale-service")
-  return await deleteWholesaleTier(id)
+  const { revalidatePath } = await import("next/cache")
+  const result = await deleteWholesaleTier(id)
+  try {
+    revalidatePath("/admin/wholesale/all-products")
+  } catch {}
+  return result
 }
 
 // Preorder Actions

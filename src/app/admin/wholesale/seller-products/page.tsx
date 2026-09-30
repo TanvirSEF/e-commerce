@@ -4,15 +4,17 @@ import { getAllWholesaleProducts } from "@/services/wholesale-service"
 import { WholesaleProductsView } from "../all-products/_components/wholesale-products-view"
 
 export const metadata: Metadata = {
-  title: "Seller Wholesale Products | Admin Dashboard",
-  description: "Manage merchant bulk pricing brackets",
+  title: "Seller Wholesale Products | Active eCommerce Admin",
+  description: "Manage merchant bulk pricing brackets in Active eCommerce CMS",
 }
+
+export const dynamic = "force-dynamic"
 
 export default async function AdminSellerWholesaleProductsPage() {
   const products = await getAllWholesaleProducts("seller")
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 sm:p-6 lg:p-8">
       <WholesaleProductsView initialProducts={products} filterType="seller" />
     </div>
   )

@@ -1,7 +1,6 @@
 import { db } from "../db"
-import { wholesalePrices, type WholesalePrice } from "../db/schema"
-import { eq } from "drizzle-orm"
-import { SEED_PRODUCTS, type SeedProduct } from "../db/seed/data"
+import { wholesalePrices, products, type WholesalePrice } from "../db/schema"
+import { eq, desc, or, inArray } from "drizzle-orm"
 
 export interface WholesaleTier {
   id: number
@@ -11,64 +10,69 @@ export interface WholesaleTier {
   price: number
 }
 
-export const SEED_WHOLESALE_TIERS: WholesaleTier[] = [
-  { id: 1, productId: 1, minQty: 5, maxQty: 19, price: 18.0 },
-  { id: 2, productId: 1, minQty: 20, maxQty: 49, price: 15.0 },
-  { id: 3, productId: 1, minQty: 50, maxQty: 999, price: 12.0 },
-  { id: 4, productId: 2, minQty: 10, maxQty: 49, price: 42.0 },
-  { id: 5, productId: 2, minQty: 50, maxQty: 999, price: 36.0 },
-  { id: 6, productId: 4, minQty: 5, maxQty: 24, price: 29.0 },
-  { id: 7, productId: 4, minQty: 25, maxQty: 999, price: 24.0 },
-]
-
-let inMemoryTiers: WholesaleTier[] = [...SEED_WHOLESALE_TIERS]
-
 export async function getAllWholesaleProducts(filter: "all" | "inhouse" | "seller" = "all") {
   try {
+    // 1. Fetch all wholesale price tiers from PostgreSQL
     const dbTiers = await db.select().from(wholesalePrices)
-    const activeTiers: WholesaleTier[] =
-      dbTiers.length > 0
-        ? dbTiers.map((t) => ({
-            id: t.id,
-            productId: t.productId,
-            minQty: t.minQty,
-            maxQty: t.maxQty,
-            price: Number(t.price),
-          }))
-        : inMemoryTiers
 
-    const wholesaleProductIds = Array.from(
-      new Set(activeTiers.map((t) => String(t.productId)))
-    )
-    let list = SEED_PRODUCTS.filter((p) => wholesaleProductIds.includes(String(p.id)))
+    const tierProductIds = Array.from(new Set(dbTiers.map((t) => t.productId)))
 
+    // 2. Query products from PostgreSQL that have wholesale_product=true OR have tiers
+    const dbProducts = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        unitPrice: products.unitPrice,
+        currentStock: products.currentStock,
+        thumbnailImg: products.thumbnailImg,
+        addedBy: products.addedBy,
+        wholesaleProduct: products.wholesaleProduct,
+        categoryId: products.categoryId,
+      })
+      .from(products)
+      .where(
+        tierProductIds.length > 0
+          ? or(eq(products.wholesaleProduct, true), inArray(products.id, tierProductIds))
+          : eq(products.wholesaleProduct, true)
+      )
+      .orderBy(desc(products.id))
+
+    // 3. Filter by type (all, inhouse, seller)
+    let filtered = dbProducts
     if (filter === "inhouse") {
-      list = list.filter((p) => p.sellerSlug === "inhouse" || !p.sellerSlug)
+      filtered = filtered.filter((p) => p.addedBy === "admin" || !p.addedBy)
     } else if (filter === "seller") {
-      list = list.filter((p) => p.sellerSlug && p.sellerSlug !== "inhouse")
+      filtered = filtered.filter((p) => p.addedBy === "seller")
     }
 
-    return list.map((p) => ({
-      ...p,
-      tiers: activeTiers.filter((t) => String(t.productId) === String(p.id)),
-    }))
+    return filtered.map((p) => {
+      const pTiers = dbTiers
+        .filter((t) => t.productId === p.id)
+        .map((t) => ({
+          id: t.id,
+          productId: t.productId,
+          minQty: t.minQty,
+          maxQty: t.maxQty,
+          price: Number(t.price),
+        }))
+        .sort((a, b) => a.minQty - b.minQty)
+
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        price: Number(p.unitPrice),
+        stock: p.currentStock,
+        thumbnail: p.thumbnailImg || "/assets/img/placeholder.jpg",
+        sellerName: p.addedBy === "seller" ? "Seller Store" : "In-House",
+        tiers: pTiers,
+      }
+    })
   } catch (err) {
-    console.warn("getAllWholesaleProducts DB query fallback:", err)
+    console.error("DB getAllWholesaleProducts error:", err)
+    return []
   }
-
-  const wholesaleProductIds = Array.from(new Set(inMemoryTiers.map((t) => String(t.productId))))
-  let list = SEED_PRODUCTS.filter((p) => wholesaleProductIds.includes(String(p.id)))
-
-  if (filter === "inhouse") {
-    list = list.filter((p) => p.sellerSlug === "inhouse" || !p.sellerSlug)
-  } else if (filter === "seller") {
-    list = list.filter((p) => p.sellerSlug && p.sellerSlug !== "inhouse")
-  }
-
-  return list.map((p) => ({
-    ...p,
-    tiers: inMemoryTiers.filter((t) => String(t.productId) === String(p.id)),
-  }))
 }
 
 export async function getWholesaleTiersForProduct(productId: string | number): Promise<WholesaleTier[]> {
@@ -77,19 +81,19 @@ export async function getWholesaleTiersForProduct(productId: string | number): P
       .select()
       .from(wholesalePrices)
       .where(eq(wholesalePrices.productId, Number(productId)))
-    if (rows && rows.length > 0) {
-      return rows.map((r) => ({
-        id: r.id,
-        productId: r.productId,
-        minQty: r.minQty,
-        maxQty: r.maxQty,
-        price: Number(r.price),
-      }))
-    }
+      .orderBy(wholesalePrices.minQty)
+
+    return rows.map((r) => ({
+      id: r.id,
+      productId: r.productId,
+      minQty: r.minQty,
+      maxQty: r.maxQty,
+      price: Number(r.price),
+    }))
   } catch (err) {
-    console.warn("getWholesaleTiersForProduct fallback:", (err as Error).message)
+    console.warn("getWholesaleTiersForProduct error:", (err as Error).message)
+    return []
   }
-  return inMemoryTiers.filter((t) => String(t.productId) === String(productId))
 }
 
 export async function addWholesaleTier(data: {
@@ -98,37 +102,29 @@ export async function addWholesaleTier(data: {
   maxQty: number
   price: number
 }): Promise<WholesaleTier> {
-  const newTier: WholesaleTier = {
-    id: inMemoryTiers.length + 1,
-    productId: data.productId,
-    minQty: data.minQty,
-    maxQty: data.maxQty,
-    price: data.price,
+  const [inserted] = await db
+    .insert(wholesalePrices)
+    .values({
+      productId: Number(data.productId),
+      minQty: data.minQty,
+      maxQty: data.maxQty,
+      price: String(data.price),
+    })
+    .returning()
+
+  // Ensure product is flagged as wholesale_product = true in DB
+  await db
+    .update(products)
+    .set({ wholesaleProduct: true })
+    .where(eq(products.id, Number(data.productId)))
+
+  return {
+    id: inserted.id,
+    productId: inserted.productId,
+    minQty: inserted.minQty,
+    maxQty: inserted.maxQty,
+    price: Number(inserted.price),
   }
-  try {
-    const [inserted] = await db
-      .insert(wholesalePrices)
-      .values({
-        productId: Number(data.productId),
-        minQty: data.minQty,
-        maxQty: data.maxQty,
-        price: String(data.price),
-      })
-      .returning()
-    if (inserted) {
-      return {
-        id: inserted.id,
-        productId: inserted.productId,
-        minQty: inserted.minQty,
-        maxQty: inserted.maxQty,
-        price: Number(inserted.price),
-      }
-    }
-  } catch (err) {
-    console.warn("addWholesaleTier fallback:", (err as Error).message)
-  }
-  inMemoryTiers.push(newTier)
-  return newTier
 }
 
 export async function deleteWholesaleTier(id: number): Promise<boolean> {
@@ -136,10 +132,9 @@ export async function deleteWholesaleTier(id: number): Promise<boolean> {
     await db.delete(wholesalePrices).where(eq(wholesalePrices.id, id))
     return true
   } catch (err) {
-    console.warn("deleteWholesaleTier fallback:", (err as Error).message)
+    console.error("deleteWholesaleTier error:", err)
+    return false
   }
-  inMemoryTiers = inMemoryTiers.filter((t) => t.id !== id)
-  return true
 }
 
 export function calculateWholesalePrice(
