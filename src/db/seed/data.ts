@@ -559,7 +559,7 @@ export const SEED_SHOPS: SeedShop[] = [
 export interface SeedCoupon {
   id: string
   code: string
-  type: "cart_base" | "product_base"
+  type: "cart_base" | "product_base" | "welcome_base"
   discount: number
   discountType: "percent" | "amount"
   minBuy: number

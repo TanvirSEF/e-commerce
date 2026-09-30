@@ -201,19 +201,19 @@ export function SellerVerificationAdminView({
               <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded border border-slate-200">
                 <div>
                   <span className="text-slate-400 block text-[10px]">Trade License Number</span>
-                  <span className="font-mono font-bold">{selectedSeller.tradeLicense}</span>
+                  <span className="font-mono font-bold">{selectedSeller.tradeLicense || "Not Provided"}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">National ID Number</span>
-                  <span className="font-mono font-bold">{selectedSeller.nidNumber}</span>
+                  <span className="font-mono font-bold">{selectedSeller.nidNumber || "Not Provided"}</span>
                 </div>
                 <div className="mt-2">
                   <span className="text-slate-400 block text-[10px]">Settlement Bank</span>
-                  <span className="font-semibold">{selectedSeller.bankName}</span>
+                  <span className="font-semibold">{selectedSeller.bankName || "Not Provided"}</span>
                 </div>
                 <div className="mt-2">
                   <span className="text-slate-400 block text-[10px]">Account Number</span>
-                  <span className="font-mono font-semibold">{selectedSeller.bankAccount}</span>
+                  <span className="font-mono font-semibold">{selectedSeller.bankAccount || "Not Provided"}</span>
                 </div>
               </div>
 
@@ -221,19 +221,25 @@ export function SellerVerificationAdminView({
                 <span className="font-semibold text-slate-700 block mb-1">
                   Attached Business Identification Document:
                 </span>
-                <div className="p-3 bg-slate-100 rounded border flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <FileText className="w-4 h-4 text-[#d43533]" />
-                    {selectedSeller.documentType}
-                  </span>
-                  <a
-                    href={selectedSeller.documentUrl}
-                    target="_blank"
-                    className="text-[#d43533] hover:underline font-bold text-xs inline-flex items-center gap-1"
-                  >
-                    Preview Scan <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
+                {selectedSeller.documentUrl ? (
+                  <div className="p-3 bg-slate-100 rounded border flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <FileText className="w-4 h-4 text-[#d43533]" />
+                      {selectedSeller.documentType || "Business Document"}
+                    </span>
+                    <a
+                      href={selectedSeller.documentUrl}
+                      target="_blank"
+                      className="text-[#d43533] hover:underline font-bold text-xs inline-flex items-center gap-1"
+                    >
+                      Preview Scan <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-50 rounded border text-slate-400 italic">
+                    No documents uploaded with this application.
+                  </div>
+                )}
               </div>
             </div>
 

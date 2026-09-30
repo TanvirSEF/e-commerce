@@ -6,11 +6,54 @@ import { eq } from "drizzle-orm"
 
 import { SEED_LANGUAGES, SEED_TRANSLATIONS } from "../src/services/language-service.js"
 import { SEED_COUNTRIES, SEED_STATES, SEED_ZONES } from "../src/services/geographic-service.js"
-import { SEED_SELLER_PACKAGES, SEED_CUSTOMER_PACKAGES } from "../src/services/package-service.js"
 import { SEED_PREORDER_PRODUCTS } from "../src/services/preorder-service.js"
 import { SEED_AUCTION_PRODUCTS } from "../src/services/auction-service.js"
 import { SEED_AFFILIATE_OPTIONS, SEED_AFFILIATE_CONFIGS, SEED_AFFILIATE_USERS } from "../src/services/affiliate-service.js"
 import { SEED_DELIVERY_BOYS } from "../src/services/delivery-boy-service.js"
+
+const SEED_SELLER_PACKAGES = [
+  {
+    name: "Starter Merchant",
+    amount: "0.00",
+    productUploadLimit: 25,
+    duration: 365,
+    logo: "/assets/img/package-starter.png",
+    status: true,
+  },
+  {
+    name: "Silver Growth",
+    amount: "29.00",
+    productUploadLimit: 150,
+    duration: 30,
+    logo: "/assets/img/package-silver.png",
+    status: true,
+  },
+  {
+    name: "Gold Enterprise",
+    amount: "79.00",
+    productUploadLimit: 1000,
+    duration: 30,
+    logo: "/assets/img/package-gold.png",
+    status: true,
+  },
+]
+
+const SEED_CUSTOMER_PACKAGES = [
+  {
+    name: "Basic Classifieds",
+    amount: "0.00",
+    productUpload: 5,
+    logo: "/assets/img/customer-basic.png",
+    status: true,
+  },
+  {
+    name: "Pro Classified Booster",
+    amount: "9.99",
+    productUpload: 50,
+    logo: "/assets/img/customer-pro.png",
+    status: true,
+  },
+]
 
 dotenv.config({ path: ".env.local" })
 

@@ -1,6 +1,7 @@
 import React from "react"
 import { Metadata } from "next"
 import { getAllDynamicPopups } from "@/services/dynamic-popup-service"
+import { getSetting } from "@/services/settings-service"
 import { DynamicPopupsView } from "./_components/dynamic-popups-view"
 
 export const metadata: Metadata = {
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 }
 
 export default async function AdminDynamicPopupsPage() {
-  const popups = await getAllDynamicPopups()
+  const [popups, duration] = await Promise.all([
+    getAllDynamicPopups(),
+    getSetting("dynamic_popup_duration"),
+  ])
 
   const formattedPopups = popups.map((p) => ({
     id: p.id,
@@ -26,7 +30,10 @@ export default async function AdminDynamicPopupsPage() {
 
   return (
     <div className="p-4 md:p-6">
-      <DynamicPopupsView initialPopups={formattedPopups} />
+      <DynamicPopupsView
+        initialPopups={formattedPopups}
+        initialDuration={duration || "10"}
+      />
     </div>
   )
 }

@@ -14,7 +14,7 @@ export default async function AdminNotificationsPage() {
   let customerList: { id: string; name: string; email: string; phone?: string }[] = []
 
   try {
-    const rows = await db.select().from(users).limit(100)
+    const rows = await db.select().from(users).limit(200)
     customerList = rows.map((u) => ({
       id: u.id,
       name: u.name,
@@ -22,16 +22,7 @@ export default async function AdminNotificationsPage() {
       phone: u.phone || undefined,
     }))
   } catch (err) {
-    console.warn("DB customers fallback:", err)
-  }
-
-  if (customerList.length === 0) {
-    customerList = [
-      { id: "usr_1", name: "Tanvir Ahmed", email: "tanvir@example.com", phone: "+880 1711-223344" },
-      { id: "usr_2", name: "Sakib Al Hasan", email: "sakib@example.com", phone: "+880 1722-334455" },
-      { id: "usr_3", name: "Nusrat Jahan", email: "nusrat@example.com", phone: "+880 1833-445566" },
-      { id: "usr_4", name: "Mahmudullah Riyad", email: "mahmud@example.com", phone: "+880 1944-556677" },
-    ]
+    console.warn("DB customers load error:", err)
   }
 
   const history = await getAllCustomNotifications()

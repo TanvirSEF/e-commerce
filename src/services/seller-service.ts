@@ -1,5 +1,5 @@
 import { db } from "../db"
-import { shops, sellerWithdrawRequests, products, orders, orderItems, users } from "../db/schema"
+import { shops, sellerWithdrawRequests, products, orders, orderItems, users, shopFollowers } from "../db/schema"
 import { eq, desc, sql } from "drizzle-orm"
 import { SEED_SHOPS, SeedShop, SEED_PRODUCTS, SeedProduct } from "../db/seed/data"
 
@@ -127,8 +127,19 @@ export async function getSellerDashboardStats(shopSlug: string = "active-fashion
   }
 }
 
-export async function getAllSellersAdmin(): Promise<{
-  sellers: (SeedShop & { dueToSeller: number; productCount: number; ownerName: string })[]
+export async function getAllSellersAdmin(options?: {
+  tab?: "all" | "banned" | "suspicious"
+  search?: string
+  verificationStatus?: "verified" | "unverified"
+}): Promise<{
+  sellers: (SeedShop & {
+    dueToSeller: number
+    productCount: number
+    ownerName: string
+    banned?: boolean
+    isSuspicious?: boolean
+    emailVerified?: boolean
+  })[]
 }> {
   try {
     const rows = await db
@@ -146,63 +157,101 @@ export async function getAllSellersAdmin(): Promise<{
         verificationStatus: shops.verificationStatus,
         createdAt: shops.createdAt,
         ownerName: users.name,
+        ownerEmail: users.email,
+        ownerPhone: users.phone,
+        emailVerified: users.emailVerified,
       })
       .from(shops)
       .leftJoin(users, eq(shops.userId, users.id))
       .where(sql`${shops.slug} != 'inhouse-products'`)
-      .orderBy(desc(shops.rating))
+      .orderBy(desc(shops.createdAt))
 
-    if (rows.length > 0) {
-      const withdrawRows = await db
-        .select({
-          shopId: sellerWithdrawRequests.shopId,
-          amount: sellerWithdrawRequests.amount,
-          status: sellerWithdrawRequests.status,
-        })
-        .from(sellerWithdrawRequests)
-
-      const sellers = rows.map((s, idx) => {
-        const pendingWithdraw = withdrawRows
-          .filter((w) => w.shopId === s.id && w.status === "pending")
-          .reduce((sum, w) => sum + Number(w.amount || 0), 0)
-
-        const defaultDue = idx === 0 ? 15400 : idx === 1 ? 32000 : 7500
-        const dueToSeller = pendingWithdraw > 0 ? pendingWithdraw : defaultDue
-
-        return {
-          id: String(s.id),
-          name: s.name,
-          slug: s.slug,
-          logo: s.logo || "/assets/img/placeholder.jpg",
-          topBanner: s.topBanner || "/assets/img/placeholder-rect.jpg",
-          sliders: s.sliders || ["/assets/img/placeholder-rect.jpg"],
-          address: s.address || "Dhaka, Bangladesh",
-          phone: s.phone || "+880 1700 000000",
-          rating: Number(s.rating || 0),
-          reviewCount: s.numOfReviews,
-          followersCount: 350 + idx * 80,
-          verificationStatus: s.verificationStatus,
-          memberSince: s.createdAt
-            ? new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-            : "Jan 2024",
-          dueToSeller,
-          productCount: idx === 0 ? 24 : idx === 1 ? 42 : 12,
-          ownerName: s.ownerName || (idx === 0 ? "Tanvir Ahmed" : idx === 1 ? "Rafiqul Islam" : "Nazmul Hossain"),
-        }
-      })
-      return { sellers }
+    if (!rows || rows.length === 0) {
+      return { sellers: [] }
     }
-  } catch (err) {
-    console.warn("DB getAllSellersAdmin fallback:", (err as Error).message)
-  }
 
-  const sellers = SEED_SHOPS.map((s, idx) => ({
-    ...s,
-    dueToSeller: idx === 0 ? 15400 : idx === 1 ? 32000 : 7500,
-    productCount: idx === 0 ? 24 : idx === 1 ? 42 : 12,
-    ownerName: idx === 0 ? "Tanvir Ahmed" : idx === 1 ? "Rafiqul Islam" : "Nazmul Hossain",
-  }))
-  return { sellers }
+    // Real product counts from database
+    const prodCounts = await db
+      .select({
+        shopId: products.shopId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(products)
+      .groupBy(products.shopId)
+    const prodCountMap = new Map(prodCounts.map((p) => [p.shopId, Number(p.count || 0)]))
+
+    // Real follower counts from database
+    const followerCounts = await db
+      .select({
+        shopId: shopFollowers.shopId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(shopFollowers)
+      .groupBy(shopFollowers.shopId)
+    const followerCountMap = new Map(followerCounts.map((f) => [f.shopId, Number(f.count || 0)]))
+
+    // Real withdraw requests from database
+    const withdrawRows = await db
+      .select({
+        shopId: sellerWithdrawRequests.shopId,
+        amount: sellerWithdrawRequests.amount,
+        status: sellerWithdrawRequests.status,
+      })
+      .from(sellerWithdrawRequests)
+
+    const sellers = rows.map((s) => {
+      const pendingWithdraw = withdrawRows
+        .filter((w) => w.shopId === s.id && w.status === "pending")
+        .reduce((sum, w) => sum + Number(w.amount || 0), 0)
+
+      return {
+        id: String(s.id),
+        name: s.name,
+        slug: s.slug,
+        logo: s.logo || "/assets/img/placeholder.jpg",
+        topBanner: s.topBanner || "/assets/img/placeholder-rect.jpg",
+        sliders: s.sliders || ["/assets/img/placeholder-rect.jpg"],
+        address: s.address || "—",
+        phone: s.phone || s.ownerPhone || "—",
+        email: s.ownerEmail || undefined,
+        rating: Number(s.rating || 0),
+        reviewCount: s.numOfReviews,
+        followersCount: followerCountMap.get(s.id) || 0,
+        verificationStatus: s.verificationStatus,
+        memberSince: s.createdAt
+          ? new Date(s.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+          : "—",
+        dueToSeller: pendingWithdraw,
+        productCount: prodCountMap.get(s.id) || 0,
+        ownerName: s.ownerName || "Merchant Owner",
+        banned: false,
+        isSuspicious: false,
+        emailVerified: !!s.emailVerified,
+      }
+    })
+
+    let filtered = sellers
+    if (options?.search) {
+      const q = options.search.toLowerCase()
+      filtered = filtered.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.ownerName.toLowerCase().includes(q) ||
+          (s.phone && s.phone.toLowerCase().includes(q)) ||
+          (s.email && s.email.toLowerCase().includes(q))
+      )
+    }
+    if (options?.verificationStatus === "verified") {
+      filtered = filtered.filter((s) => s.emailVerified)
+    } else if (options?.verificationStatus === "unverified") {
+      filtered = filtered.filter((s) => !s.emailVerified)
+    }
+
+    return { sellers: filtered }
+  } catch (err) {
+    console.warn("DB getAllSellersAdmin error:", (err as Error).message)
+    return { sellers: [] }
+  }
 }
 
 export async function getAllWithdrawRequestsAdmin(): Promise<SellerWithdrawItem[]> {
@@ -226,27 +275,25 @@ export async function getAllWithdrawRequestsAdmin(): Promise<SellerWithdrawItem[
       .leftJoin(users, eq(sellerWithdrawRequests.userId, users.id))
       .orderBy(desc(sellerWithdrawRequests.createdAt))
 
-    if (rows.length > 0) {
-      return rows.map((r) => ({
-        id: r.id,
-        shopName: r.shopName || "Partner Shop",
-        shopSlug: r.shopSlug || "partner-shop",
-        sellerName: r.ownerName || r.shopName || "Merchant Owner",
-        amount: Number(r.amount),
-        message: r.message || undefined,
-        status: (r.status as "pending" | "paid" | "rejected") || "pending",
-        paymentMethod: r.paymentMethod || "bKash",
-        transactionId: r.transactionId || undefined,
-        adminNote: r.adminNote || undefined,
-        date: r.createdAt
-          ? new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " ")
-          : "2026-03-20 14:30",
-      }))
-    }
+    return rows.map((r) => ({
+      id: r.id,
+      shopName: r.shopName || "Partner Shop",
+      shopSlug: r.shopSlug || "partner-shop",
+      sellerName: r.ownerName || r.shopName || "Merchant Owner",
+      amount: Number(r.amount),
+      message: r.message || undefined,
+      status: (r.status as "pending" | "paid" | "rejected") || "pending",
+      paymentMethod: r.paymentMethod || "bKash",
+      transactionId: r.transactionId || undefined,
+      adminNote: r.adminNote || undefined,
+      date: r.createdAt
+        ? new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " ")
+        : "—",
+    }))
   } catch (err) {
-    console.warn("DB getAllWithdrawRequestsAdmin fallback:", (err as Error).message)
+    console.warn("DB getAllWithdrawRequestsAdmin error:", (err as Error).message)
+    return []
   }
-  return SEED_WITHDRAW_REQUESTS
 }
 
 export async function getSellerWithdrawRequests(shopSlug: string = "active-fashion-outlet"): Promise<SellerWithdrawItem[]> {
@@ -368,6 +415,7 @@ export async function getPendingVerificationsAdmin(): Promise<SellerVerification
         shopName: shops.name,
         shopSlug: shops.slug,
         phone: shops.phone,
+        address: shops.address,
         verificationStatus: shops.verificationStatus,
         verificationInfo: shops.verificationInfo,
         ownerName: users.name,
@@ -379,63 +427,28 @@ export async function getPendingVerificationsAdmin(): Promise<SellerVerification
       .where(sql`${shops.slug} != 'inhouse-products'`)
       .orderBy(shops.verificationStatus, desc(shops.createdAt))
 
-    if (rows.length > 0) {
-      return rows.map((r, idx) => ({
-        shopId: r.shopId,
-        shopName: r.shopName,
-        shopSlug: r.shopSlug,
-        ownerName: r.ownerName || (idx === 0 ? "Tanvir Ahmed" : idx === 1 ? "Rafiqul Islam" : "Nazmul Hossain"),
-        ownerPhone: r.phone || "+880 1711 223344",
-        ownerEmail: r.ownerEmail || "seller@active.com",
-        nidNumber: r.verificationInfo?.nidNumber || "19942691234567890",
-        tradeLicense: r.verificationInfo?.tradeLicense || "TRAD/DNCC/029141",
-        documentType: r.verificationInfo?.documentType || "Trade License & NID",
-        documentUrl: r.verificationInfo?.documentUrl || "/assets/img/placeholder.jpg",
-        bankName: r.verificationInfo?.bankName || "City Bank PLC",
-        bankAccount: r.verificationInfo?.bankAccount || "1102948192001",
-        verificationStatus: r.verificationStatus,
-        submittedAt:
-          r.verificationInfo?.submittedAt ||
-          (r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " ") : "2026-03-20 12:45"),
-        rejectionReason: r.verificationInfo?.rejectionReason,
-      }))
-    }
+    return rows.map((r) => ({
+      shopId: r.shopId,
+      shopName: r.shopName,
+      shopSlug: r.shopSlug,
+      ownerName: r.ownerName || "Merchant Owner",
+      ownerPhone: r.phone || "—",
+      ownerEmail: r.ownerEmail || "—",
+      ownerAddress: r.address || "—",
+      nidNumber: r.verificationInfo?.nidNumber || undefined,
+      tradeLicense: r.verificationInfo?.tradeLicense || undefined,
+      documentType: r.verificationInfo?.documentType || undefined,
+      documentUrl: r.verificationInfo?.documentUrl || undefined,
+      bankName: r.verificationInfo?.bankName || undefined,
+      bankAccount: r.verificationInfo?.bankAccount || undefined,
+      verificationStatus: r.verificationStatus,
+      submittedAt:
+        r.verificationInfo?.submittedAt ||
+        (r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 16).replace("T", " ") : undefined),
+      rejectionReason: r.verificationInfo?.rejectionReason,
+    }))
   } catch (err) {
-    console.warn("DB getPendingVerificationsAdmin fallback:", (err as Error).message)
+    console.warn("DB getPendingVerificationsAdmin error:", (err as Error).message)
+    return []
   }
-
-  return [
-    {
-      shopId: 1,
-      shopName: "Active Fashion Outlet",
-      shopSlug: "active-fashion-outlet",
-      ownerName: "Tanvir Ahmed",
-      ownerPhone: "+880 1711 223344",
-      ownerEmail: "seller@active.com",
-      nidNumber: "19942691234567890",
-      tradeLicense: "TRAD/DNCC/029141",
-      documentType: "Trade License & NID",
-      documentUrl: "/assets/img/placeholder.jpg",
-      bankName: "City Bank PLC",
-      bankAccount: "1102948192001",
-      verificationStatus: true,
-      submittedAt: "2026-03-20 12:45",
-    },
-    {
-      shopId: 2,
-      shopName: "Gadget Hub BD",
-      shopSlug: "gadget-hub-bd",
-      ownerName: "Kamrul Islam",
-      ownerPhone: "+880 1819 889900",
-      ownerEmail: "kamrul@gadgethub.com",
-      nidNumber: "19922699887766554",
-      tradeLicense: "TRAD/DSCC/081290",
-      documentType: "Trade License",
-      documentUrl: "/assets/img/placeholder.jpg",
-      bankName: "BRAC Bank PLC",
-      bankAccount: "1501203948571001",
-      verificationStatus: false,
-      submittedAt: "2026-03-22 16:30",
-    },
-  ]
 }

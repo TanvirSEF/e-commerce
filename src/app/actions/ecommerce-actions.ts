@@ -353,7 +353,8 @@ export async function deleteSubscriberAction(id: number) {
 export async function sendNewsletterAction(data: {
   subject: string
   content: string
-  audience: "all_users" | "subscribers" | "both"
+  audience?: string
+  recipientCount?: number
 }) {
   const { sendNewsletterBroadcast } = await import("@/services/marketing-service")
   return await sendNewsletterBroadcast(data)
@@ -1307,7 +1308,16 @@ export async function updateSellerPackageAction(
 
 export async function toggleSellerPackageStatusAction(id: number, status: boolean) {
   const { toggleSellerPackageStatus } = await import("@/services/package-service")
-  return await toggleSellerPackageStatus(id, status)
+  const res = await toggleSellerPackageStatus(id, status)
+  revalidatePath("/admin/seller-packages")
+  return res
+}
+
+export async function deleteSellerPackageAction(id: number) {
+  const { deleteSellerPackage } = await import("@/services/package-service")
+  const res = await deleteSellerPackage(id)
+  revalidatePath("/admin/seller-packages")
+  return res
 }
 
 export async function purchaseSellerPackageAction(data: any) {

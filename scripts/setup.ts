@@ -846,6 +846,64 @@ async function runSetup() {
       console.log("[OK] Canonical Pre-Order Products seeded")
     }
 
+    // 15. Seed Canonical Seller Packages & Payments
+    const existingSellerPackagesCount = await db.select({ val: count() }).from(schema.sellerPackages)
+    if (Number(existingSellerPackagesCount[0]?.val || 0) === 0) {
+      await db.insert(schema.sellerPackages).values([
+        {
+          name: "Starter Merchant",
+          amount: "0.00",
+          productUploadLimit: 25,
+          duration: 365,
+          logo: "/assets/img/package-starter.png",
+          status: true,
+        },
+        {
+          name: "Silver Growth",
+          amount: "29.00",
+          productUploadLimit: 150,
+          duration: 30,
+          logo: "/assets/img/package-silver.png",
+          status: true,
+        },
+        {
+          name: "Gold Enterprise",
+          amount: "79.00",
+          productUploadLimit: 1000,
+          duration: 30,
+          logo: "/assets/img/package-gold.png",
+          status: true,
+        },
+      ])
+      console.log("[OK] Canonical Seller Packages seeded")
+    }
+
+    const existingSellerPaymentsCount = await db.select({ val: count() }).from(schema.sellerPackagePayments)
+    if (Number(existingSellerPaymentsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.sellerPackagePayments).values([
+        {
+          sellerId: 1,
+          sellerPackageId: 2,
+          amount: "29.00",
+          paymentMethod: "bKash",
+          paymentDetails: "TrxID: 9X238FA2",
+          offlinePayment: false,
+          approval: true,
+        },
+        {
+          sellerId: 2,
+          sellerPackageId: 3,
+          amount: "79.00",
+          paymentMethod: "Bank Slip",
+          paymentDetails: "Bank: City Bank, Dep Ref #55412",
+          offlinePayment: true,
+          approval: true,
+          receipt: "/uploads/slips/slip-55412.jpg",
+        },
+      ])
+      console.log("[OK] Canonical Seller Package Payments seeded")
+    }
+
     console.log("==================================================")
     console.log("[OK] Installation completed")
     console.log("==================================================")

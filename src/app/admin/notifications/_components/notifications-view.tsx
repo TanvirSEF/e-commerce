@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useState } from "react"
-import { Bell, Send, CheckCircle2, History, Users, RefreshCw } from "lucide-react"
+import { Bell, Send, CheckCircle2, Users, RefreshCw } from "lucide-react"
 import { type CustomNotification } from "@/db/schema"
 import { sendCustomNotificationAction } from "@/app/actions/ecommerce-actions"
+import { NotificationHistoryTable } from "./notification-history-table"
 
 interface CustomerOption {
   id: string
@@ -55,28 +56,30 @@ export function NotificationsView({
     setIsSending(true)
     setStatusMessage(null)
     try {
-      const recipientCount = selectedUserIds.length > 0 ? selectedUserIds.length : customers.length
+      const recipientCount = selectedUserIds.length > 0 ? selectedUserIds.length : (customers.length || 1)
       const res = await sendCustomNotificationAction({
         title: title.trim(),
         content: content.trim(),
-        link: link.trim() || undefined,
         notificationType,
+        link: link.trim() || undefined,
         recipientCount,
       })
 
       if (res) {
-        setHistory((prev) => [res, ...prev])
+        setStatusMessage({
+          type: "success",
+          text: `Notification dispatched successfully to ${recipientCount} recipients.`,
+        })
         setTitle("")
         setContent("")
         setLink("")
         setSelectedUserIds([])
-        setStatusMessage({
-          type: "success",
-          text: `Notification successfully broadcasted to ${recipientCount} customers!`,
-        })
+        setHistory((prev) => [res, ...prev])
+      } else {
+        setStatusMessage({ type: "error", text: "Failed to dispatch notifications." })
       }
     } catch {
-      setStatusMessage({ type: "error", text: "Failed to broadcast notification." })
+      setStatusMessage({ type: "error", text: "Failed to dispatch notifications." })
     } finally {
       setIsSending(false)
     }
@@ -84,47 +87,49 @@ export function NotificationsView({
 
   return (
     <div className="space-y-6">
-      {/* Titlebar */}
-      <div className="pb-2 border-b border-gray-200">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Custom Push Notifications</h1>
+      <div className="pb-3 border-b border-gray-200">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <Bell className="w-6 h-6 text-[#d43533]" />
+          Custom Notifications
+        </h1>
         <p className="text-xs sm:text-sm text-gray-500 mt-1">
-          Broadcast promotional announcements and system notifications to registered customer accounts
+          Send broadcast push notifications to registered customers and track campaign engagement
         </p>
       </div>
 
       {statusMessage && (
         <div
-          className={`p-4 rounded-xl flex items-center gap-3 text-sm ${
+          className={`flex items-center gap-2 p-3 text-xs rounded-lg border ${
             statusMessage.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-red-50 text-red-800 border-red-200"
           }`}
         >
-          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+          {statusMessage.type === "success" && (
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+          )}
           <span>{statusMessage.text}</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Send Notification Card (7 cols) */}
-        <div className="lg:col-span-7 bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-6">
-          <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
-            <Bell className="w-5 h-5 text-[#d43533]" />
-            <span>Send Custom Notification</span>
+        <div className="lg:col-span-7 bg-white border border-gray-200 rounded-xl shadow-xs p-6 space-y-5">
+          <h2 className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-3 flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#d43533]" />
+            Send Custom Notification
           </h2>
 
-          <form onSubmit={handleSend} className="space-y-5">
-            {/* Customer Recipients */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs sm:text-sm font-semibold text-gray-700">
-                  Target Customers ({selectedUserIds.length === 0 ? "All Customers" : `${selectedUserIds.length} Selected`})
+          <form onSubmit={handleSend} className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-gray-700">
+                  Customers ({selectedUserIds.length === 0 ? "All Customers" : `${selectedUserIds.length} Selected`})
                 </label>
                 <div className="space-x-2 text-xs">
                   <button
                     type="button"
                     onClick={handleSelectAll}
-                    className="text-blue-600 hover:underline font-semibold"
+                    className="text-blue-600 hover:underline font-semibold cursor-pointer"
                   >
                     Select All
                   </button>
@@ -132,56 +137,56 @@ export function NotificationsView({
                   <button
                     type="button"
                     onClick={handleDeselectAll}
-                    className="text-gray-500 hover:underline"
+                    className="text-gray-500 hover:underline cursor-pointer"
                   >
                     Deselect All
                   </button>
                 </div>
               </div>
               <div className="border border-gray-200 rounded-lg p-2.5 max-h-36 overflow-y-auto space-y-1 bg-gray-50/50">
-                {customers.map((c) => (
-                  <label
-                    key={c.id}
-                    className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer text-xs"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedUserIds.includes(c.id)}
-                      onChange={() =>
-                        setSelectedUserIds((prev) =>
-                          prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
-                        )
-                      }
-                      className="w-3.5 h-3.5 text-[#d43533] rounded border-gray-300"
-                    />
-                    <span className="font-medium text-gray-800">{c.name}</span>
-                    <span className="text-gray-400">({c.email})</span>
-                  </label>
-                ))}
+                {customers.length === 0 ? (
+                  <p className="text-xs text-gray-400 py-2 text-center">No registered customers found</p>
+                ) : (
+                  customers.map((c) => (
+                    <label
+                      key={c.id}
+                      className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer text-xs"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(c.id)}
+                        onChange={() =>
+                          setSelectedUserIds((prev) =>
+                            prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                          )
+                        }
+                        className="w-3.5 h-3.5 text-[#d43533] rounded border-gray-300"
+                      />
+                      <span className="font-medium text-gray-800">{c.name}</span>
+                      <span className="text-gray-400">({c.email})</span>
+                    </label>
+                  ))
+                )}
               </div>
             </div>
 
-            {/* Notification Type */}
-            <div className="space-y-1.5">
-              <label className="text-xs sm:text-sm font-semibold text-gray-700">
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
                 Select Type <span className="text-red-500">*</span>
               </label>
               <select
                 value={notificationType}
                 onChange={(e) => setNotificationType(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-800 focus:outline-none focus:border-[#d43533] focus:bg-white"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#d43533]"
               >
                 {NOTIFICATION_TYPES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
             </div>
 
-            {/* Title */}
-            <div className="space-y-1.5">
-              <label className="text-xs sm:text-sm font-semibold text-gray-700">
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
                 Notification Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -190,19 +195,16 @@ export function NotificationsView({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Flash 40% Off Weekend Deals!"
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-800 focus:outline-none focus:border-[#d43533] focus:bg-white"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#d43533]"
               />
             </div>
 
-            {/* Content Textarea */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs sm:text-sm font-semibold text-gray-700">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-gray-700">
                   Content <span className="text-red-500">*</span>
                 </label>
-                <span className="text-xs text-gray-400">
-                  {content.length}/80 chars (Best within 80)
-                </span>
+                <span className="text-[11px] text-gray-400">{content.length}/80 chars (Best within 80)</span>
               </div>
               <textarea
                 required
@@ -211,21 +213,18 @@ export function NotificationsView({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Write what your push notification will display..."
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-800 focus:outline-none focus:border-[#d43533] focus:bg-white"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#d43533]"
               />
             </div>
 
-            {/* Link */}
-            <div className="space-y-1.5">
-              <label className="text-xs sm:text-sm font-semibold text-gray-700">
-                Target URL Link
-              </label>
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">Target URL Link</label>
               <input
                 type="text"
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 placeholder="https://example.com/flash-deals or /products"
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-800 focus:outline-none focus:border-[#d43533] focus:bg-white"
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#d43533]"
               />
             </div>
 
@@ -233,7 +232,7 @@ export function NotificationsView({
               <button
                 type="submit"
                 disabled={isSending}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d43533] hover:bg-[#b82d2b] disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d43533] hover:bg-[#b82d2b] disabled:bg-gray-300 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
               >
                 {isSending ? (
                   <>
@@ -251,40 +250,8 @@ export function NotificationsView({
           </form>
         </div>
 
-        {/* Broadcast History (5 cols) */}
-        <div className="lg:col-span-5 bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-4">
-          <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
-            <History className="w-5 h-5 text-gray-600" />
-            <span>Broadcast History ({history.length})</span>
-          </h2>
-
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-            {history.length === 0 ? (
-              <p className="text-xs text-gray-400 py-6 text-center">No broadcast history yet.</p>
-            ) : (
-              history.map((h) => (
-                <div
-                  key={h.id}
-                  className="p-3.5 bg-gray-50 border border-gray-100 rounded-lg space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-800 line-clamp-1">{h.title}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold shrink-0">
-                      {h.notificationType}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 line-clamp-2">{h.content}</p>
-                  <div className="flex items-center justify-between text-[11px] text-gray-400 pt-1">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {h.recipientCount} Recipients
-                    </span>
-                    <span>{new Date(h.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="lg:col-span-5">
+          <NotificationHistoryTable history={history} />
         </div>
       </div>
     </div>
