@@ -19,6 +19,12 @@ export interface AdminOrderListItem {
   shippingMethod: string | null
   courierTrackingCode: string | null
   hasRefund: boolean
+  manualPaymentData?: {
+    name?: string
+    amount?: number
+    trx_id?: string
+    photo?: string
+  } | null
 }
 
 export interface GetAdminOrdersParams {
@@ -30,6 +36,7 @@ export interface GetAdminOrdersParams {
   dateTo?: string
   page?: number
   limit?: number
+  offlinePaymentOnly?: boolean
 }
 
 export interface AdminOrdersResponse {
@@ -49,6 +56,10 @@ export async function getAdminOrdersList(
 
   try {
     const conditions: string[] = []
+
+    if (params.offlinePaymentOnly) {
+      conditions.push(`(o.payment_type = 'manual_payment' OR o.manual_payment_data IS NOT NULL)`)
+    }
 
     if (params.search && params.search.trim()) {
       const q = params.search.trim().replace(/'/g, "''")
@@ -114,6 +125,7 @@ export async function getAdminOrdersList(
         o.shipping_address as "shippingAddress",
         o.shipping_method as "shippingMethod",
         o.courier_tracking_code as "courierTrackingCode",
+        o.manual_payment_data as "manualPaymentData",
         o.viewed,
         o.created_at as "createdAt",
         COALESCE(COUNT(oi.id), 0)::int as "productCount",
@@ -141,6 +153,17 @@ export async function getAdminOrdersList(
         shipAddr = r.shippingAddress
       }
 
+      let manualData: any = null
+      if (typeof r.manualPaymentData === "string") {
+        try {
+          manualData = JSON.parse(r.manualPaymentData)
+        } catch {
+          manualData = null
+        }
+      } else if (r.manualPaymentData && typeof r.manualPaymentData === "object") {
+        manualData = r.manualPaymentData
+      }
+
       const customerName = shipAddr.name || r.customerName || "Customer"
 
       return {
@@ -162,6 +185,7 @@ export async function getAdminOrdersList(
         shippingMethod: r.shippingMethod || null,
         courierTrackingCode: r.courierTrackingCode || null,
         hasRefund: false,
+        manualPaymentData: manualData,
       }
     })
 
@@ -208,6 +232,24 @@ export async function updateOrderQuickManagement(
     return true
   } catch (error) {
     console.error("Error updating order quick management:", error)
+    return false
+  }
+}
+
+export async function approveOfflinePayment(orderId: number): Promise<boolean> {
+  try {
+    await db
+      .update(orders)
+      .set({
+        paymentStatus: "paid",
+        deliveryStatus: "confirmed",
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId))
+
+    return true
+  } catch (error) {
+    console.error("Error approving offline payment:", error)
     return false
   }
 }

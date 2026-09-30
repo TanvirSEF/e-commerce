@@ -639,6 +639,213 @@ async function runSetup() {
       console.log("[OK] Canonical Orders & Order Items seeded")
     }
 
+    // 13. Seed Canonical Refund Reasons & Requests
+    const existingReasonsCount = await db.select({ val: count() }).from(schema.refundReasons)
+    if (Number(existingReasonsCount[0]?.val || 0) === 0) {
+      const canonicalReasons = [
+        "Damaged or defective item received",
+        "Item does not match description or specifications",
+        "Wrong item or wrong variation delivered",
+        "Item arrived significantly later than promised",
+        "Quality not as expected / Missing accessories",
+        "Customer changed mind / No longer needed",
+      ]
+      for (const r of canonicalReasons) {
+        await db.insert(schema.refundReasons).values({
+          reason: r,
+          type: "customer_refund_reason",
+          status: true,
+        })
+      }
+      console.log("[OK] Canonical Refund Reasons seeded")
+    }
+
+    const existingRefundsCount = await db.select({ val: count() }).from(schema.refundRequests)
+    if (Number(existingRefundsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.refundRequests).values([
+        {
+          orderId: 1,
+          orderCode: "ORD-942851",
+          userId: "usr_customer_default_01",
+          userName: "Tanvir Ahmed",
+          shopId: 1,
+          shopName: "Active Fashion Outlet",
+          productName: "Classic Men's Casual Shirt - Slim Fit 100% Pure Cotton",
+          amount: "1250.00",
+          reason: "Damaged or defective item received",
+          details: "The collar button and seams arrived torn on unboxing. Requesting refund to wallet.",
+          attachment: "/assets/img/placeholder.jpg",
+          status: "pending",
+        },
+        {
+          orderId: 4,
+          orderCode: "ORD-915420",
+          userId: "usr_customer_default_01",
+          userName: "Tanvir Ahmed",
+          shopId: 2,
+          shopName: "Gadget Hub BD",
+          productName: "Mechanical Gaming Keyboard RGB Backlit with Blue Switches",
+          amount: "2200.00",
+          reason: "Item does not match description or specifications",
+          details: "Received red switches instead of blue switches as advertised in product listing.",
+          status: "pending",
+        },
+        {
+          orderId: 2,
+          orderCode: "ORD-938210",
+          userId: "usr_customer_default_01",
+          userName: "Rashidul Islam",
+          shopId: 4,
+          shopName: "Home Essentials",
+          productName: "Philips Rice Cooker 0.6L Compact Non-Stick Inner Pot",
+          amount: "3450.00",
+          reason: "Wrong item or wrong variation delivered",
+          details: "Ordered 1.8L model but received 0.6L compact model.",
+          attachment: "/assets/img/placeholder.jpg",
+          status: "approved",
+          adminNote: "Approved and full amount refunded to customer wallet balance.",
+        },
+        {
+          orderId: 5,
+          orderCode: "ORD-902184",
+          userId: "usr_customer_default_01",
+          userName: "Tanvir Ahmed",
+          shopId: 3,
+          shopName: "Inhouse Products",
+          productName: "Multi-Pocket Travel Backpack with USB Charging Port Waterproof",
+          amount: "1350.00",
+          reason: "Customer changed mind / No longer needed",
+          details: "Buyer changed mind after tag was removed.",
+          status: "rejected",
+          adminNote: "Rejected: Return policy does not allow returns with removed security tags.",
+        },
+      ])
+      console.log("[OK] Canonical Refund Requests seeded")
+    }
+
+    // 14. Seed Canonical Pre-Order Products
+    const existingPreordersCount = await db.select({ val: count() }).from(schema.preorderProducts)
+    if (Number(existingPreordersCount[0]?.val || 0) === 0) {
+      await db.insert(schema.preorderProducts).values([
+        {
+          name: "PlayStation 5 Pro 2TB Edition",
+          slug: "playstation-5-pro-2tb-edition",
+          sku: "PS5-PRO-2TB",
+          thumbnail: "/assets/img/placeholder.jpg",
+          price: "799.00",
+          prepaymentAmount: "159.80",
+          releaseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          preorderBatchLimit: 150,
+          currentPreorders: 84,
+          sellerSlug: "inhouse",
+          status: true,
+          featured: true,
+          categoryName: "Gaming Consoles",
+          unit: "Pc",
+          minQty: 1,
+          isRefundable: true,
+          discount: "0.00",
+          discountType: "percent",
+          isAvailable: false,
+          availableDate: "25-10-2026",
+          finalOrders: 12,
+        },
+        {
+          name: "Apple Vision Pro (2nd Generation)",
+          slug: "apple-vision-pro-2nd-gen",
+          sku: "AVP-2026-M4",
+          thumbnail: "/assets/img/placeholder-rect.jpg",
+          price: "3499.00",
+          prepaymentAmount: "700.00",
+          releaseDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+          preorderBatchLimit: 50,
+          currentPreorders: 39,
+          sellerSlug: "gadget-hub",
+          status: true,
+          featured: true,
+          categoryName: "Virtual Reality & AI",
+          unit: "Pc",
+          minQty: 1,
+          isRefundable: true,
+          discount: "5.00",
+          discountType: "percent",
+          isAvailable: false,
+          availableDate: "09-11-2026",
+          finalOrders: 5,
+        },
+        {
+          name: "Sony Alpha A9 III Global Shutter Camera",
+          slug: "sony-alpha-a9-iii-camera",
+          sku: "SONY-A9M3-BODY",
+          thumbnail: "/assets/img/placeholder.jpg",
+          price: "5999.00",
+          prepaymentAmount: "1200.00",
+          releaseDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+          preorderBatchLimit: 30,
+          currentPreorders: 18,
+          sellerSlug: "inhouse",
+          status: true,
+          featured: false,
+          categoryName: "Cameras & Optics",
+          unit: "Pc",
+          minQty: 1,
+          isRefundable: true,
+          discount: "200.00",
+          discountType: "flat",
+          isAvailable: true,
+          availableDate: "15-10-2026",
+          finalOrders: 8,
+        },
+        {
+          name: "DJI Mavic 4 Pro Cinema Drone 8K",
+          slug: "dji-mavic-4-pro-cinema",
+          sku: "DJI-M4P-8K",
+          thumbnail: "/assets/img/placeholder.jpg",
+          price: "2499.00",
+          prepaymentAmount: "500.00",
+          releaseDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+          preorderBatchLimit: 40,
+          currentPreorders: 22,
+          sellerSlug: "gadget-hub",
+          status: false,
+          featured: false,
+          categoryName: "Drones & Aerial",
+          unit: "Pc",
+          minQty: 1,
+          isRefundable: false,
+          discount: "10.00",
+          discountType: "percent",
+          isAvailable: false,
+          availableDate: "15-12-2026",
+          finalOrders: 0,
+        },
+        {
+          name: "Steam Deck OLED 1TB White Limited Edition",
+          slug: "steam-deck-oled-1tb-white",
+          sku: "SD-OLED-1TB-WHT",
+          thumbnail: "/assets/img/placeholder.jpg",
+          price: "649.00",
+          prepaymentAmount: "130.00",
+          releaseDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+          preorderBatchLimit: 100,
+          currentPreorders: 65,
+          sellerSlug: "inhouse",
+          status: true,
+          featured: true,
+          categoryName: "Gaming Consoles",
+          unit: "Pc",
+          minQty: 1,
+          isRefundable: true,
+          discount: "0.00",
+          discountType: "percent",
+          isAvailable: true,
+          availableDate: "05-10-2026",
+          finalOrders: 40,
+        },
+      ])
+      console.log("[OK] Canonical Pre-Order Products seeded")
+    }
+
     console.log("==================================================")
     console.log("[OK] Installation completed")
     console.log("==================================================")

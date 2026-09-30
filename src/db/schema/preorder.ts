@@ -22,6 +22,15 @@ export const preorderProducts = pgTable("preorder_products", {
   sellerSlug: varchar("seller_slug", { length: 100 }).default("inhouse"),
   status: boolean("status").default(true).notNull(),
   featured: boolean("featured").default(false).notNull(),
+  categoryName: varchar("category_name", { length: 150 }).default("Consumer Electronics"),
+  unit: varchar("unit", { length: 50 }).default("Pc"),
+  minQty: integer("min_qty").default(1).notNull(),
+  isRefundable: boolean("is_refundable").default(true).notNull(),
+  discount: numeric("discount", { precision: 10, scale: 2 }).default("0.00"),
+  discountType: varchar("discount_type", { length: 20 }).default("percent"),
+  isAvailable: boolean("is_available").default(false).notNull(),
+  availableDate: varchar("available_date", { length: 50 }),
+  finalOrders: integer("final_orders").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 

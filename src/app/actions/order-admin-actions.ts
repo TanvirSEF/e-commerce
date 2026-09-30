@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import {
   getAdminOrdersList,
   updateOrderQuickManagement,
+  approveOfflinePayment,
   deleteAdminOrder,
   bulkDeleteAdminOrders,
   type GetAdminOrdersParams,
@@ -23,6 +24,18 @@ export async function updateOrderQuickManagementAction(
   const success = await updateOrderQuickManagement(orderId, data)
   if (success) {
     revalidatePath("/admin/orders")
+    revalidatePath("/admin/orders/offline-payments")
+    revalidatePath("/admin/offline-payment-orders")
+  }
+  return success
+}
+
+export async function approveOfflinePaymentAction(orderId: number): Promise<boolean> {
+  const success = await approveOfflinePayment(orderId)
+  if (success) {
+    revalidatePath("/admin/orders")
+    revalidatePath("/admin/orders/offline-payments")
+    revalidatePath("/admin/offline-payment-orders")
   }
   return success
 }
@@ -31,6 +44,8 @@ export async function deleteAdminOrderAction(orderId: number): Promise<boolean> 
   const success = await deleteAdminOrder(orderId)
   if (success) {
     revalidatePath("/admin/orders")
+    revalidatePath("/admin/orders/offline-payments")
+    revalidatePath("/admin/offline-payment-orders")
   }
   return success
 }
@@ -39,6 +54,8 @@ export async function bulkDeleteAdminOrdersAction(orderIds: number[]): Promise<b
   const success = await bulkDeleteAdminOrders(orderIds)
   if (success) {
     revalidatePath("/admin/orders")
+    revalidatePath("/admin/orders/offline-payments")
+    revalidatePath("/admin/offline-payment-orders")
   }
   return success
 }

@@ -1,293 +1,260 @@
 "use client"
 
-import React, { useState } from "react"
-import Link from "next/link"
-import {
-  RotateCcw,
-  Search,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Eye,
-  Check,
-  X,
-  AlertCircle,
-  ExternalLink,
-} from "lucide-react"
-import { formatPrice } from "@/lib/utils"
-import { processRefundAction } from "@/app/actions/ecommerce-actions"
-import type { RefundRequestItem } from "@/services/refund-service"
+import React, { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { RefundRequestsHeader } from "./refund-requests-header"
+import { RefundRequestsFilterBar } from "./refund-requests-filter-bar"
+import { RefundRequestsTable } from "./refund-requests-table"
 import { RefundDetailModal } from "./refund-detail-modal"
+import { RefundPayModal } from "./refund-pay-modal"
+import { RefundRejectModal } from "./refund-reject-modal"
+import { RefundDeleteModal } from "./refund-delete-modal"
+import {
+  approveRefundAction,
+  rejectRefundAction,
+  deleteRefundAction,
+} from "@/app/actions/refund-actions"
+import type { RefundRequestItem } from "@/services/refund-service"
 
 interface RefundRequestsAdminViewProps {
-  initialRefunds: RefundRequestItem[]
+  initialItems: RefundRequestItem[]
+  stats: {
+    total: number
+    pending: number
+    approved: number
+    rejected: number
+    totalAmount: number
+  }
+  presetReasons: string[]
+  initialPage: number
+  initialTotalPages: number
+  initialTotal: number
+  initialLimit: number
 }
 
 export function RefundRequestsAdminView({
-  initialRefunds,
+  initialItems,
+  stats: initialStats,
+  presetReasons,
+  initialPage,
+  initialTotalPages,
+  initialTotal,
+  initialLimit,
 }: RefundRequestsAdminViewProps) {
-  const [refunds, setRefunds] = useState<RefundRequestItem[]>(initialRefunds)
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  // State
+  const [items, setItems] = useState<RefundRequestItem[]>(initialItems)
+  const [stats, setStats] = useState(initialStats)
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [selectedRefund, setSelectedRefund] = useState<RefundRequestItem | null>(null)
-  const [actionType, setActionType] = useState<"approve" | "reject" | null>(null)
-  const [adminNote, setAdminNote] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [page, setPage] = useState(initialPage)
+
+  // Active Modals
+  const [inspectItem, setInspectItem] = useState<RefundRequestItem | null>(null)
+  const [approveItem, setApproveItem] = useState<RefundRequestItem | null>(null)
+  const [rejectItem, setRejectItem] = useState<RefundRequestItem | null>(null)
+  const [deleteItem, setDeleteItem] = useState<RefundRequestItem | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const filtered = refunds.filter((r) => {
-    const matchesSearch =
-      r.orderCode.toLowerCase().includes(search.toLowerCase()) ||
-      r.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      r.productName.toLowerCase().includes(search.toLowerCase()) ||
-      r.reason.toLowerCase().includes(search.toLowerCase())
-
-    if (!matchesSearch) return false
-    if (statusFilter !== "all" && r.status !== statusFilter) return false
+  // Filter items on client for immediate responsiveness
+  const filtered = items.filter((item) => {
+    if (statusFilter !== "all" && item.status !== statusFilter) {
+      return false
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      const matchOrder = item.orderCode.toLowerCase().includes(q)
+      const matchCustomer = item.customerName.toLowerCase().includes(q)
+      const matchProduct = item.productName.toLowerCase().includes(q)
+      const matchReason = item.reason.toLowerCase().includes(q)
+      const matchShop = item.shopName.toLowerCase().includes(q)
+      if (!matchOrder && !matchCustomer && !matchProduct && !matchReason && !matchShop) {
+        return false
+      }
+    }
     return true
   })
 
-  const pendingCount = refunds.filter((r) => r.status === "pending").length
-  const approvedCount = refunds.filter((r) => r.status === "approved").length
-  const rejectedCount = refunds.filter((r) => r.status === "rejected").length
+  // Pagination calculation
+  const limit = initialLimit || 15
+  const totalFiltered = filtered.length
+  const totalPages = Math.ceil(totalFiltered / limit) || 1
+  const paginatedItems = filtered.slice((page - 1) * limit, page * limit)
 
-  const handleProcessAction = async () => {
-    if (!selectedRefund || !actionType) return
+  const handleSearchChange = (val: string) => {
+    setSearch(val)
+    setPage(1)
+  }
 
+  const handleStatusChange = (newStatus: string) => {
+    setStatusFilter(newStatus)
+    setPage(1)
+  }
+
+  // Action: Approve & Pay
+  const handleConfirmPay = async (refundId: string, adminNote: string) => {
     setIsProcessing(true)
     try {
-      const newStatus = actionType === "approve" ? "approved" : "rejected"
-      await processRefundAction({
-        requestId: selectedRefund.id,
-        status: newStatus,
-        adminNote: adminNote.trim() || undefined,
-      })
-
-      setRefunds((prev) =>
-        prev.map((r) =>
-          r.id === selectedRefund.id
-            ? { ...r, status: newStatus, adminNote: adminNote.trim() || r.adminNote }
-            : r
+      const res = await approveRefundAction({ requestId: refundId, adminNote })
+      if (res.success) {
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === refundId
+              ? {
+                  ...it,
+                  status: "approved",
+                  adminNote: adminNote || "Approved and refunded to customer wallet.",
+                }
+              : it
+          )
         )
-      )
-      setSelectedRefund(null)
-      setActionType(null)
-      setAdminNote("")
+        setStats((prev) => {
+          const approvedItem = items.find((i) => i.id === refundId)
+          const addedAmount = approvedItem ? approvedItem.amount : 0
+          return {
+            ...prev,
+            pending: Math.max(0, prev.pending - 1),
+            approved: prev.approved + 1,
+            totalAmount: prev.totalAmount + addedAmount,
+          }
+        })
+        setApproveItem(null)
+      }
     } finally {
       setIsProcessing(false)
+      startTransition(() => router.refresh())
+    }
+  }
+
+  // Action: Reject
+  const handleConfirmReject = async (
+    refundId: string,
+    rejectReason: string,
+    adminNote: string
+  ) => {
+    setIsProcessing(true)
+    try {
+      const res = await rejectRefundAction({
+        requestId: refundId,
+        rejectReason,
+        adminNote,
+      })
+      if (res.success) {
+        const fullNote = [rejectReason, adminNote].filter(Boolean).join(" - ")
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === refundId ? { ...it, status: "rejected", adminNote: fullNote } : it
+          )
+        )
+        setStats((prev) => ({
+          ...prev,
+          pending: Math.max(0, prev.pending - 1),
+          rejected: prev.rejected + 1,
+        }))
+        setRejectItem(null)
+      }
+    } finally {
+      setIsProcessing(false)
+      startTransition(() => router.refresh())
+    }
+  }
+
+  // Action: Delete
+  const handleConfirmDelete = async (refundId: string) => {
+    setIsProcessing(true)
+    try {
+      const res = await deleteRefundAction(refundId)
+      if (res.success) {
+        const deleted = items.find((i) => i.id === refundId)
+        setItems((prev) => prev.filter((it) => it.id !== refundId))
+        setStats((prev) => ({
+          ...prev,
+          total: Math.max(0, prev.total - 1),
+          pending:
+            deleted?.status === "pending" ? Math.max(0, prev.pending - 1) : prev.pending,
+          approved:
+            deleted?.status === "approved" ? Math.max(0, prev.approved - 1) : prev.approved,
+          rejected:
+            deleted?.status === "rejected" ? Math.max(0, prev.rejected - 1) : prev.rejected,
+          totalAmount:
+            deleted?.status === "approved"
+              ? Math.max(0, prev.totalAmount - (deleted.amount || 0))
+              : prev.totalAmount,
+        }))
+        setDeleteItem(null)
+      }
+    } finally {
+      setIsProcessing(false)
+      startTransition(() => router.refresh())
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Title Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <RotateCcw className="w-5 h-5 text-[#d43533]" />
-            Refund & Return Requests Desk
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Audit buyer return requests, inspect reasons, and issue wallet balances
-          </p>
-        </div>
-      </div>
+    <div className="space-y-5">
+      {/* 1. Header & KPI Cards */}
+      <RefundRequestsHeader stats={stats} />
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-          <div className="text-xs font-semibold text-slate-500 uppercase">Total Requests</div>
-          <div className="text-2xl font-black text-slate-800 mt-1">{refunds.length}</div>
-        </div>
-        <div className="bg-white border border-amber-200 rounded-lg p-4 shadow-sm">
-          <div className="text-xs font-semibold text-amber-600 uppercase">Pending Review</div>
-          <div className="text-2xl font-black text-amber-600 mt-1">{pendingCount}</div>
-        </div>
-        <div className="bg-white border border-emerald-200 rounded-lg p-4 shadow-sm">
-          <div className="text-xs font-semibold text-emerald-600 uppercase">Approved</div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">{approvedCount}</div>
-        </div>
-        <div className="bg-white border border-red-200 rounded-lg p-4 shadow-sm">
-          <div className="text-xs font-semibold text-red-600 uppercase">Rejected</div>
-          <div className="text-2xl font-black text-red-600 mt-1">{rejectedCount}</div>
-        </div>
-      </div>
-
-      {/* Main Table Card */}
+      {/* 2. Main Card with Active eCommerce Filter & Table */}
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-        {/* Table Filters Header */}
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setStatusFilter("all")}
-              className={`px-3 py-1.5 rounded text-xs font-semibold ${
-                statusFilter === "all"
-                  ? "bg-slate-800 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              All ({refunds.length})
-            </button>
-            <button
-              onClick={() => setStatusFilter("pending")}
-              className={`px-3 py-1.5 rounded text-xs font-semibold ${
-                statusFilter === "pending"
-                  ? "bg-amber-500 text-white"
-                  : "bg-amber-50 text-amber-700 hover:bg-amber-100"
-              }`}
-            >
-              Pending ({pendingCount})
-            </button>
-            <button
-              onClick={() => setStatusFilter("approved")}
-              className={`px-3 py-1.5 rounded text-xs font-semibold ${
-                statusFilter === "approved"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-              }`}
-            >
-              Approved ({approvedCount})
-            </button>
-          </div>
+        <RefundRequestsFilterBar
+          search={search}
+          statusFilter={statusFilter}
+          stats={stats}
+          onSearchChange={handleSearchChange}
+          onStatusChange={handleStatusChange}
+        />
 
-          <div className="relative w-full sm:w-72">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by order, buyer, product..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-xs pl-8 pr-3 py-1.5 border border-slate-200 rounded focus:border-[#d43533] focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Table Body */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200">
-              <tr>
-                <th className="px-5 py-3">#</th>
-                <th className="px-5 py-3">Order Code</th>
-                <th className="px-5 py-3">Customer</th>
-                <th className="px-5 py-3">Product Name</th>
-                <th className="px-5 py-3">Amount</th>
-                <th className="px-5 py-3">Reason</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-xs text-slate-400">
-                    No refund requests found.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50">
-                    <td className="px-5 py-3 text-slate-400 font-medium">{idx + 1}</td>
-                    <td className="px-5 py-3 font-bold text-[#d43533] whitespace-nowrap">
-                      {item.orderCode}
-                    </td>
-                    <td className="px-5 py-3 font-medium text-slate-900">
-                      {item.customerName}
-                    </td>
-                    <td className="px-5 py-3 max-w-[200px] truncate font-medium text-slate-800">
-                      {item.productName}
-                    </td>
-                    <td className="px-5 py-3 font-bold text-slate-900 whitespace-nowrap">
-                      {formatPrice(item.amount)}
-                    </td>
-                    <td className="px-5 py-3 max-w-[220px]">
-                      <div className="truncate font-semibold text-slate-700">{item.reason}</div>
-                      {item.details && (
-                        <div className="truncate text-[11px] text-slate-400 italic">
-                          {item.details}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          item.status === "approved"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : item.status === "rejected"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedRefund(item)
-                            setActionType(null)
-                          }}
-                          className="p-1.5 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-                          title="Inspect Request"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-
-                        {item.status === "pending" && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedRefund(item)
-                                setActionType("approve")
-                                setAdminNote("Approved and refunded to customer wallet.")
-                              }}
-                              className="p-1.5 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                              title="Approve Refund"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedRefund(item)
-                                setActionType("reject")
-                                setAdminNote("Product does not meet return policy criteria.")
-                              }}
-                              className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Reject Refund"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <RefundRequestsTable
+          items={paginatedItems}
+          page={page}
+          totalPages={totalPages}
+          total={totalFiltered}
+          limit={limit}
+          onPageChange={setPage}
+          onInspect={setInspectItem}
+          onApprove={setApproveItem}
+          onReject={setRejectItem}
+          onDelete={setDeleteItem}
+        />
       </div>
 
-      {/* Inspect & Approval Modal */}
+      {/* Modals */}
       <RefundDetailModal
-        refund={selectedRefund}
-        actionType={actionType}
-        adminNote={adminNote}
-        isProcessing={isProcessing}
-        onClose={() => {
-          setSelectedRefund(null)
-          setActionType(null)
-          setAdminNote("")
+        refund={inspectItem}
+        onClose={() => setInspectItem(null)}
+        onOpenApproveModal={(r) => {
+          setInspectItem(null)
+          setApproveItem(r)
         }}
-        onActionTypeChange={setActionType}
-        onAdminNoteChange={setAdminNote}
-        onProcessAction={handleProcessAction}
+        onOpenRejectModal={(r) => {
+          setInspectItem(null)
+          setRejectItem(r)
+        }}
+      />
+
+      <RefundPayModal
+        refund={approveItem}
+        isProcessing={isProcessing}
+        onClose={() => setApproveItem(null)}
+        onConfirmPay={handleConfirmPay}
+      />
+
+      <RefundRejectModal
+        refund={rejectItem}
+        reasons={presetReasons}
+        isProcessing={isProcessing}
+        onClose={() => setRejectItem(null)}
+        onConfirmReject={handleConfirmReject}
+      />
+
+      <RefundDeleteModal
+        refund={deleteItem}
+        isProcessing={isProcessing}
+        onClose={() => setDeleteItem(null)}
+        onConfirmDelete={handleConfirmDelete}
       />
     </div>
   )
 }
-

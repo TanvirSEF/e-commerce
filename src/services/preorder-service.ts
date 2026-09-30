@@ -5,7 +5,7 @@ import {
   type PreorderProduct,
   type PreorderOrder,
 } from "../db/schema"
-import { eq, desc } from "drizzle-orm"
+import { eq, desc, asc, ilike, or, and, sql, count, inArray } from "drizzle-orm"
 import { getSetting, updateSetting } from "./settings-service"
 
 export interface PreorderSettings {
@@ -33,12 +33,21 @@ export const SEED_PREORDER_PRODUCTS: PreorderProduct[] = [
     thumbnail: "/assets/img/placeholder.jpg",
     price: "799.00",
     prepaymentAmount: "159.80",
-    releaseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    releaseDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     preorderBatchLimit: 150,
     currentPreorders: 84,
     sellerSlug: "inhouse",
     status: true,
     featured: true,
+    categoryName: "Gaming Consoles",
+    unit: "Pc",
+    minQty: 1,
+    isRefundable: true,
+    discount: "0.00",
+    discountType: "percent",
+    isAvailable: false,
+    availableDate: "25-10-2026",
+    finalOrders: 12,
     createdAt: new Date(),
   },
   {
@@ -49,12 +58,21 @@ export const SEED_PREORDER_PRODUCTS: PreorderProduct[] = [
     thumbnail: "/assets/img/placeholder-rect.jpg",
     price: "3499.00",
     prepaymentAmount: "700.00",
-    releaseDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days from now
+    releaseDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
     preorderBatchLimit: 50,
     currentPreorders: 39,
     sellerSlug: "gadget-hub",
     status: true,
     featured: true,
+    categoryName: "Virtual Reality & AI",
+    unit: "Pc",
+    minQty: 1,
+    isRefundable: true,
+    discount: "5.00",
+    discountType: "percent",
+    isAvailable: false,
+    availableDate: "09-11-2026",
+    finalOrders: 5,
     createdAt: new Date(),
   },
   {
@@ -65,12 +83,21 @@ export const SEED_PREORDER_PRODUCTS: PreorderProduct[] = [
     thumbnail: "/assets/img/placeholder.jpg",
     price: "5999.00",
     prepaymentAmount: "1200.00",
-    releaseDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000), // 20 days from now
+    releaseDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
     preorderBatchLimit: 30,
     currentPreorders: 18,
     sellerSlug: "inhouse",
     status: true,
     featured: false,
+    categoryName: "Cameras & Optics",
+    unit: "Pc",
+    minQty: 1,
+    isRefundable: true,
+    discount: "200.00",
+    discountType: "flat",
+    isAvailable: true,
+    availableDate: "15-10-2026",
+    finalOrders: 8,
     createdAt: new Date(),
   },
 ]
@@ -90,43 +117,165 @@ export const SEED_PREORDER_ORDERS: PreorderOrder[] = [
     preorderStatus: "deposit_paid",
     createdAt: new Date(),
   },
-  {
-    id: 2,
-    orderCode: "PO-2026-8813",
-    customerName: "Sarah Jenkins",
-    customerEmail: "sarah.j@example.com",
-    productId: 2,
-    productName: "Apple Vision Pro (2nd Generation)",
-    quantity: 1,
-    totalPrice: "3499.00",
-    prepaymentPaid: "700.00",
-    remainingDue: "2799.00",
-    preorderStatus: "final_payment_pending",
-    createdAt: new Date(),
-  },
 ]
 
-let inMemoryProducts: PreorderProduct[] = [...SEED_PREORDER_PRODUCTS]
-let inMemoryOrders: PreorderOrder[] = [...SEED_PREORDER_ORDERS]
+export interface PreorderProductListResult {
+  products: PreorderProduct[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  counts: {
+    all: number
+    inHouse: number
+    seller: number
+    published: number
+    unpublished: number
+    discounted: number
+  }
+}
 
 export async function getAllPreorderProducts(): Promise<PreorderProduct[]> {
   try {
-    const rows = await db.select().from(preorderProducts).orderBy(desc(preorderProducts.createdAt))
-    if (rows && rows.length > 0) return rows
+    return await db.select().from(preorderProducts).orderBy(desc(preorderProducts.createdAt))
   } catch (err) {
-    console.warn("getAllPreorderProducts fallback:", (err as Error).message)
+    console.error("getAllPreorderProducts error:", err)
+    return []
   }
-  return inMemoryProducts
+}
+
+export async function getPreorderProductsAdmin(params?: {
+  userType?: string
+  statusFilter?: string
+  sort?: string
+  search?: string
+  page?: number
+  limit?: number
+}): Promise<PreorderProductListResult> {
+  const page = Math.max(1, params?.page || 1)
+  const limit = Math.max(1, Math.min(100, params?.limit || 15))
+  const offset = (page - 1) * limit
+  const userType = params?.userType || "all"
+  const statusFilter = params?.statusFilter || "all"
+  const sort = params?.sort || ""
+  const search = params?.search?.trim() || ""
+
+  try {
+    const conditions = []
+
+    // 1. User type filter
+    if (userType === "in_house") {
+      conditions.push(eq(preorderProducts.sellerSlug, "inhouse"))
+    } else if (userType === "seller") {
+      conditions.push(sql`${preorderProducts.sellerSlug} != 'inhouse'`)
+    }
+
+    // 2. Status filter
+    if (statusFilter === "published") {
+      conditions.push(eq(preorderProducts.status, true))
+    } else if (statusFilter === "unpublished") {
+      conditions.push(eq(preorderProducts.status, false))
+    } else if (statusFilter === "discounted") {
+      conditions.push(sql`${preorderProducts.discount}::numeric > 0`)
+    }
+
+    // 3. Search query
+    if (search) {
+      conditions.push(
+        or(
+          ilike(preorderProducts.name, `%${search}%`),
+          ilike(preorderProducts.sku, `%${search}%`),
+          ilike(preorderProducts.categoryName, `%${search}%`)
+        )
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    // Sorting order
+    let orderByClause = desc(preorderProducts.createdAt)
+    if (sort === "unit_price,desc") {
+      orderByClause = desc(sql`${preorderProducts.price}::numeric`)
+    } else if (sort === "unit_price,asc") {
+      orderByClause = asc(sql`${preorderProducts.price}::numeric`)
+    }
+
+    // Fetch items
+    const rows = await db
+      .select()
+      .from(preorderProducts)
+      .where(whereClause)
+      .orderBy(orderByClause)
+      .limit(limit)
+      .offset(offset)
+
+    // Total filtered count
+    const [countRow] = await db
+      .select({ count: count() })
+      .from(preorderProducts)
+      .where(whereClause)
+
+    const total = Number(countRow?.count || 0)
+    const totalPages = Math.ceil(total / limit) || 1
+
+    // Global counts for filter badges (Active eCommerce 1:1)
+    const [countsRow] = await db
+      .select({
+        all: count(),
+        inHouse: sql<number>`count(case when ${preorderProducts.sellerSlug} = 'inhouse' then 1 end)`,
+        seller: sql<number>`count(case when ${preorderProducts.sellerSlug} != 'inhouse' then 1 end)`,
+        published: sql<number>`count(case when ${preorderProducts.status} = true then 1 end)`,
+        unpublished: sql<number>`count(case when ${preorderProducts.status} = false then 1 end)`,
+        discounted: sql<number>`count(case when ${preorderProducts.discount}::numeric > 0 then 1 end)`,
+      })
+      .from(preorderProducts)
+
+    return {
+      products: rows,
+      total,
+      page,
+      limit,
+      totalPages,
+      counts: {
+        all: Number(countsRow?.all || 0),
+        inHouse: Number(countsRow?.inHouse || 0),
+        seller: Number(countsRow?.seller || 0),
+        published: Number(countsRow?.published || 0),
+        unpublished: Number(countsRow?.unpublished || 0),
+        discounted: Number(countsRow?.discounted || 0),
+      },
+    }
+  } catch (err) {
+    console.error("getPreorderProductsAdmin error:", err)
+    return {
+      products: [],
+      total: 0,
+      page: 1,
+      limit,
+      totalPages: 1,
+      counts: { all: 0, inHouse: 0, seller: 0, published: 0, unpublished: 0, discounted: 0 },
+    }
+  }
 }
 
 export async function getPreorderProductBySlug(slug: string): Promise<PreorderProduct | null> {
   try {
     const [row] = await db.select().from(preorderProducts).where(eq(preorderProducts.slug, slug)).limit(1)
-    if (row) return row
+    return row || null
   } catch (err) {
-    console.warn("getPreorderProductBySlug fallback:", (err as Error).message)
+    console.error("getPreorderProductBySlug error:", err)
+    return null
   }
-  return inMemoryProducts.find((p) => p.slug === slug) || null
+}
+
+export async function getPreorderProductById(id: number): Promise<PreorderProduct | null> {
+  try {
+    const [row] = await db.select().from(preorderProducts).where(eq(preorderProducts.id, id)).limit(1)
+    return row || null
+  } catch (err) {
+    console.error("getPreorderProductById error:", err)
+    return null
+  }
 }
 
 export async function createPreorderProduct(data: {
@@ -137,33 +286,48 @@ export async function createPreorderProduct(data: {
   preorderBatchLimit: number
   sku?: string
   sellerSlug?: string
-}): Promise<PreorderProduct> {
-  const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")
-  const newProduct: PreorderProduct = {
-    id: inMemoryProducts.length + 1,
-    name: data.name,
-    slug,
-    sku: data.sku || `PO-${Date.now().toString().slice(-6)}`,
-    thumbnail: "/assets/img/placeholder.jpg",
-    price: data.price,
-    prepaymentAmount: data.prepaymentAmount,
-    releaseDate: data.releaseDate,
-    preorderBatchLimit: data.preorderBatchLimit,
-    currentPreorders: 0,
-    sellerSlug: data.sellerSlug || "inhouse",
-    status: true,
-    featured: false,
-    createdAt: new Date(),
-  }
-
+  categoryName?: string
+  unit?: string
+  minQty?: number
+  isRefundable?: boolean
+  discount?: string
+  discountType?: string
+  isAvailable?: boolean
+  availableDate?: string
+}): Promise<PreorderProduct | null> {
   try {
-    const [inserted] = await db.insert(preorderProducts).values(newProduct).returning()
-    if (inserted) return inserted
+    const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "")
+    const [inserted] = await db
+      .insert(preorderProducts)
+      .values({
+        name: data.name,
+        slug,
+        sku: data.sku || `PO-${Date.now().toString().slice(-6)}`,
+        thumbnail: "/assets/img/placeholder.jpg",
+        price: data.price,
+        prepaymentAmount: data.prepaymentAmount,
+        releaseDate: data.releaseDate,
+        preorderBatchLimit: data.preorderBatchLimit,
+        currentPreorders: 0,
+        sellerSlug: data.sellerSlug || "inhouse",
+        status: true,
+        featured: false,
+        categoryName: data.categoryName || "Consumer Electronics",
+        unit: data.unit || "Pc",
+        minQty: data.minQty || 1,
+        isRefundable: data.isRefundable ?? true,
+        discount: data.discount || "0.00",
+        discountType: data.discountType || "percent",
+        isAvailable: data.isAvailable ?? false,
+        availableDate: data.availableDate || null,
+        finalOrders: 0,
+      })
+      .returning()
+    return inserted || null
   } catch (err) {
-    console.warn("createPreorderProduct fallback:", (err as Error).message)
+    console.error("createPreorderProduct error:", err)
+    return null
   }
-  inMemoryProducts.unshift(newProduct)
-  return newProduct
 }
 
 export async function togglePreorderPublished(id: number, status: boolean): Promise<boolean> {
@@ -171,10 +335,9 @@ export async function togglePreorderPublished(id: number, status: boolean): Prom
     await db.update(preorderProducts).set({ status }).where(eq(preorderProducts.id, id))
     return true
   } catch (err) {
-    console.warn("togglePreorderPublished fallback:", (err as Error).message)
+    console.error("togglePreorderPublished error:", err)
+    return false
   }
-  inMemoryProducts = inMemoryProducts.map((p) => (p.id === id ? { ...p, status } : p))
-  return true
 }
 
 export async function togglePreorderFeatured(id: number, featured: boolean): Promise<boolean> {
@@ -182,30 +345,43 @@ export async function togglePreorderFeatured(id: number, featured: boolean): Pro
     await db.update(preorderProducts).set({ featured }).where(eq(preorderProducts.id, id))
     return true
   } catch (err) {
-    console.warn("togglePreorderFeatured fallback:", (err as Error).message)
+    console.error("togglePreorderFeatured error:", err)
+    return false
   }
-  inMemoryProducts = inMemoryProducts.map((p) => (p.id === id ? { ...p, featured } : p))
-  return true
+}
+
+export async function deletePreorderProduct(id: number): Promise<boolean> {
+  try {
+    await db.delete(preorderProducts).where(eq(preorderProducts.id, id))
+    return true
+  } catch (err) {
+    console.error("deletePreorderProduct error:", err)
+    return false
+  }
+}
+
+export async function bulkDeletePreorderProducts(ids: number[]): Promise<boolean> {
+  if (!ids || ids.length === 0) return true
+  try {
+    await db.delete(preorderProducts).where(inArray(preorderProducts.id, ids))
+    return true
+  } catch (err) {
+    console.error("bulkDeletePreorderProducts error:", err)
+    return false
+  }
 }
 
 export async function getAllPreorderOrders(tab?: string): Promise<PreorderOrder[]> {
   try {
     const rows = await db.select().from(preorderOrders).orderBy(desc(preorderOrders.createdAt))
-    if (rows && rows.length > 0) {
-      if (tab && tab !== "all") {
-        return rows.filter((o) => o.preorderStatus === tab)
-      }
-      return rows
+    if (tab && tab !== "all") {
+      return rows.filter((o) => o.preorderStatus === tab)
     }
+    return rows
   } catch (err) {
-    console.warn("getAllPreorderOrders fallback:", (err as Error).message)
+    console.error("getAllPreorderOrders error:", err)
+    return []
   }
-
-  let list = inMemoryOrders
-  if (tab && tab !== "all") {
-    list = list.filter((o) => o.preorderStatus === tab)
-  }
-  return list
 }
 
 export async function createPreorderOrder(data: {
@@ -218,33 +394,38 @@ export async function createPreorderOrder(data: {
   prepaymentPaid: string
   remainingDue: string
 }) {
-  const code = `PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
-  const order: PreorderOrder = {
-    id: inMemoryOrders.length + 1,
-    orderCode: code,
-    customerName: data.customerName,
-    customerEmail: data.customerEmail,
-    productId: data.productId,
-    productName: data.productName,
-    quantity: data.quantity,
-    totalPrice: data.totalPrice,
-    prepaymentPaid: data.prepaymentPaid,
-    remainingDue: data.remainingDue,
-    preorderStatus: "deposit_paid",
-    createdAt: new Date(),
-  }
-
   try {
-    await db.insert(preorderOrders).values(order)
-  } catch (err) {
-    console.warn("createPreorderOrder fallback:", (err as Error).message)
-  }
+    const code = `PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
+    const [inserted] = await db
+      .insert(preorderOrders)
+      .values({
+        orderCode: code,
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        productId: data.productId,
+        productName: data.productName,
+        quantity: data.quantity,
+        totalPrice: data.totalPrice,
+        prepaymentPaid: data.prepaymentPaid,
+        remainingDue: data.remainingDue,
+        preorderStatus: "deposit_paid",
+      })
+      .returning()
 
-  inMemoryOrders.unshift(order)
-  inMemoryProducts = inMemoryProducts.map((p) =>
-    p.id === data.productId ? { ...p, currentPreorders: p.currentPreorders + data.quantity } : p
-  )
-  return { success: true, orderCode: code }
+    if (inserted) {
+      await db
+        .update(preorderProducts)
+        .set({
+          currentPreorders: sql`${preorderProducts.currentPreorders} + ${data.quantity}`,
+        })
+        .where(eq(preorderProducts.id, data.productId))
+    }
+
+    return { success: true, orderCode: code }
+  } catch (err) {
+    console.error("createPreorderOrder error:", err)
+    return { success: false, error: (err as Error).message }
+  }
 }
 
 export async function updatePreorderOrderStatus(id: number, status: string): Promise<boolean> {
@@ -252,10 +433,9 @@ export async function updatePreorderOrderStatus(id: number, status: string): Pro
     await db.update(preorderOrders).set({ preorderStatus: status }).where(eq(preorderOrders.id, id))
     return true
   } catch (err) {
-    console.warn("updatePreorderOrderStatus fallback:", (err as Error).message)
+    console.error("updatePreorderOrderStatus error:", err)
+    return false
   }
-  inMemoryOrders = inMemoryOrders.map((o) => (o.id === id ? { ...o, preorderStatus: status } : o))
-  return true
 }
 
 export async function getPreorderSettings(): Promise<PreorderSettings> {
@@ -263,14 +443,19 @@ export async function getPreorderSettings(): Promise<PreorderSettings> {
     const raw = await getSetting("preorder_settings")
     if (raw) return { ...DEFAULT_PREORDER_SETTINGS, ...JSON.parse(raw) }
   } catch (err) {
-    console.warn("getPreorderSettings fallback:", (err as Error).message)
+    console.error("getPreorderSettings error:", err)
   }
   return DEFAULT_PREORDER_SETTINGS
 }
 
 export async function updatePreorderSettings(data: Partial<PreorderSettings>) {
-  const current = await getPreorderSettings()
-  const updated = { ...current, ...data }
-  await updateSetting("preorder_settings", JSON.stringify(updated))
-  return { success: true, updated }
+  try {
+    const current = await getPreorderSettings()
+    const updated = { ...current, ...data }
+    await updateSetting("preorder_settings", JSON.stringify(updated))
+    return { success: true, updated }
+  } catch (err) {
+    console.error("updatePreorderSettings error:", err)
+    return { success: false, error: (err as Error).message }
+  }
 }

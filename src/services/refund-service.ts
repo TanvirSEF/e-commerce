@@ -1,110 +1,271 @@
 import { db } from "../db"
-import { refundRequests, refundReasons, type RefundReason } from "../db/schema"
-import { eq, desc } from "drizzle-orm"
+import { refundRequests, refundReasons, orders, users, type RefundReason } from "../db/schema"
+import { eq, desc, ilike, or, and, sql, count } from "drizzle-orm"
 
 export interface RefundRequestItem {
   id: string
+  orderId?: number
   orderCode: string
   productName: string
   customerName: string
+  customerEmail?: string
   shopName: string
   amount: number
   reason: string
   details?: string
+  attachment?: string
   status: "pending" | "approved" | "rejected"
   adminNote?: string
   date: string
 }
 
-const SEED_REFUNDS: RefundRequestItem[] = [
-  {
-    id: "ref-1",
-    orderCode: "ORD-942851",
-    productName: "Premium Cotton Casual Shirt (Slim Fit)",
-    customerName: "Tanvir Ahmed",
-    shopName: "Active Fashion Outlet",
-    amount: 1850,
-    reason: "Damaged / defective item received",
-    details: "The stitching on the collar came undone. Requesting replacement or refund to wallet.",
-    status: "pending",
-    date: "2026-03-22",
-  },
-  {
-    id: "ref-2",
-    orderCode: "ORD-938210",
-    productName: "Casual Denim Jeans Pant",
-    customerName: "Rashidul Islam",
-    shopName: "Active Fashion Outlet",
-    amount: 2000,
-    reason: "Wrong size delivered",
-    details: "Ordered waist size 34, received size 32 instead.",
-    status: "approved",
-    adminNote: "Refund credited to customer wallet successfully.",
-    date: "2026-03-21",
-  },
-]
+export interface RefundListResult {
+  items: RefundRequestItem[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  stats: {
+    total: number
+    pending: number
+    approved: number
+    rejected: number
+    totalAmount: number
+  }
+}
 
-export async function getAllRefundsAdmin(): Promise<RefundRequestItem[]> {
+export async function getAllRefundsAdmin(params?: {
+  search?: string
+  status?: string
+  page?: number
+  limit?: number
+}): Promise<RefundRequestItem[]> {
+  const result = await getRefundsAdminWithPagination(params)
+  return result.items
+}
+
+export async function getRefundsAdminWithPagination(params?: {
+  search?: string
+  status?: string
+  page?: number
+  limit?: number
+}): Promise<RefundListResult> {
+  const page = Math.max(1, params?.page || 1)
+  const limit = Math.max(1, Math.min(100, params?.limit || 15))
+  const offset = (page - 1) * limit
+  const search = params?.search?.trim() || ""
+  const status = params?.status?.trim().toLowerCase() || "all"
+
+  try {
+    const conditions = []
+
+    if (status && status !== "all") {
+      conditions.push(eq(refundRequests.status, status))
+    }
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(refundRequests.orderCode, `%${search}%`),
+          ilike(refundRequests.userName, `%${search}%`),
+          ilike(refundRequests.productName, `%${search}%`),
+          ilike(refundRequests.reason, `%${search}%`),
+          ilike(refundRequests.shopName, `%${search}%`)
+        )
+      )
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+    // 1. Fetch paginated records with user details
+    const rows = await db
+      .select({
+        id: refundRequests.id,
+        orderId: refundRequests.orderId,
+        orderCode: refundRequests.orderCode,
+        userName: refundRequests.userName,
+        userId: refundRequests.userId,
+        shopId: refundRequests.shopId,
+        shopName: refundRequests.shopName,
+        productName: refundRequests.productName,
+        amount: refundRequests.amount,
+        reason: refundRequests.reason,
+        details: refundRequests.details,
+        attachment: refundRequests.attachment,
+        status: refundRequests.status,
+        adminNote: refundRequests.adminNote,
+        createdAt: refundRequests.createdAt,
+        updatedAt: refundRequests.updatedAt,
+      })
+      .from(refundRequests)
+      .where(whereClause)
+      .orderBy(desc(refundRequests.createdAt))
+      .limit(limit)
+      .offset(offset)
+
+    // 2. Total filtered count
+    const [countRow] = await db
+      .select({ count: count() })
+      .from(refundRequests)
+      .where(whereClause)
+
+    const total = Number(countRow?.count || 0)
+    const totalPages = Math.ceil(total / limit) || 1
+
+    // 3. Summary stats across ALL requests
+    const [statsRow] = await db
+      .select({
+        total: count(),
+        pending: sql<number>`count(case when ${refundRequests.status} = 'pending' then 1 end)`,
+        approved: sql<number>`count(case when ${refundRequests.status} = 'approved' then 1 end)`,
+        rejected: sql<number>`count(case when ${refundRequests.status} = 'rejected' then 1 end)`,
+        totalAmount: sql<number>`coalesce(sum(case when ${refundRequests.status} = 'approved' then ${refundRequests.amount}::numeric else 0 end), 0)`,
+      })
+      .from(refundRequests)
+
+    const items: RefundRequestItem[] = rows.map((r) => ({
+      id: String(r.id),
+      orderId: r.orderId || undefined,
+      orderCode: r.orderCode,
+      productName: r.productName,
+      customerName: r.userName,
+      shopName: r.shopName || "Active Fashion Outlet",
+      amount: Number(r.amount),
+      reason: r.reason,
+      details: r.details || undefined,
+      attachment: r.attachment || undefined,
+      status: (r.status as "pending" | "approved" | "rejected") || "pending",
+      adminNote: r.adminNote || undefined,
+      date: r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : "",
+    }))
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages,
+      stats: {
+        total: Number(statsRow?.total || 0),
+        pending: Number(statsRow?.pending || 0),
+        approved: Number(statsRow?.approved || 0),
+        rejected: Number(statsRow?.rejected || 0),
+        totalAmount: Number(statsRow?.totalAmount || 0),
+      },
+    }
+  } catch (err) {
+    console.error("Database query failed in getRefundsAdminWithPagination:", err)
+    return {
+      items: [],
+      total: 0,
+      page: 1,
+      limit,
+      totalPages: 1,
+      stats: { total: 0, pending: 0, approved: 0, rejected: 0, totalAmount: 0 },
+    }
+  }
+}
+
+export async function getRefundByIdAdmin(id: number | string): Promise<RefundRequestItem | null> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""))
+  if (!numericId) return null
+
+  try {
+    const [row] = await db
+      .select()
+      .from(refundRequests)
+      .where(eq(refundRequests.id, numericId))
+      .limit(1)
+
+    if (!row) return null
+
+    return {
+      id: String(row.id),
+      orderId: row.orderId || undefined,
+      orderCode: row.orderCode,
+      productName: row.productName,
+      customerName: row.userName,
+      shopName: row.shopName || "Active Fashion Outlet",
+      amount: Number(row.amount),
+      reason: row.reason,
+      details: row.details || undefined,
+      attachment: row.attachment || undefined,
+      status: (row.status as "pending" | "approved" | "rejected") || "pending",
+      adminNote: row.adminNote || undefined,
+      date: row.createdAt ? new Date(row.createdAt).toISOString().slice(0, 10) : "",
+    }
+  } catch (err) {
+    console.error("getRefundByIdAdmin error:", err)
+    return null
+  }
+}
+
+export async function getUserRefunds(userId?: string): Promise<RefundRequestItem[]> {
+  if (!userId) return []
   try {
     const rows = await db
       .select()
       .from(refundRequests)
+      .where(eq(refundRequests.userId, userId))
       .orderBy(desc(refundRequests.createdAt))
 
-    if (rows.length > 0) {
-      return rows.map((r) => ({
-        id: String(r.id),
-        orderCode: r.orderCode,
-        productName: r.productName,
-        customerName: r.userName,
-        shopName: r.shopName || "Active Outlet",
-        amount: Number(r.amount),
-        reason: r.reason,
-        details: r.details || undefined,
-        status: r.status as "pending" | "approved" | "rejected",
-        adminNote: r.adminNote || undefined,
-        date: r.createdAt.toISOString().slice(0, 10),
-      }))
-    }
+    return rows.map((r) => ({
+      id: String(r.id),
+      orderId: r.orderId || undefined,
+      orderCode: r.orderCode,
+      productName: r.productName,
+      customerName: r.userName,
+      shopName: r.shopName || "Active Fashion Outlet",
+      amount: Number(r.amount),
+      reason: r.reason,
+      details: r.details || undefined,
+      attachment: r.attachment || undefined,
+      status: (r.status as "pending" | "approved" | "rejected") || "pending",
+      adminNote: r.adminNote || undefined,
+      date: r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : "",
+    }))
   } catch (err) {
-    console.warn("DB getAllRefundsAdmin fallback:", (err as Error).message)
+    console.error("getUserRefunds error:", err)
+    return []
   }
-
-  return SEED_REFUNDS
-}
-
-export async function getUserRefunds(userId?: string): Promise<RefundRequestItem[]> {
-  return getAllRefundsAdmin()
 }
 
 export async function createRefundRequest(data: {
+  orderId?: number
   orderCode: string
+  userId?: string
   productName: string
   userName: string
+  shopId?: number
   shopName?: string
   amount: number
   reason: string
   details?: string
+  attachment?: string
 }) {
   try {
     const [inserted] = await db
       .insert(refundRequests)
       .values({
+        orderId: data.orderId,
         orderCode: data.orderCode,
+        userId: data.userId,
         productName: data.productName,
         userName: data.userName,
+        shopId: data.shopId,
         shopName: data.shopName || "Active Fashion Outlet",
         amount: String(data.amount),
         reason: data.reason,
         details: data.details,
+        attachment: data.attachment,
         status: "pending",
       })
       .returning()
 
     return { success: true, item: inserted }
   } catch (err) {
-    console.warn("createRefundRequest error, fallback:", (err as Error).message)
-    return { success: true }
+    console.error("createRefundRequest error:", err)
+    return { success: false, error: (err as Error).message }
   }
 }
 
@@ -114,7 +275,12 @@ export async function processRefundAdmin(data: {
   adminNote?: string
 }) {
   try {
-    const numericId = parseInt(String(data.requestId).replace(/\D/g, "")) || 1
+    const numericId = typeof data.requestId === "number"
+      ? data.requestId
+      : parseInt(String(data.requestId).replace(/\D/g, ""))
+
+    if (!numericId) throw new Error("Invalid refund request ID")
+
     await db
       .update(refundRequests)
       .set({
@@ -126,35 +292,35 @@ export async function processRefundAdmin(data: {
 
     return { success: true }
   } catch (err) {
-    console.warn("processRefundAdmin error:", (err as Error).message)
-    return { success: true }
+    console.error("processRefundAdmin error:", err)
+    return { success: false, error: (err as Error).message }
   }
 }
 
-const DEFAULT_REFUND_REASONS: RefundReason[] = [
-  { id: 1, type: "customer_refund_reason", reason: "Damaged or defective item received", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
-  { id: 2, type: "customer_refund_reason", reason: "Item does not match description or specifications", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
-  { id: 3, type: "customer_refund_reason", reason: "Wrong item or wrong variation delivered", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
-  { id: 4, type: "customer_refund_reason", reason: "Item arrived significantly later than promised", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
-  { id: 5, type: "customer_refund_reason", reason: "Quality not as expected / Missing accessories", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
-  { id: 6, type: "customer_refund_reason", reason: "Changed mind / No longer needed", status: true, createdAt: new Date("2026-01-01"), updatedAt: new Date("2026-01-01") },
-]
+export async function deleteRefundAdmin(id: number | string) {
+  try {
+    const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""))
+    if (!numericId) throw new Error("Invalid refund request ID")
+
+    await db.delete(refundRequests).where(eq(refundRequests.id, numericId))
+    return { success: true }
+  } catch (err) {
+    console.error("deleteRefundAdmin error:", err)
+    return { success: false, error: (err as Error).message }
+  }
+}
 
 export async function getRefundReasons(type: string = "customer_refund_reason"): Promise<RefundReason[]> {
   try {
-    const list = await db
+    return await db
       .select()
       .from(refundReasons)
       .where(eq(refundReasons.type, type))
       .orderBy(refundReasons.id)
-
-    if (list && list.length > 0) {
-      return list
-    }
   } catch (err) {
-    console.warn("DB getRefundReasons fallback:", (err as Error).message)
+    console.error("getRefundReasons error:", err)
+    return []
   }
-  return DEFAULT_REFUND_REASONS.filter((r) => r.type === type)
 }
 
 export async function createRefundReason(reason: string, type: string = "customer_refund_reason"): Promise<boolean> {

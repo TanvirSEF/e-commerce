@@ -1,190 +1,309 @@
 "use client"
 
-import React, { useState } from "react"
-import Link from "next/link"
+import React, { useState, useTransition } from "react"
+import { OrdersFilterBar } from "@/app/admin/orders/_components/orders-filter-bar"
+import { OrdersPagination } from "@/app/admin/orders/_components/orders-pagination"
+import { QuickOrderManageModal } from "@/app/admin/orders/_components/quick-order-manage-modal"
+import { OrderDeleteModal } from "@/app/admin/orders/_components/order-delete-modal"
+import { exportOrdersToCsv } from "@/app/admin/orders/_components/orders-export-utils"
+import { OfflinePaymentsTable } from "./offline-payments-table"
+import { OfflinePaymentDetailsModal } from "./offline-payment-details-modal"
 import {
-  CreditCard,
-  Search,
-  Check,
-  X,
-  ExternalLink,
-  Eye,
-  CheckCircle,
-  Clock,
-} from "lucide-react"
-import { formatPrice } from "@/lib/utils"
-import { updateOrderStatusAction } from "@/app/actions/ecommerce-actions"
-import type { OfflinePaymentOrderRow } from "@/services/order-service"
+  AdminOrderListItem,
+  AdminOrdersResponse,
+} from "@/services/admin-orders-service"
+import {
+  fetchAdminOrdersAction,
+  updateOrderQuickManagementAction,
+  approveOfflinePaymentAction,
+  deleteAdminOrderAction,
+  bulkDeleteAdminOrdersAction,
+} from "@/app/actions/order-admin-actions"
 
 interface OfflinePaymentsAdminViewProps {
-  initialOrders: OfflinePaymentOrderRow[]
+  initialData: AdminOrdersResponse
 }
 
-export function OfflinePaymentsAdminView({
-  initialOrders,
-}: OfflinePaymentsAdminViewProps) {
-  const [orders, setOrders] = useState<OfflinePaymentOrderRow[]>(initialOrders)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedOrder, setSelectedOrder] =
-    useState<OfflinePaymentOrderRow | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
+export function OfflinePaymentsAdminView({ initialData }: OfflinePaymentsAdminViewProps) {
+  const [isPending, startTransition] = useTransition()
 
-  const handleApprove = async (order: OfflinePaymentOrderRow) => {
-    setIsProcessing(true)
-    try {
-      await updateOrderStatusAction({
-        orderId: order.id,
-        paymentStatus: "paid",
-        deliveryStatus: "confirmed",
+  // State
+  const [data, setData] = useState<AdminOrdersResponse>(initialData)
+  const [tab, setTab] = useState<"all" | "inhouse" | "seller">("all")
+  const [search, setSearch] = useState("")
+  const [deliveryStatuses, setDeliveryStatuses] = useState<string[]>([])
+  const [paymentStatus, setPaymentStatus] = useState("")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+
+  // Modal states
+  const [paymentDetailOrder, setPaymentDetailOrder] = useState<AdminOrderListItem | null>(null)
+  const [quickManageOrder, setQuickManageOrder] = useState<AdminOrderListItem | null>(null)
+  const [deleteTargetOrder, setDeleteTargetOrder] = useState<AdminOrderListItem | null>(null)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+
+  // Refetch helper
+  const reloadData = (overrides: Record<string, any> = {}) => {
+    startTransition(async () => {
+      const res = await fetchAdminOrdersAction({
+        offlinePaymentOnly: true,
+        tab: overrides.tab !== undefined ? overrides.tab : tab,
+        search: overrides.search !== undefined ? overrides.search : search,
+        deliveryStatuses:
+          overrides.deliveryStatuses !== undefined ? overrides.deliveryStatuses : deliveryStatuses,
+        paymentStatus:
+          overrides.paymentStatus !== undefined ? overrides.paymentStatus : paymentStatus,
+        dateFrom: overrides.dateFrom !== undefined ? overrides.dateFrom : dateFrom,
+        dateTo: overrides.dateTo !== undefined ? overrides.dateTo : dateTo,
+        page: overrides.page !== undefined ? overrides.page : data.currentPage,
+        limit: 15,
       })
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === order.id ? { ...o, paymentStatus: "paid" } : o
-        )
-      )
-      setSelectedOrder(null)
-    } finally {
-      setIsProcessing(false)
+      setData(res)
+    })
+  }
+
+  const handleTabChange = (newTab: "all" | "inhouse" | "seller") => {
+    setTab(newTab)
+    reloadData({ tab: newTab, page: 1 })
+  }
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val)
+    reloadData({ search: val, page: 1 })
+  }
+
+  const handleDeliveryStatusChange = (statuses: string[]) => {
+    setDeliveryStatuses(statuses)
+    reloadData({ deliveryStatuses: statuses, page: 1 })
+  }
+
+  const handlePaymentStatusChange = (status: string) => {
+    setPaymentStatus(status)
+    reloadData({ paymentStatus: status, page: 1 })
+  }
+
+  const handleDateRangeChange = (from: string, to: string) => {
+    setDateFrom(from)
+    setDateTo(to)
+    reloadData({ dateFrom: from, dateTo: to, page: 1 })
+  }
+
+  const handlePageChange = (newPage: number) => {
+    reloadData({ page: newPage })
+  }
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
+  const handleToggleSelectAll = () => {
+    if (data.orders.every((o) => selectedIds.includes(o.id))) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(data.orders.map((o) => o.id))
     }
   }
 
-  const filtered = orders.filter(
-    (o) =>
-      o.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.trxId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.senderNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Quick Order Save
+  const handleSaveQuickManage = async (
+    orderId: number,
+    updateData: { deliveryStatus: string; paymentStatus: string }
+  ) => {
+    const success = await updateOrderQuickManagementAction(orderId, updateData)
+    if (success) {
+      setData((prev) => ({
+        ...prev,
+        orders: prev.orders.map((o) =>
+          o.id === orderId
+            ? { ...o, deliveryStatus: updateData.deliveryStatus, paymentStatus: updateData.paymentStatus }
+            : o
+        ),
+      }))
+    }
+  }
 
-  const pendingCount = orders.filter((o) => o.paymentStatus === "unpaid").length
-  const approvedCount = orders.filter((o) => o.paymentStatus === "paid").length
+  // Approve Offline Payment
+  const handleApprovePayment = async (orderId: number) => {
+    const success = await approveOfflinePaymentAction(orderId)
+    if (success) {
+      setData((prev) => ({
+        ...prev,
+        orders: prev.orders.map((o) =>
+          o.id === orderId ? { ...o, paymentStatus: "paid", deliveryStatus: "confirmed" } : o
+        ),
+      }))
+    }
+  }
+
+  // Single Delete
+  const handleConfirmSingleDelete = async () => {
+    if (!deleteTargetOrder) return
+    const success = await deleteAdminOrderAction(deleteTargetOrder.id)
+    if (success) {
+      setData((prev) => ({
+        ...prev,
+        orders: prev.orders.filter((o) => o.id !== deleteTargetOrder.id),
+        totalCount: Math.max(0, prev.totalCount - 1),
+      }))
+      setSelectedIds((prev) => prev.filter((id) => id !== deleteTargetOrder.id))
+    }
+  }
+
+  // Bulk Delete
+  const handleConfirmBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    const success = await bulkDeleteAdminOrdersAction(selectedIds)
+    if (success) {
+      setData((prev) => ({
+        ...prev,
+        orders: prev.orders.filter((o) => !selectedIds.includes(o.id)),
+        totalCount: Math.max(0, prev.totalCount - selectedIds.length),
+      }))
+      setSelectedIds([])
+    }
+  }
+
+  // Bulk Print/Download
+  const getSelectedCodes = () => {
+    const list = selectedIds.length > 0
+      ? data.orders.filter((o) => selectedIds.includes(o.id)).map((o) => o.code)
+      : data.orders.map((o) => o.code)
+    return list.join(",")
+  }
+
+  const handleBulkPrint = (route: string) => {
+    const codes = getSelectedCodes()
+    window.open(`/admin/orders/${route}?ids=${codes}&print=1`, "_blank")
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">Offline & Manual Payment Desk</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Audit customer bank deposits, bKash/Nagad TrxIDs, and approve payments
-          </p>
-        </div>
+    <div className="space-y-4">
+      {/* Titlebar matching Laravel aiz-titlebar */}
+      <div className="pb-1">
+        <h1 className="text-xl font-bold text-slate-800">Offline Payment Orders</h1>
       </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs text-slate-500 font-medium">Pending Verification</div>
-            <div className="text-xl font-bold text-slate-800">{pendingCount}</div>
-          </div>
+      {/* Main Card Container */}
+      <div className="bg-white border border-slate-200 rounded-sm shadow-xs overflow-hidden">
+        {/* Nav Tabs */}
+        <div className="border-b border-slate-200 px-4 pt-3 flex items-center gap-6">
+          <button
+            type="button"
+            onClick={() => handleTabChange("all")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors capitalize ${
+              tab === "all"
+                ? "border-[#d43533] text-[#d43533]"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("inhouse")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors capitalize ${
+              tab === "inhouse"
+                ? "border-[#d43533] text-[#d43533]"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Inhouse
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("seller")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors capitalize ${
+              tab === "seller"
+                ? "border-[#d43533] text-[#d43533]"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Seller
+          </button>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <CheckCircle className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs text-slate-500 font-medium">Approved Offline Payments</div>
-            <div className="text-xl font-bold text-slate-800">{approvedCount}</div>
-          </div>
-        </div>
-      </div>
+        {/* Filter Bar */}
+        <OrdersFilterBar
+          search={search}
+          onSearchChange={handleSearchChange}
+          deliveryStatuses={deliveryStatuses}
+          onDeliveryStatusChange={handleDeliveryStatusChange}
+          paymentStatus={paymentStatus}
+          onPaymentStatusChange={handlePaymentStatusChange}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateRangeChange={handleDateRangeChange}
+          selectedCount={selectedIds.length}
+          onBulkExport={() => exportOrdersToCsv(selectedIds.length > 0 ? data.orders.filter(o => selectedIds.includes(o.id)) : data.orders)}
+          onBulkDownloadShippingLabel={() => handleBulkPrint("bulk-shipping-label-print")}
+          onBulkPrintShippingLabel={() => handleBulkPrint("bulk-shipping-label-print")}
+          onBulkDownloadInvoice={() => handleBulkPrint("bulk-invoice-print")}
+          onBulkPrintInvoice={() => handleBulkPrint("bulk-invoice-print")}
+          onBulkDelete={() => {
+            if (selectedIds.length === 0) return
+            setIsBulkDeleteOpen(true)
+          }}
+        />
 
-      {/* Search Bar */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by order code, TrxID, sender number..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
+        {/* Orders Table */}
+        <div className={isPending ? "opacity-60 pointer-events-none transition-opacity" : ""}>
+          <OfflinePaymentsTable
+            orders={data.orders}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
+            onViewPaymentDetails={(order) => setPaymentDetailOrder(order)}
+            onQuickManage={(order) => setQuickManageOrder(order)}
+            onDeleteSingle={(order) => setDeleteTargetOrder(order)}
           />
         </div>
+
+        {/* Pagination Footer */}
+        <OrdersPagination
+          currentPage={data.currentPage}
+          totalPages={data.totalPages}
+          totalCount={data.totalCount}
+          perPage={data.perPage}
+          currentCount={data.orders.length}
+          onPageChange={handlePageChange}
+        />
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-semibold text-[11px] tracking-wider">
-                <th className="py-3 px-4">#</th>
-                <th className="py-3 px-4">Order Code</th>
-                <th className="py-3 px-4">Customer</th>
-                <th className="py-3 px-4">Payment Method</th>
-                <th className="py-3 px-4">TrxID / Ref</th>
-                <th className="py-3 px-4">Sender Details</th>
-                <th className="py-3 px-4 text-right">Amount</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 text-slate-500 font-medium">{idx + 1}</td>
-                  <td className="py-3.5 px-4">
-                    <Link
-                      href={`/admin/orders/${item.id}`}
-                      className="font-mono font-bold text-[#d43533] hover:underline"
-                    >
-                      {item.code}
-                    </Link>
-                    <div className="text-[10px] text-slate-400">{item.date}</div>
-                  </td>
-                  <td className="py-3.5 px-4 font-semibold text-slate-800">
-                    {item.customerName}
-                    <div className="text-[11px] text-slate-500">{item.customerPhone}</div>
-                  </td>
-                  <td className="py-3.5 px-4 font-medium text-slate-700">
-                    {item.method}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900 bg-slate-50 px-2 rounded">
-                    {item.trxId}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono text-slate-600">
-                    {item.senderNumber}
-                  </td>
-                  <td className="py-3.5 px-4 text-right font-bold text-slate-900">
-                    {formatPrice(item.amount)}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase ${
-                        item.paymentStatus === "paid"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}
-                    >
-                      {item.paymentStatus}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    {item.paymentStatus === "unpaid" ? (
-                      <button
-                        onClick={() => handleApprove(item)}
-                        disabled={isProcessing}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold text-[11px] inline-flex items-center gap-1 transition-colors"
-                      >
-                        <Check className="w-3 h-3" />
-                        Approve
-                      </button>
-                    ) : (
-                      <span className="text-[11px] text-slate-400 font-medium">Completed</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Payment Details Audit Modal */}
+      <OfflinePaymentDetailsModal
+        order={paymentDetailOrder}
+        isOpen={Boolean(paymentDetailOrder)}
+        onClose={() => setPaymentDetailOrder(null)}
+        onApprove={handleApprovePayment}
+      />
+
+      {/* Quick Order Manage Modal */}
+      <QuickOrderManageModal
+        order={quickManageOrder}
+        isOpen={Boolean(quickManageOrder)}
+        onClose={() => setQuickManageOrder(null)}
+        onSave={handleSaveQuickManage}
+      />
+
+      {/* Single Delete Modal */}
+      <OrderDeleteModal
+        isOpen={Boolean(deleteTargetOrder)}
+        isBulk={false}
+        onClose={() => setDeleteTargetOrder(null)}
+        onConfirm={handleConfirmSingleDelete}
+      />
+
+      {/* Bulk Delete Modal */}
+      <OrderDeleteModal
+        isOpen={isBulkDeleteOpen}
+        isBulk={true}
+        selectedCount={selectedIds.length}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={handleConfirmBulkDelete}
+      />
     </div>
   )
 }
