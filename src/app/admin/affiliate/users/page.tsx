@@ -2,6 +2,8 @@ import React from "react"
 import { getAllAffiliateUsers } from "@/services/affiliate-service"
 import { AdminAffiliateUsersView } from "./_components/admin-affiliate-users-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
   title: "Affiliate Partners & Users | Admin Panel",
 }

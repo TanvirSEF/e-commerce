@@ -9,11 +9,11 @@ import {
   type DeliveryPayout,
   type DeliveryCancelRequest,
 } from "@/db/schema/delivery-boy"
-import { desc, eq } from "drizzle-orm"
+import { businessSettings } from "@/db/schema/settings"
+import { desc, eq, inArray } from "drizzle-orm"
 
-export const SEED_DELIVERY_BOYS: DeliveryBoy[] = [
+export const SEED_DELIVERY_BOYS = [
   {
-    id: 1,
     name: "Tariqul Islam",
     email: "tariq.courier@example.com",
     phone: "+880 1711-892341",
@@ -24,208 +24,329 @@ export const SEED_DELIVERY_BOYS: DeliveryBoy[] = [
     totalEarnings: "640.00",
     totalCollection: "3480.00",
     currentPendingDeliveries: 4,
-    createdAt: new Date("2026-08-01T10:00:00Z"),
-  },
-  {
-    id: 2,
-    name: "Mohammad Fahim",
-    email: "fahim.speed@example.com",
-    phone: "+880 1822-771239",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
-    zoneId: 2,
-    zoneName: "Dhaka Metro South",
-    status: true,
-    totalEarnings: "890.50",
-    totalCollection: "5120.00",
-    currentPendingDeliveries: 7,
-    createdAt: new Date("2026-08-15T09:30:00Z"),
-  },
-  {
-    id: 3,
-    name: "Tanvir Rahman",
-    email: "tanvir.delivery@example.com",
-    phone: "+880 1933-445566",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80",
-    zoneId: 3,
-    zoneName: "Chittagong Central",
-    status: false,
-    totalEarnings: "120.00",
-    totalCollection: "680.00",
-    currentPendingDeliveries: 0,
-    createdAt: new Date("2026-09-01T14:15:00Z"),
   },
 ]
 
-export const SEED_DELIVERY_COLLECTIONS: DeliveryCollection[] = [
+export const SEED_DELIVERY_COLLECTIONS = [
   {
-    id: 1,
     deliveryBoyId: 1,
     deliveryBoyName: "Tariqul Islam",
     orderCode: "ORD-202609-1002",
     amount: "145.00",
-    collectionDate: new Date("2026-09-24T15:30:00Z"),
-  },
-  {
-    id: 2,
-    deliveryBoyId: 2,
-    deliveryBoyName: "Mohammad Fahim",
-    orderCode: "ORD-202609-1005",
-    amount: "320.00",
-    collectionDate: new Date("2026-09-25T11:20:00Z"),
-  },
-  {
-    id: 3,
-    deliveryBoyId: 1,
-    deliveryBoyName: "Tariqul Islam",
-    orderCode: "ORD-202609-1008",
-    amount: "89.00",
-    collectionDate: new Date("2026-09-25T16:45:00Z"),
   },
 ]
 
-export const SEED_DELIVERY_PAYOUTS: DeliveryPayout[] = [
+export const SEED_DELIVERY_PAYOUTS = [
   {
-    id: 1,
     deliveryBoyId: 1,
     deliveryBoyName: "Tariqul Islam",
     amount: "400.00",
     paymentMethod: "bKash Agent",
-    paymentDate: new Date("2026-09-20T12:00:00Z"),
-  },
-  {
-    id: 2,
-    deliveryBoyId: 2,
-    deliveryBoyName: "Mohammad Fahim",
-    amount: "600.00",
-    paymentMethod: "Bank Transfer",
-    paymentDate: new Date("2026-09-21T14:30:00Z"),
   },
 ]
 
-export const SEED_DELIVERY_CANCELS: DeliveryCancelRequest[] = [
+export const SEED_DELIVERY_CANCELS = [
   {
-    id: 1,
     deliveryBoyId: 1,
     deliveryBoyName: "Tariqul Islam",
     orderCode: "ORD-202609-0994",
     reason: "Recipient phone switched off for 3 consecutive delivery attempts at specified address.",
     status: "pending",
-    createdAt: new Date("2026-09-23T18:00:00Z"),
-  },
-  {
-    id: 2,
-    deliveryBoyId: 2,
-    deliveryBoyName: "Mohammad Fahim",
-    orderCode: "ORD-202609-0988",
-    reason: "Customer moved to another city before delivery window.",
-    status: "approved",
-    createdAt: new Date("2026-09-22T10:30:00Z"),
   },
 ]
 
 export const SEED_DELIVERY_CONFIG = {
-  commission_type: "fixed", // "fixed" or "percentage"
+  commission_type: "fixed",
   commission_value: "3.50",
   cash_collection_limit: "5000.00",
   cancel_request_verification: true,
 }
 
+// 1. Get all delivery boys
 export async function getAllDeliveryBoys(): Promise<DeliveryBoy[]> {
-  try {
-    return await db.select().from(deliveryBoys).orderBy(desc(deliveryBoys.createdAt))
-  } catch (err) {
-    console.warn("getAllDeliveryBoys fallback:", err instanceof Error ? err.message : String(err))
-    return SEED_DELIVERY_BOYS
-  }
+  return await db.select().from(deliveryBoys).orderBy(desc(deliveryBoys.createdAt))
 }
 
+// 2. Get delivery boy by ID
 export async function getDeliveryBoyById(id: number): Promise<DeliveryBoy | null> {
-  try {
-    const res = await db.select().from(deliveryBoys).where(eq(deliveryBoys.id, id))
-    return res[0] || SEED_DELIVERY_BOYS.find((b) => b.id === id) || null
-  } catch (err) {
-    console.warn("getDeliveryBoyById fallback:", err instanceof Error ? err.message : String(err))
-    return SEED_DELIVERY_BOYS.find((b) => b.id === id) || null
-  }
+  const rows = await db.select().from(deliveryBoys).where(eq(deliveryBoys.id, id))
+  return rows[0] || null
 }
 
+// 3. Create a new delivery boy
 export async function createDeliveryBoy(data: {
   name: string
   email: string
   phone: string
+  password?: string
   zoneId?: number
   zoneName?: string
+  city?: string
+  address?: string
+  monthlySalary?: string
+  commissionRate?: string
+  avatar?: string
 }): Promise<DeliveryBoy> {
-  const newBoy: DeliveryBoy = {
-    id: Date.now(),
-    name: data.name,
-    email: data.email,
-    phone: data.phone,
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
-    zoneId: data.zoneId || 1,
-    zoneName: data.zoneName || "Dhaka Metro North",
-    status: true,
-    totalEarnings: "0.00",
-    totalCollection: "0.00",
-    currentPendingDeliveries: 0,
-    createdAt: new Date(),
+  const [newBoy] = await db
+    .insert(deliveryBoys)
+    .values({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      avatar: data.avatar || "/assets/img/placeholder.jpg",
+      zoneId: data.zoneId || 1,
+      zoneName: data.zoneName || "Dhaka Metro North",
+      city: data.city || null,
+      address: data.address || null,
+      monthlySalary: data.monthlySalary || "0.00",
+      commissionRate: data.commissionRate || "0.00",
+      status: true,
+      totalEarnings: "0.00",
+      totalCollection: "0.00",
+      currentPendingDeliveries: 0,
+      createdAt: new Date(),
+    })
+    .returning()
+
+  // Optionally create user credential if password provided
+  if (data.password) {
+    try {
+      const { hashPassword } = await import("better-auth/crypto")
+      const passwordHash = await hashPassword(data.password)
+      const { users, accounts } = await import("@/db/schema/auth")
+
+      const userId = `usr_db_${newBoy.id}_${Date.now()}`
+      await db.insert(users).values({
+        id: userId,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        role: "delivery_boy",
+        createdAt: new Date(),
+      })
+
+      await db.insert(accounts).values({
+        id: `acc_db_${newBoy.id}`,
+        userId,
+        accountId: userId,
+        providerId: "credential",
+        password: passwordHash,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    } catch (e) {
+      console.warn("Notice: Delivery boy user credential generation skipped:", e)
+    }
   }
 
-  try {
-    await db.insert(deliveryBoys).values(newBoy)
-  } catch (err) {
-    console.warn("createDeliveryBoy fallback:", err instanceof Error ? err.message : String(err))
-    SEED_DELIVERY_BOYS.unshift(newBoy)
-  }
   return newBoy
 }
 
+// 4. Toggle delivery boy ban status
 export async function toggleDeliveryBoyBan(id: number): Promise<{ success: boolean }> {
-  try {
-    const boy = await getDeliveryBoyById(id)
-    if (boy) {
-      await db.update(deliveryBoys).set({ status: !boy.status }).where(eq(deliveryBoys.id, id))
-    }
-  } catch (err) {
-    console.warn("toggleDeliveryBoyBan fallback:", err instanceof Error ? err.message : String(err))
-    const item = SEED_DELIVERY_BOYS.find((b) => b.id === id)
-    if (item) item.status = !item.status
-  }
+  const boy = await getDeliveryBoyById(id)
+  if (!boy) throw new Error("Delivery personnel not found")
+  await db.update(deliveryBoys).set({ status: !boy.status }).where(eq(deliveryBoys.id, id))
   return { success: true }
 }
 
+// 5. Collect cash from delivery boy (collection-from-delivery-boy in Laravel)
+export async function collectCashFromDeliveryBoy(data: {
+  deliveryBoyId: number
+  amount: string
+  orderCode?: string
+  notes?: string
+}): Promise<{ success: boolean }> {
+  const boy = await getDeliveryBoyById(data.deliveryBoyId)
+  if (!boy) throw new Error("Delivery personnel not found")
+
+  const collectAmount = parseFloat(data.amount)
+  if (isNaN(collectAmount) || collectAmount <= 0) {
+    throw new Error("Invalid collection amount")
+  }
+
+  // Insert collection record
+  await db.insert(deliveryCollections).values({
+    deliveryBoyId: data.deliveryBoyId,
+    deliveryBoyName: boy.name,
+    orderCode: data.orderCode || `COL-${Date.now().toString().slice(-6)}`,
+    amount: collectAmount.toFixed(2),
+    collectionDate: new Date(),
+  })
+
+  // Deduct collection from courier
+  const currentCollection = parseFloat(boy.totalCollection || "0")
+  const newCollection = Math.max(0, currentCollection - collectAmount).toFixed(2)
+
+  await db
+    .update(deliveryBoys)
+    .set({ totalCollection: newCollection })
+    .where(eq(deliveryBoys.id, data.deliveryBoyId))
+
+  return { success: true }
+}
+
+// 6. Pay to delivery boy (paid-to-delivery-boy in Laravel)
+export async function payToDeliveryBoy(data: {
+  deliveryBoyId: number
+  amount: string
+  paymentMethod: string
+  txnCode?: string
+  notes?: string
+}): Promise<{ success: boolean }> {
+  const boy = await getDeliveryBoyById(data.deliveryBoyId)
+  if (!boy) throw new Error("Delivery personnel not found")
+
+  const payAmount = parseFloat(data.amount)
+  if (isNaN(payAmount) || payAmount <= 0) {
+    throw new Error("Invalid payment amount")
+  }
+
+  // Insert payout record
+  await db.insert(deliveryPayouts).values({
+    deliveryBoyId: data.deliveryBoyId,
+    deliveryBoyName: boy.name,
+    amount: payAmount.toFixed(2),
+    paymentMethod: data.paymentMethod || "Cash",
+    txnCode: data.txnCode || null,
+    notes: data.notes || null,
+    paymentDate: new Date(),
+  })
+
+  // Deduct earnings balance
+  const currentEarnings = parseFloat(boy.totalEarnings || "0")
+  const newEarnings = Math.max(0, currentEarnings - payAmount).toFixed(2)
+
+  await db
+    .update(deliveryBoys)
+    .set({ totalEarnings: newEarnings })
+    .where(eq(deliveryBoys.id, data.deliveryBoyId))
+
+  return { success: true }
+}
+
+// 7. Get all delivery collections
 export async function getAllDeliveryCollections(): Promise<DeliveryCollection[]> {
-  try {
-    return await db.select().from(deliveryCollections).orderBy(desc(deliveryCollections.collectionDate))
-  } catch (err) {
-    console.warn("getAllDeliveryCollections fallback:", err instanceof Error ? err.message : String(err))
-    return SEED_DELIVERY_COLLECTIONS
-  }
+  return await db.select().from(deliveryCollections).orderBy(desc(deliveryCollections.collectionDate))
 }
 
+// 8. Get all delivery payouts
 export async function getAllDeliveryPayouts(): Promise<DeliveryPayout[]> {
-  try {
-    return await db.select().from(deliveryPayouts).orderBy(desc(deliveryPayouts.paymentDate))
-  } catch (err) {
-    console.warn("getAllDeliveryPayouts fallback:", err instanceof Error ? err.message : String(err))
-    return SEED_DELIVERY_PAYOUTS
-  }
+  return await db.select().from(deliveryPayouts).orderBy(desc(deliveryPayouts.paymentDate))
 }
 
+// 9. Get all delivery cancel requests
 export async function getAllDeliveryCancelRequests(): Promise<DeliveryCancelRequest[]> {
-  try {
-    return await db.select().from(deliveryCancelRequests).orderBy(desc(deliveryCancelRequests.createdAt))
-  } catch (err) {
-    console.warn("getAllDeliveryCancelRequests fallback:", err instanceof Error ? err.message : String(err))
-    return SEED_DELIVERY_CANCELS
+  return await db.select().from(deliveryCancelRequests).orderBy(desc(deliveryCancelRequests.createdAt))
+}
+
+// 10. Update delivery cancel request status
+export async function updateDeliveryCancelRequestStatus(
+  id: number,
+  status: "approved" | "rejected"
+): Promise<{ success: boolean }> {
+  const rows = await db
+    .select()
+    .from(deliveryCancelRequests)
+    .where(eq(deliveryCancelRequests.id, id))
+  const req = rows[0]
+  if (!req) throw new Error("Cancellation request not found")
+
+  await db
+    .update(deliveryCancelRequests)
+    .set({ status })
+    .where(eq(deliveryCancelRequests.id, id))
+
+  // If approved, update order status if matching order exists
+  if (status === "approved" && req.orderCode) {
+    try {
+      const { orders } = await import("@/db/schema/orders")
+      await db
+        .update(orders)
+        .set({ deliveryStatus: "cancelled" })
+        .where(eq(orders.code, req.orderCode))
+    } catch (e) {
+      console.warn("Notice: Order status update skipped:", e)
+    }
+  }
+
+  return { success: true }
+}
+
+// 11. Get delivery boy configuration from business_settings
+export async function getDeliveryBoyConfig(): Promise<{
+  commission_type: string
+  commission_value: string
+  monthly_salary: string
+  cash_collection_limit: string
+  mail_notification: boolean
+  otp_notification: boolean
+}> {
+  const keys = [
+    "delivery_boy_payment_type",
+    "delivery_boy_commission",
+    "delivery_boy_monthly_salary",
+    "delivery_boy_cash_collection_limit",
+    "delivery_boy_mail_notification",
+    "delivery_boy_otp_notification",
+  ]
+
+  const rows = await db
+    .select()
+    .from(businessSettings)
+    .where(inArray(businessSettings.type, keys))
+
+  const settingsMap = new Map(rows.map((r) => [r.type, r.value]))
+
+  return {
+    commission_type: settingsMap.get("delivery_boy_payment_type") || "commission",
+    commission_value: settingsMap.get("delivery_boy_commission") || "3.50",
+    monthly_salary: settingsMap.get("delivery_boy_monthly_salary") || "15000.00",
+    cash_collection_limit: settingsMap.get("delivery_boy_cash_collection_limit") || "5000.00",
+    mail_notification: settingsMap.get("delivery_boy_mail_notification") !== "0",
+    otp_notification: settingsMap.get("delivery_boy_otp_notification") !== "0",
   }
 }
 
-export async function getDeliveryBoyConfig() {
-  return SEED_DELIVERY_CONFIG
-}
+// 12. Update delivery boy configuration in business_settings
+export async function updateDeliveryBoyConfig(data: {
+  commission_type?: string
+  commission_value?: string
+  monthly_salary?: string
+  cash_collection_limit?: string
+  mail_notification?: boolean
+  otp_notification?: boolean
+}): Promise<{ success: boolean }> {
+  const updates: Record<string, string> = {}
 
-export async function updateDeliveryBoyConfig(data: Partial<typeof SEED_DELIVERY_CONFIG>) {
-  Object.assign(SEED_DELIVERY_CONFIG, data)
+  if (data.commission_type !== undefined) {
+    updates["delivery_boy_payment_type"] = data.commission_type
+  }
+  if (data.commission_value !== undefined) {
+    updates["delivery_boy_commission"] = data.commission_value
+  }
+  if (data.monthly_salary !== undefined) {
+    updates["delivery_boy_monthly_salary"] = data.monthly_salary
+  }
+  if (data.cash_collection_limit !== undefined) {
+    updates["delivery_boy_cash_collection_limit"] = data.cash_collection_limit
+  }
+  if (data.mail_notification !== undefined) {
+    updates["delivery_boy_mail_notification"] = data.mail_notification ? "1" : "0"
+  }
+  if (data.otp_notification !== undefined) {
+    updates["delivery_boy_otp_notification"] = data.otp_notification ? "1" : "0"
+  }
+
+  for (const [type, value] of Object.entries(updates)) {
+    await db
+      .insert(businessSettings)
+      .values({ type, value })
+      .onConflictDoUpdate({
+        target: businessSettings.type,
+        set: { value },
+      })
+  }
+
   return { success: true }
 }

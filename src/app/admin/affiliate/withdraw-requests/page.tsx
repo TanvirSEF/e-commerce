@@ -2,6 +2,8 @@ import React from "react"
 import { getAllAffiliateWithdrawRequests } from "@/services/affiliate-service"
 import { AdminAffiliateWithdrawRequestsView } from "./_components/admin-affiliate-withdraw-requests-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
   title: "Affiliate Withdraw Requests | Admin Panel",
 }

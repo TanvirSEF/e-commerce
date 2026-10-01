@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useState } from "react"
-import { AlertTriangle, Search, CheckCircle, XCircle, Clock } from "lucide-react"
+import React, { useState, useTransition } from "react"
+import { AlertTriangle, Search, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react"
 import type { DeliveryCancelRequest } from "@/db/schema/delivery-boy"
+import { updateDeliveryCancelRequestStatusAction } from "@/app/actions/ecommerce-actions"
 
 interface AdminDeliveryBoyCancelsViewProps {
   requests: DeliveryCancelRequest[]
@@ -11,6 +12,8 @@ interface AdminDeliveryBoyCancelsViewProps {
 export function AdminDeliveryBoyCancelsView({ requests: initialRequests }: AdminDeliveryBoyCancelsViewProps) {
   const [requests, setRequests] = useState(initialRequests)
   const [search, setSearch] = useState("")
+  const [processingId, setProcessingId] = useState<number | null>(null)
+  const [isPending, startTransition] = useTransition()
 
   const filtered = requests.filter(
     (r) =>
@@ -18,10 +21,20 @@ export function AdminDeliveryBoyCancelsView({ requests: initialRequests }: Admin
       r.orderCode.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleAction = (id: number, status: string) => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status } : r))
-    )
+  const handleAction = (id: number, status: "approved" | "rejected") => {
+    setProcessingId(id)
+    startTransition(async () => {
+      try {
+        await updateDeliveryCancelRequestStatusAction(id, status)
+        setRequests((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, status } : r))
+        )
+      } catch (err) {
+        console.error("Failed to update cancel request status", err)
+      } finally {
+        setProcessingId(null)
+      }
+    })
   }
 
   return (
@@ -102,14 +115,17 @@ export function AdminDeliveryBoyCancelsView({ requests: initialRequests }: Admin
                       {r.status === "pending" ? (
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            disabled={processingId === r.id}
                             onClick={() => handleAction(r.id, "approved")}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-medium rounded transition-colors"
                           >
+                            {processingId === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                             Approve
                           </button>
                           <button
+                            disabled={processingId === r.id}
                             onClick={() => handleAction(r.id, "rejected")}
-                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-medium rounded"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-700 border border-rose-200 text-xs font-medium rounded transition-colors"
                           >
                             Reject
                           </button>

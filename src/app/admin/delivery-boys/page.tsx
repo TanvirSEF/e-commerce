@@ -2,6 +2,8 @@ import React from "react"
 import { getAllDeliveryBoys } from "@/services/delivery-boy-service"
 import { AdminDeliveryBoysView } from "./_components/admin-delivery-boys-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
   title: "Delivery Boys & Couriers | Admin Panel",
 }

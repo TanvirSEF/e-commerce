@@ -1442,41 +1442,112 @@ export async function placeAuctionBidAction(
 }
 
 // Affiliate Actions
-export async function updateAffiliateOptionAction(type: string, percentage: string, status: boolean) {
+export async function updateAffiliateOptionAction(
+  type: string,
+  percentage: string,
+  status: boolean,
+  details?: string
+) {
   const { updateAffiliateOption } = await import("@/services/affiliate-service")
-  return await updateAffiliateOption(type, percentage, status)
+  const res = await updateAffiliateOption(type, percentage, status, details)
+  revalidatePath("/admin/affiliate")
+  return res
+}
+
+export async function updateCategoryAffiliateRatesAction(
+  rates: Record<string, string>,
+  status: boolean
+) {
+  const { updateCategoryAffiliateRates } = await import("@/services/affiliate-service")
+  const res = await updateCategoryAffiliateRates(rates, status)
+  revalidatePath("/admin/affiliate")
+  return res
 }
 
 export async function updateAffiliateConfigsAction(configs: Record<string, string>) {
   const { updateAffiliateConfigs } = await import("@/services/affiliate-service")
-  return await updateAffiliateConfigs(configs)
+  const res = await updateAffiliateConfigs(configs)
+  revalidatePath("/admin/affiliate/configs")
+  return res
+}
+
+export async function updateAffiliateUserApprovalAction(id: number, approved: boolean) {
+  const { updateAffiliateUserApproval } = await import("@/services/affiliate-service")
+  const res = await updateAffiliateUserApproval(id, approved)
+  revalidatePath("/admin/affiliate/users")
+  return res
+}
+
+export async function toggleAffiliateUserStatusAction(id: number, status: boolean) {
+  const { toggleAffiliateUserStatus } = await import("@/services/affiliate-service")
+  const res = await toggleAffiliateUserStatus(id, status)
+  revalidatePath("/admin/affiliate/users")
+  return res
 }
 
 export async function approveAffiliateUserAction(id: number) {
   const { approveAffiliateUser } = await import("@/services/affiliate-service")
-  return await approveAffiliateUser(id)
+  const res = await approveAffiliateUser(id)
+  revalidatePath("/admin/affiliate/users")
+  return res
 }
 
 export async function rejectAffiliateUserAction(id: number) {
   const { rejectAffiliateUser } = await import("@/services/affiliate-service")
-  return await rejectAffiliateUser(id)
+  const res = await rejectAffiliateUser(id)
+  revalidatePath("/admin/affiliate/users")
+  return res
+}
+
+export async function payAffiliateUserAction(data: {
+  affiliateUserId: number
+  amount: string
+  paymentMethod: string
+  paymentDetails?: string
+  txnCode?: string
+}) {
+  const { payAffiliateUser } = await import("@/services/affiliate-service")
+  const res = await payAffiliateUser(data)
+  revalidatePath("/admin/affiliate/users")
+  revalidatePath("/admin/affiliate/withdraw-requests")
+  return res
+}
+
+export async function processWithdrawRequestPayoutAction(data: {
+  requestId: number
+  paymentMethod: string
+  paymentDetails?: string
+  txnCode?: string
+}) {
+  const { processWithdrawRequestPayout } = await import("@/services/affiliate-service")
+  const res = await processWithdrawRequestPayout(data)
+  revalidatePath("/admin/affiliate/withdraw-requests")
+  revalidatePath("/admin/affiliate/users")
+  return res
 }
 
 export async function approveWithdrawRequestAction(id: number) {
   const { approveWithdrawRequest } = await import("@/services/affiliate-service")
-  return await approveWithdrawRequest(id)
+  const res = await approveWithdrawRequest(id)
+  revalidatePath("/admin/affiliate/withdraw-requests")
+  revalidatePath("/admin/affiliate/users")
+  return res
 }
 
 export async function rejectWithdrawRequestAction(id: number) {
   const { rejectWithdrawRequest } = await import("@/services/affiliate-service")
-  return await rejectWithdrawRequest(id)
+  const res = await rejectWithdrawRequest(id)
+  revalidatePath("/admin/affiliate/withdraw-requests")
+  return res
 }
 
 export async function applyForAffiliateAction(data: {
   userName: string
   userEmail: string
+  phone?: string
   paypalEmail?: string
   bankInfo?: string
+  verificationInfo?: string
 }) {
   const { applyForAffiliate } = await import("@/services/affiliate-service")
   return await applyForAffiliate(data)
@@ -1487,21 +1558,77 @@ export async function createDeliveryBoyAction(data: {
   name: string
   email: string
   phone: string
+  password?: string
   zoneId?: number
   zoneName?: string
+  city?: string
+  address?: string
+  monthlySalary?: string
+  commissionRate?: string
+  avatar?: string
 }) {
   const { createDeliveryBoy } = await import("@/services/delivery-boy-service")
-  return await createDeliveryBoy(data)
+  const res = await createDeliveryBoy(data)
+  revalidatePath("/admin/delivery-boys")
+  return res
 }
 
 export async function toggleDeliveryBoyBanAction(id: number) {
   const { toggleDeliveryBoyBan } = await import("@/services/delivery-boy-service")
-  return await toggleDeliveryBoyBan(id)
+  const res = await toggleDeliveryBoyBan(id)
+  revalidatePath("/admin/delivery-boys")
+  return res
 }
 
-export async function updateDeliveryBoyConfigAction(data: any) {
+export async function collectCashFromDeliveryBoyAction(data: {
+  deliveryBoyId: number
+  amount: string
+  orderCode?: string
+  notes?: string
+}) {
+  const { collectCashFromDeliveryBoy } = await import("@/services/delivery-boy-service")
+  const res = await collectCashFromDeliveryBoy(data)
+  revalidatePath("/admin/delivery-boys")
+  revalidatePath("/admin/delivery-boys-collection-histories")
+  return res
+}
+
+export async function payToDeliveryBoyAction(data: {
+  deliveryBoyId: number
+  amount: string
+  paymentMethod: string
+  txnCode?: string
+  notes?: string
+}) {
+  const { payToDeliveryBoy } = await import("@/services/delivery-boy-service")
+  const res = await payToDeliveryBoy(data)
+  revalidatePath("/admin/delivery-boys")
+  revalidatePath("/admin/delivery-boys-payment-histories")
+  return res
+}
+
+export async function updateDeliveryBoyConfigAction(data: {
+  commission_type?: string
+  commission_value?: string
+  monthly_salary?: string
+  cash_collection_limit?: string
+  mail_notification?: boolean
+  otp_notification?: boolean
+}) {
   const { updateDeliveryBoyConfig } = await import("@/services/delivery-boy-service")
-  return await updateDeliveryBoyConfig(data)
+  const res = await updateDeliveryBoyConfig(data)
+  revalidatePath("/admin/delivery-boy-configuration")
+  return res
+}
+
+export async function updateDeliveryCancelRequestStatusAction(
+  id: number,
+  status: "approved" | "rejected"
+) {
+  const { updateDeliveryCancelRequestStatus } = await import("@/services/delivery-boy-service")
+  const res = await updateDeliveryCancelRequestStatus(id, status)
+  revalidatePath("/admin/delivery-boy/cancel-requests")
+  return res
 }
 
 // Order Placement Action (100% Laravel Faithful DB Persistence)

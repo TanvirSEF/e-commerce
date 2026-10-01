@@ -238,7 +238,7 @@ async function runExtendedSeed() {
       if (existing.length === 0) {
         await db.insert(schema.affiliateConfigs).values({
           type: key,
-          value: val,
+          value: String(val),
         })
       }
     }

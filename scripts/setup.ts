@@ -54,6 +54,145 @@ async function runSetup() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS affiliate_users (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(100),
+        user_name VARCHAR(150) NOT NULL,
+        user_email VARCHAR(150) NOT NULL,
+        phone VARCHAR(50),
+        paypal_email VARCHAR(150),
+        bank_info TEXT,
+        verification_info TEXT,
+        balance NUMERIC(10, 2) NOT NULL DEFAULT '0.00',
+        status BOOLEAN NOT NULL DEFAULT true,
+        approved BOOLEAN NOT NULL DEFAULT true,
+        referral_code VARCHAR(50) NOT NULL UNIQUE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE affiliate_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+      ALTER TABLE affiliate_users ADD COLUMN IF NOT EXISTS verification_info TEXT;
+      ALTER TABLE affiliate_users ADD COLUMN IF NOT EXISTS approved BOOLEAN NOT NULL DEFAULT true;
+
+      CREATE TABLE IF NOT EXISTS affiliate_options (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(100) NOT NULL UNIQUE,
+        percentage NUMERIC(5, 2) NOT NULL,
+        details TEXT,
+        status BOOLEAN NOT NULL DEFAULT true,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE affiliate_options ADD COLUMN IF NOT EXISTS details TEXT;
+
+      CREATE TABLE IF NOT EXISTS affiliate_configs (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(100) NOT NULL UNIQUE,
+        value TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS affiliate_payments (
+        id SERIAL PRIMARY KEY,
+        affiliate_user_id INTEGER NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        payment_method VARCHAR(50) NOT NULL,
+        payment_details TEXT,
+        txn_code VARCHAR(100),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS affiliate_referrals (
+        id SERIAL PRIMARY KEY,
+        affiliate_user_id INTEGER NOT NULL,
+        referred_user_name VARCHAR(150) NOT NULL,
+        referred_user_email VARCHAR(150) NOT NULL,
+        referred_user_phone VARCHAR(50),
+        referral_type VARCHAR(50) NOT NULL DEFAULT 'Registration',
+        order_code VARCHAR(50),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS affiliate_withdraw_requests (
+        id SERIAL PRIMARY KEY,
+        affiliate_user_id INTEGER NOT NULL,
+        user_name VARCHAR(150) NOT NULL,
+        user_email VARCHAR(150) NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        payment_method VARCHAR(50),
+        payment_details TEXT,
+        txn_code VARCHAR(100),
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE affiliate_withdraw_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50);
+      ALTER TABLE affiliate_withdraw_requests ADD COLUMN IF NOT EXISTS payment_details TEXT;
+      ALTER TABLE affiliate_withdraw_requests ADD COLUMN IF NOT EXISTS txn_code VARCHAR(100);
+
+      CREATE TABLE IF NOT EXISTS affiliate_logs (
+        id SERIAL PRIMARY KEY,
+        affiliate_user_id INTEGER NOT NULL,
+        affiliate_user_name VARCHAR(150),
+        referred_user_name VARCHAR(150) NOT NULL,
+        affiliate_type VARCHAR(50) NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        order_code VARCHAR(50),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE affiliate_logs ADD COLUMN IF NOT EXISTS affiliate_user_name VARCHAR(150);
+
+      CREATE TABLE IF NOT EXISTS delivery_boys (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL,
+        email VARCHAR(150) NOT NULL UNIQUE,
+        phone VARCHAR(50) NOT NULL,
+        avatar VARCHAR(500),
+        zone_id INTEGER NOT NULL DEFAULT 1,
+        zone_name VARCHAR(100) NOT NULL DEFAULT 'Default Zone',
+        city VARCHAR(100),
+        address TEXT,
+        monthly_salary NUMERIC(10, 2) DEFAULT '0.00',
+        commission_rate NUMERIC(5, 2) DEFAULT '0.00',
+        status BOOLEAN NOT NULL DEFAULT true,
+        total_earnings NUMERIC(10, 2) NOT NULL DEFAULT '0.00',
+        total_collection NUMERIC(10, 2) NOT NULL DEFAULT '0.00',
+        current_pending_deliveries INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE delivery_boys ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+      ALTER TABLE delivery_boys ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE delivery_boys ADD COLUMN IF NOT EXISTS monthly_salary NUMERIC(10, 2) DEFAULT '0.00';
+      ALTER TABLE delivery_boys ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5, 2) DEFAULT '0.00';
+
+      CREATE TABLE IF NOT EXISTS delivery_collections (
+        id SERIAL PRIMARY KEY,
+        delivery_boy_id INTEGER NOT NULL,
+        delivery_boy_name VARCHAR(150) NOT NULL,
+        order_code VARCHAR(50) NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        collection_date TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS delivery_payouts (
+        id SERIAL PRIMARY KEY,
+        delivery_boy_id INTEGER NOT NULL,
+        delivery_boy_name VARCHAR(150) NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
+        payment_method VARCHAR(50) NOT NULL DEFAULT 'Cash',
+        txn_code VARCHAR(100),
+        notes TEXT,
+        payment_date TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE delivery_payouts ADD COLUMN IF NOT EXISTS txn_code VARCHAR(100);
+      ALTER TABLE delivery_payouts ADD COLUMN IF NOT EXISTS notes TEXT;
+
+      CREATE TABLE IF NOT EXISTS delivery_cancel_requests (
+        id SERIAL PRIMARY KEY,
+        delivery_boy_id INTEGER NOT NULL,
+        delivery_boy_name VARCHAR(150) NOT NULL,
+        order_code VARCHAR(50) NOT NULL,
+        reason TEXT NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
     `)
 
     // 3. Seed Default Business Settings
@@ -902,6 +1041,376 @@ async function runSetup() {
         },
       ])
       console.log("[OK] Canonical Seller Package Payments seeded")
+    }
+
+    // 16. Seed Canonical Affiliate System Data
+    const existingAffiliateOptionsCount = await db.select({ val: count() }).from(schema.affiliateOptions)
+    if (Number(existingAffiliateOptionsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.affiliateOptions).values([
+        {
+          type: "product_sharing",
+          percentage: "5.00",
+          status: true,
+        },
+        {
+          type: "category_wise_affiliate",
+          percentage: "0.00",
+          details: JSON.stringify({ 1: "8.00", 2: "6.50", 3: "5.00", 4: "4.00" }),
+          status: false,
+        },
+        {
+          type: "user_registration",
+          percentage: "2.50",
+          status: true,
+        },
+        {
+          type: "user_registration_first_purchase",
+          percentage: "3.00",
+          status: true,
+        },
+      ])
+      console.log("[OK] Canonical Affiliate Options seeded")
+    }
+
+    const existingAffiliateConfigsCount = await db.select({ val: count() }).from(schema.affiliateConfigs)
+    if (Number(existingAffiliateConfigsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.affiliateConfigs).values([
+        {
+          type: "minimum_withdraw_amount",
+          value: "50",
+        },
+        {
+          type: "cookie_duration_days",
+          value: "30",
+        },
+        {
+          type: "affiliate_terms",
+          value: "Commissions are credited upon verified order delivery. Fraudulent clicks, bot traffic, or self-referrals will result in immediate disqualification and forfeiture of accumulated earnings.",
+        },
+        {
+          type: "verification_form",
+          value: JSON.stringify([
+            { id: "website_url", label: "Website or Social Media Profile URL", type: "text", required: true },
+            { id: "traffic_volume", label: "Estimated Monthly Audience / Followers", type: "select", options: ["Under 5,000", "5,000 - 25,000", "25,000 - 100,000", "100,000+"], required: true },
+            { id: "promotion_strategy", label: "Primary Promotional Channels", type: "text", required: true },
+            { id: "payout_method", label: "Preferred Payout Gateway", type: "select", options: ["Bank Transfer", "PayPal", "bKash / Mobile Wallet"], required: true },
+          ]),
+        },
+      ])
+      console.log("[OK] Canonical Affiliate Configurations seeded")
+    }
+
+    const existingAffiliateUsersCount = await db.select({ val: count() }).from(schema.affiliateUsers)
+    if (Number(existingAffiliateUsersCount[0]?.val || 0) === 0) {
+      await db.insert(schema.affiliateUsers).values([
+        {
+          userId: "usr_1",
+          userName: "Marcus Harrison",
+          userEmail: "marcus.h@techreviews.com",
+          phone: "+880 1711 223344",
+          paypalEmail: "payouts@techreviews.com",
+          bankInfo: "Chase Manhattan Bank - Routing: 021000021, Acct: ****8841",
+          verificationInfo: JSON.stringify({
+            website_url: "https://youtube.com/@techreviews_marcus",
+            traffic_volume: "25,000 - 100,000",
+            promotion_strategy: "Tech gadget unboxings and YouTube video descriptions",
+            payout_method: "PayPal",
+          }),
+          balance: "485.50",
+          status: true,
+          approved: true,
+          referralCode: "MARCUS-PRO",
+        },
+        {
+          userId: "usr_2",
+          userName: "Elena Gilbert",
+          userEmail: "elena.style@gmail.com",
+          phone: "+880 1822 334455",
+          paypalEmail: "elena.style@gmail.com",
+          bankInfo: "Bank of America - Routing: 121000358, Acct: ****1922",
+          verificationInfo: JSON.stringify({
+            website_url: "https://instagram.com/elena_style_vibe",
+            traffic_volume: "5,000 - 25,000",
+            promotion_strategy: "Fashion outfit reels and story swipe-up links",
+            payout_method: "Bank Transfer",
+          }),
+          balance: "192.00",
+          status: true,
+          approved: true,
+          referralCode: "ELENA-LUX",
+        },
+        {
+          userId: "usr_3",
+          userName: "Devon Miller",
+          userEmail: "devon.deals@outlook.com",
+          phone: "+880 1933 445566",
+          paypalEmail: "devon.deals@outlook.com",
+          bankInfo: "City Bank PLC - Acct: 110293847201",
+          verificationInfo: JSON.stringify({
+            website_url: "https://t.me/devondealsbd",
+            traffic_volume: "Under 5,000",
+            promotion_strategy: "Telegram discounts channel and community groups",
+            payout_method: "bKash / Mobile Wallet",
+          }),
+          balance: "35.00",
+          status: false,
+          approved: false,
+          referralCode: "DEVON-DEALS",
+        },
+      ])
+      console.log("[OK] Canonical Affiliate Users seeded")
+    }
+
+    const existingReferralsCount = await db.select({ val: count() }).from(schema.affiliateReferrals)
+    if (Number(existingReferralsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.affiliateReferrals).values([
+        {
+          affiliateUserId: 1,
+          referredUserName: "Sadman Sakib",
+          referredUserEmail: "sadman.sakib@example.com",
+          referredUserPhone: "+880 1755 112233",
+          referralType: "Product Sharing",
+          orderCode: "ORD-942851",
+        },
+        {
+          affiliateUserId: 1,
+          referredUserName: "Tasmia Rahman",
+          referredUserEmail: "tasmia.rahman@example.com",
+          referredUserPhone: "+880 1866 223344",
+          referralType: "User Registration",
+        },
+        {
+          affiliateUserId: 2,
+          referredUserName: "Fahim Faysal",
+          referredUserEmail: "fahim.faysal@example.com",
+          referredUserPhone: "+880 1977 334455",
+          referralType: "Product Sharing",
+          orderCode: "ORD-915420",
+        },
+        {
+          affiliateUserId: 2,
+          referredUserName: "Sabrina Mostafa",
+          referredUserEmail: "sabrina.m@example.com",
+          referredUserPhone: "+880 1688 445566",
+          referralType: "First Purchase",
+          orderCode: "ORD-938210",
+        },
+      ])
+      console.log("[OK] Canonical Affiliate Referrals seeded")
+    }
+
+    const existingWithdrawsCount = await db.select({ val: count() }).from(schema.affiliateWithdrawRequests)
+    if (Number(existingWithdrawsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.affiliateWithdrawRequests).values([
+        {
+          affiliateUserId: 1,
+          userName: "Marcus Harrison",
+          userEmail: "marcus.h@techreviews.com",
+          amount: "300.00",
+          paymentMethod: "PayPal",
+          paymentDetails: "PayPal Email: payouts@techreviews.com",
+          status: "pending",
+        },
+        {
+          affiliateUserId: 2,
+          userName: "Elena Gilbert",
+          userEmail: "elena.style@gmail.com",
+          amount: "150.00",
+          paymentMethod: "Bank Transfer",
+          paymentDetails: "Bank of America - Routing: 121000358, Acct: ****1922",
+          txnCode: "BOA-REF-9921448",
+          status: "approved",
+        },
+      ])
+      console.log("[OK] Canonical Affiliate Withdraw Requests seeded")
+    }
+
+    const existingAffiliateLogsCount = await db.select({ val: count() }).from(schema.affiliateLogs)
+    if (Number(existingAffiliateLogsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.affiliateLogs).values([
+        {
+          affiliateUserId: 1,
+          affiliateUserName: "Marcus Harrison",
+          referredUserName: "Sadman Sakib",
+          affiliateType: "Product Sharing",
+          amount: "45.00",
+          orderCode: "ORD-942851",
+        },
+        {
+          affiliateUserId: 1,
+          affiliateUserName: "Marcus Harrison",
+          referredUserName: "Tasmia Rahman",
+          affiliateType: "User Registration",
+          amount: "2.50",
+        },
+        {
+          affiliateUserId: 2,
+          affiliateUserName: "Elena Gilbert",
+          referredUserName: "Fahim Faysal",
+          affiliateType: "Product Sharing",
+          amount: "18.50",
+          orderCode: "ORD-915420",
+        },
+        {
+          affiliateUserId: 2,
+          affiliateUserName: "Elena Gilbert",
+          referredUserName: "Sabrina Mostafa",
+          affiliateType: "First Purchase",
+          amount: "12.00",
+          orderCode: "ORD-938210",
+        },
+      ])
+      console.log("[OK] Canonical Affiliate Audit Logs seeded")
+    }
+
+    // 17. Seed Canonical Delivery Boy Data & Configurations
+    const deliveryBoySettings = [
+      { type: "delivery_boy_payment_type", value: "commission" },
+      { type: "delivery_boy_commission", value: "3.50" },
+      { type: "delivery_boy_monthly_salary", value: "15000.00" },
+      { type: "delivery_boy_cash_collection_limit", value: "5000.00" },
+      { type: "delivery_boy_mail_notification", value: "1" },
+      { type: "delivery_boy_otp_notification", value: "1" },
+    ]
+    for (const s of deliveryBoySettings) {
+      const existing = await db
+        .select()
+        .from(schema.businessSettings)
+        .where(eq(schema.businessSettings.type, s.type))
+      if (existing.length === 0) {
+        await db.insert(schema.businessSettings).values(s)
+      }
+    }
+
+    const existingDeliveryBoysCount = await db.select({ val: count() }).from(schema.deliveryBoys)
+    if (Number(existingDeliveryBoysCount[0]?.val || 0) === 0) {
+      await db.insert(schema.deliveryBoys).values([
+        {
+          name: "Tariqul Islam",
+          email: "tariq.courier@example.com",
+          phone: "+880 1711-892341",
+          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80",
+          zoneId: 1,
+          zoneName: "Dhaka Metro North",
+          city: "Dhaka",
+          address: "House 42, Road 11, Sector 4, Uttara, Dhaka",
+          monthlySalary: "15000.00",
+          commissionRate: "3.50",
+          status: true,
+          totalEarnings: "640.00",
+          totalCollection: "3480.00",
+          currentPendingDeliveries: 4,
+        },
+        {
+          name: "Mohammad Fahim",
+          email: "fahim.speed@example.com",
+          phone: "+880 1822-771239",
+          avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
+          zoneId: 2,
+          zoneName: "Dhaka Metro South",
+          city: "Dhaka",
+          address: "Flat 3B, Dhanmondi 27, Dhaka",
+          monthlySalary: "15000.00",
+          commissionRate: "3.50",
+          status: true,
+          totalEarnings: "890.50",
+          totalCollection: "5120.00",
+          currentPendingDeliveries: 7,
+        },
+        {
+          name: "Tanvir Rahman",
+          email: "tanvir.delivery@example.com",
+          phone: "+880 1933-445566",
+          avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80",
+          zoneId: 3,
+          zoneName: "Chittagong Central",
+          city: "Chittagong",
+          address: "GEC Circle, Nasirabad, Chittagong",
+          monthlySalary: "14000.00",
+          commissionRate: "3.50",
+          status: false,
+          totalEarnings: "120.00",
+          totalCollection: "680.00",
+          currentPendingDeliveries: 0,
+        },
+      ])
+      console.log("[OK] Canonical Delivery Boys seeded")
+    }
+
+    const existingDeliveryCollectionsCount = await db.select({ val: count() }).from(schema.deliveryCollections)
+    if (Number(existingDeliveryCollectionsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.deliveryCollections).values([
+        {
+          deliveryBoyId: 1,
+          deliveryBoyName: "Tariqul Islam",
+          orderCode: "ORD-202609-1002",
+          amount: "145.00",
+          collectionDate: new Date("2026-09-24T15:30:00Z"),
+        },
+        {
+          deliveryBoyId: 2,
+          deliveryBoyName: "Mohammad Fahim",
+          orderCode: "ORD-202609-1005",
+          amount: "320.00",
+          collectionDate: new Date("2026-09-25T11:20:00Z"),
+        },
+        {
+          deliveryBoyId: 1,
+          deliveryBoyName: "Tariqul Islam",
+          orderCode: "ORD-202609-1008",
+          amount: "89.00",
+          collectionDate: new Date("2026-09-25T16:45:00Z"),
+        },
+      ])
+      console.log("[OK] Canonical Delivery Collections seeded")
+    }
+
+    const existingDeliveryPayoutsCount = await db.select({ val: count() }).from(schema.deliveryPayouts)
+    if (Number(existingDeliveryPayoutsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.deliveryPayouts).values([
+        {
+          deliveryBoyId: 1,
+          deliveryBoyName: "Tariqul Islam",
+          amount: "400.00",
+          paymentMethod: "bKash Agent",
+          txnCode: "BK7710294",
+          notes: "Fortnight commission settlement",
+          paymentDate: new Date("2026-09-20T12:00:00Z"),
+        },
+        {
+          deliveryBoyId: 2,
+          deliveryBoyName: "Mohammad Fahim",
+          amount: "600.00",
+          paymentMethod: "Bank Transfer",
+          txnCode: "CITY-REF-8841",
+          notes: "Monthly base settlement",
+          paymentDate: new Date("2026-09-21T14:30:00Z"),
+        },
+      ])
+      console.log("[OK] Canonical Delivery Payouts seeded")
+    }
+
+    const existingDeliveryCancelsCount = await db.select({ val: count() }).from(schema.deliveryCancelRequests)
+    if (Number(existingDeliveryCancelsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.deliveryCancelRequests).values([
+        {
+          deliveryBoyId: 1,
+          deliveryBoyName: "Tariqul Islam",
+          orderCode: "ORD-202609-0994",
+          reason: "Recipient phone switched off for 3 consecutive delivery attempts at specified address.",
+          status: "pending",
+          createdAt: new Date("2026-09-23T18:00:00Z"),
+        },
+        {
+          deliveryBoyId: 2,
+          deliveryBoyName: "Mohammad Fahim",
+          orderCode: "ORD-202609-0988",
+          reason: "Customer moved to another city before delivery window.",
+          status: "approved",
+          createdAt: new Date("2026-09-22T10:30:00Z"),
+        },
+      ])
+      console.log("[OK] Canonical Delivery Cancel Requests seeded")
     }
 
     console.log("==================================================")

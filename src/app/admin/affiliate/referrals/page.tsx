@@ -1,12 +1,14 @@
 import React from "react"
-import { getAllAffiliateUsers } from "@/services/affiliate-service"
+import { getAllAffiliateReferrals } from "@/services/affiliate-service"
 import { AdminAffiliateReferralsView } from "./_components/admin-affiliate-referrals-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
-  title: "Affiliate Referral Links | Admin Panel",
+  title: "Referral Users | Admin Panel",
 }
 
 export default async function AdminAffiliateReferralsPage() {
-  const users = await getAllAffiliateUsers()
-  return <AdminAffiliateReferralsView users={users} />
+  const referrals = await getAllAffiliateReferrals()
+  return <AdminAffiliateReferralsView referrals={referrals} />
 }

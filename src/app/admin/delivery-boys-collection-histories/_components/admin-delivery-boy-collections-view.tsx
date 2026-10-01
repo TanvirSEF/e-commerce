@@ -59,22 +59,30 @@ export function AdminDeliveryBoyCollectionsView({ collections }: AdminDeliveryBo
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filtered.map((c, idx) => (
-                <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="px-4 py-3.5 text-slate-400">{idx + 1}</td>
-                  <td className="px-4 py-3.5 font-semibold text-slate-800">{c.deliveryBoyName}</td>
-                  <td className="px-4 py-3.5 font-mono text-xs font-bold text-slate-900">{c.orderCode}</td>
-                  <td className="px-4 py-3.5 font-bold text-slate-900 text-base">${c.amount}</td>
-                  <td className="px-4 py-3.5 text-xs text-slate-500">
-                    {new Date(c.collectionDate).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      <CheckCircle className="w-3 h-3" /> Collected
-                    </span>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                    No cash collection records found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((c, idx) => (
+                  <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-4 py-3.5 text-slate-400">{idx + 1}</td>
+                    <td className="px-4 py-3.5 font-semibold text-slate-800">{c.deliveryBoyName}</td>
+                    <td className="px-4 py-3.5 font-mono text-xs font-bold text-slate-900">{c.orderCode}</td>
+                    <td className="px-4 py-3.5 font-bold text-slate-900 text-base">${c.amount}</td>
+                    <td className="px-4 py-3.5 text-xs text-slate-500">
+                      {new Date(c.collectionDate).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle className="w-3 h-3" /> Collected
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

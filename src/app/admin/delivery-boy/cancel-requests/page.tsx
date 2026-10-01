@@ -2,6 +2,8 @@ import React from "react"
 import { getAllDeliveryCancelRequests } from "@/services/delivery-boy-service"
 import { AdminDeliveryBoyCancelsView } from "./_components/admin-delivery-boy-cancels-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
   title: "Delivery Boy Cancellation Requests | Admin Panel",
 }

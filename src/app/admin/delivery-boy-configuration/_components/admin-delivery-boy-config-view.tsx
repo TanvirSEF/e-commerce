@@ -1,15 +1,17 @@
 "use client"
 
 import React, { useState } from "react"
-import { Settings, Save, CheckCircle2, DollarSign, Shield } from "lucide-react"
+import { Settings, Save, CheckCircle2, DollarSign, Bell } from "lucide-react"
 import { updateDeliveryBoyConfigAction } from "@/app/actions/ecommerce-actions"
 
 interface AdminDeliveryBoyConfigViewProps {
   config: {
     commission_type: string
     commission_value: string
+    monthly_salary: string
     cash_collection_limit: string
-    cancel_request_verification: boolean
+    mail_notification: boolean
+    otp_notification: boolean
   }
 }
 
@@ -40,7 +42,7 @@ export function AdminDeliveryBoyConfigView({ config: initialConfig }: AdminDeliv
           Delivery Boy Configuration
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Configure courier commission rates per completed delivery and cash collection policies
+          Configure courier remuneration structures, cash collection limits, and dispatch notifications
         </p>
       </div>
 
@@ -54,20 +56,20 @@ export function AdminDeliveryBoyConfigView({ config: initialConfig }: AdminDeliv
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">Commission Rate Type</label>
+            <label className="text-xs font-bold text-slate-700">Payment Structure Type</label>
             <select
               value={config.commission_type}
               onChange={(e) => setConfig({ ...config, commission_type: e.target.value })}
-              className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d43533]/20 focus:border-[#d43533]"
+              className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d43533]/20 focus:border-[#d43533] bg-white"
             >
-              <option value="fixed">Fixed Rate ($ per completed delivery)</option>
-              <option value="percentage">Percentage (% of order total)</option>
+              <option value="commission">Commission Per Delivered Order</option>
+              <option value="salary">Fixed Monthly Salary</option>
             </select>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700">
-              Delivery Fee / Commission Value ({config.commission_type === "fixed" ? "$" : "%"})
+              Delivery Fee / Commission Rate ($)
             </label>
             <input
               type="number"
@@ -79,7 +81,19 @@ export function AdminDeliveryBoyConfigView({ config: initialConfig }: AdminDeliv
             />
           </div>
 
-          <div className="space-y-1.5 md:col-span-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-700">Monthly Base Salary ($)</label>
+            <input
+              type="number"
+              step="100"
+              required
+              value={config.monthly_salary}
+              onChange={(e) => setConfig({ ...config, monthly_salary: e.target.value })}
+              className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d43533]/20 focus:border-[#d43533]"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700">Maximum Allowed COD Cash In Hand ($)</label>
             <input
               type="number"
@@ -90,16 +104,52 @@ export function AdminDeliveryBoyConfigView({ config: initialConfig }: AdminDeliv
               className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d43533]/20 focus:border-[#d43533]"
             />
             <p className="text-[11px] text-slate-400">
-              Couriers exceeding this collected cash ceiling will be barred from receiving new orders until cash is turned over
+              Couriers exceeding this limit will not be assigned new deliveries until funds are deposited
             </p>
+          </div>
+
+          {/* Notifications toggles */}
+          <div className="md:col-span-2 pt-2 border-t border-slate-100 space-y-3">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Bell className="w-4 h-4 text-slate-500" />
+              Delivery Status Notifications
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div>
+                  <span className="text-xs font-semibold text-slate-800 block">Mail Notification</span>
+                  <span className="text-[11px] text-slate-400">Send email updates on delivery assignments</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.mail_notification}
+                  onChange={(e) => setConfig({ ...config, mail_notification: e.target.checked })}
+                  className="w-4 h-4 rounded text-[#d43533] focus:ring-[#d43533] accent-[#d43533]"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <div>
+                  <span className="text-xs font-semibold text-slate-800 block">SMS / OTP Notification</span>
+                  <span className="text-[11px] text-slate-400">Send customer OTP verification for delivery handover</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.otp_notification}
+                  onChange={(e) => setConfig({ ...config, otp_notification: e.target.checked })}
+                  className="w-4 h-4 rounded text-[#d43533] focus:ring-[#d43533] accent-[#d43533]"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-2 border-t border-slate-100">
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d43533] hover:bg-red-700 disabled:opacity-60 text-white font-medium text-sm rounded-lg transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d43533] hover:bg-red-700 disabled:opacity-60 text-white font-medium text-xs rounded-lg transition-colors shadow-sm"
           >
             <Save className="w-4 h-4" />
             {saving ? "Saving..." : "Save Configuration"}

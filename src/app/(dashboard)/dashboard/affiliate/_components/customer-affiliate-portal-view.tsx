@@ -6,7 +6,7 @@ import { Users, DollarSign, Copy, Check, Share2, History, ArrowUpRight, CheckCir
 import type { AffiliateUser, AffiliateLog } from "@/db/schema/affiliate"
 
 interface CustomerAffiliatePortalViewProps {
-  affiliateUser: AffiliateUser
+  affiliateUser: AffiliateUser | null
   logs: AffiliateLog[]
 }
 
@@ -16,7 +16,8 @@ export function CustomerAffiliatePortalView({ affiliateUser, logs }: CustomerAff
   const [withdrawSuccess, setWithdrawSuccess] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const referralLink = `https://huipper.com/?ref=${affiliateUser.referralCode}`
+  const referralCode = affiliateUser?.referralCode || "AFF-GUEST"
+  const referralLink = `https://huipper.com/?ref=${referralCode}`
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink)
@@ -58,13 +59,13 @@ export function CustomerAffiliatePortalView({ affiliateUser, logs }: CustomerAff
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1">
           <span className="text-xs text-slate-500 font-medium">Available Payout Balance</span>
-          <div className="text-2xl font-black text-emerald-600">${affiliateUser.balance}</div>
+          <div className="text-2xl font-black text-emerald-600">${affiliateUser?.balance || "0.00"}</div>
           <span className="text-[11px] text-slate-400 block">Min withdrawal: $50.00</span>
         </div>
 
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1">
           <span className="text-xs text-slate-500 font-medium">Referral Code</span>
-          <div className="text-2xl font-black text-slate-900 font-mono">{affiliateUser.referralCode}</div>
+          <div className="text-2xl font-black text-slate-900 font-mono">{referralCode}</div>
           <span className="text-[11px] text-emerald-600 font-medium block">Active & Tracking</span>
         </div>
 
