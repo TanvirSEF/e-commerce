@@ -226,6 +226,19 @@ async function runSetup() {
         cost_usd NUMERIC(10, 4) NOT NULL DEFAULT '0.0000',
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS uploads (
+        id SERIAL PRIMARY KEY,
+        file_original_name TEXT,
+        file_name TEXT NOT NULL,
+        user_id TEXT,
+        file_size INTEGER DEFAULT 0,
+        extension TEXT DEFAULT 'jpg',
+        type TEXT DEFAULT 'image',
+        external_link TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
     `)
 
     // 3. Seed Default Business Settings
@@ -1581,6 +1594,59 @@ async function runSetup() {
         },
       ])
       console.log("[OK] Canonical AI Token Logs seeded")
+    }
+
+    // 19. Seed Canonical Uploads
+    const existingUploadsCount = await db.select({ val: count() }).from(schema.uploads)
+    if (Number(existingUploadsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.uploads).values([
+        {
+          fileOriginalName: "iphone15-pro-max-banner.jpg",
+          fileName: "/images/banners/banner1.jpg",
+          userId: "usr_admin_demo",
+          fileSize: 450200,
+          extension: "jpg",
+          type: "image",
+          externalLink: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+          fileOriginalName: "samsung-galaxy-s24-ultra.png",
+          fileName: "/images/products/s24-ultra.png",
+          userId: "usr_admin_demo",
+          fileSize: 320140,
+          extension: "png",
+          type: "image",
+          externalLink: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+          fileOriginalName: "apple-watch-ultra-hero.jpg",
+          fileName: "/images/products/apple-watch.jpg",
+          userId: "usr_admin_demo",
+          fileSize: 280900,
+          extension: "jpg",
+          type: "image",
+          externalLink: "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+          fileOriginalName: "sony-wh1000xm5-headphones.jpg",
+          fileName: "/images/products/sony-headphones.jpg",
+          userId: "usr_admin_demo",
+          fileSize: 512000,
+          extension: "jpg",
+          type: "image",
+          externalLink: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+          fileOriginalName: "warranty_terms_and_policy.pdf",
+          fileName: "/docs/warranty_terms.pdf",
+          userId: "usr_admin_demo",
+          fileSize: 1048576,
+          extension: "pdf",
+          type: "document",
+          externalLink: null,
+        },
+      ])
+      console.log("[OK] Canonical Uploads seeded")
     }
 
     console.log("==================================================")

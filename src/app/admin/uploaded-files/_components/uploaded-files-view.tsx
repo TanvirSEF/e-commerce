@@ -3,32 +3,18 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { type Upload } from "@/db/schema/uploads"
+import type { Upload } from "@/db/schema/uploads"
 import {
   deleteUploadRecordAction,
   bulkDeleteUploadRecordsAction,
 } from "@/app/actions/ecommerce-actions"
-import {
-  Search,
-  Info,
-  Copy,
-  Trash2,
-  FileText,
-  CheckCircle,
-  Plus,
-  Cloud,
-  RefreshCw,
-  Download,
-} from "lucide-react"
+import { Search, Plus, Cloud, RefreshCw, Trash2 } from "lucide-react"
 import { UploadFileModal } from "./upload-file-modal"
 import { FileDetailsModal } from "./file-details-modal"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { UploadedFileCard } from "./uploaded-file-card"
 
-interface UploadedFilesViewProps {
-  initialFiles: Upload[]
-}
-
-export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
+export function UploadedFilesView({ initialFiles }: { initialFiles: Upload[] }) {
   const router = useRouter()
   const [files, setFiles] = useState<Upload[]>(initialFiles)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -43,35 +29,25 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Sync state whenever server revalidates initialFiles
   useEffect(() => {
-    if (initialFiles && initialFiles.length > 0) {
+    if (initialFiles?.length) {
       setFiles((prev) => {
         const map = new Map<number, Upload>()
-        for (const f of initialFiles) {
-          map.set(f.id, f)
-        }
-        for (const f of prev) {
-          if (!map.has(f.id)) {
-            map.set(f.id, f)
-          }
-        }
+        for (const f of initialFiles) map.set(f.id, f)
+        for (const f of prev) if (!map.has(f.id)) map.set(f.id, f)
         return Array.from(map.values())
       })
     }
   }, [initialFiles])
 
-  // Live client-side fetch from dynamic API to bypass any edge/browser cache
   const refreshFiles = async () => {
     setIsRefreshing(true)
     try {
       const res = await fetch("/api/uploader", { cache: "no-store" })
       const data = await res.json()
-      if (data.success && Array.isArray(data.files)) {
-        setFiles(data.files)
-      }
+      if (data.success && Array.isArray(data.files)) setFiles(data.files)
     } catch (e) {
-      console.warn("Could not fetch uploads from API:", e)
+      console.warn("Could not fetch uploads:", e)
     } finally {
       setIsRefreshing(false)
     }
@@ -81,7 +57,6 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
     refreshFiles()
   }, [])
 
-  // Filter & Sort
   const filteredFiles = files
     .filter((f) => {
       if (typeFilter !== "all" && f.type !== typeFilter) return false
@@ -103,22 +78,15 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
     })
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredFiles.length) {
-      setSelectedIds([])
-    } else {
-      setSelectedIds(filteredFiles.map((f) => f.id))
-    }
+    setSelectedIds(selectedIds.length === filteredFiles.length ? [] : filteredFiles.map((f) => f.id))
   }
 
   const toggleSelectOne = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    )
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id])
   }
 
   const handleCopyLink = (file: Upload) => {
-    const url = file.externalLink || file.fileName
-    navigator.clipboard.writeText(url)
+    navigator.clipboard.writeText(file.externalLink || file.fileName)
     setCopiedId(file.id)
     setTimeout(() => setCopiedId(null), 2000)
   }
@@ -133,8 +101,6 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
       setDeleteTargetFile(null)
       router.refresh()
       setTimeout(refreshFiles, 300)
-    } catch (err) {
-      console.error("Failed to delete file:", err)
     } finally {
       setIsDeleting(false)
     }
@@ -150,8 +116,6 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
       setIsBulkDeleteOpen(false)
       router.refresh()
       setTimeout(refreshFiles, 300)
-    } catch (err) {
-      console.error("Failed to bulk delete files:", err)
     } finally {
       setIsDeleting(false)
     }
@@ -167,56 +131,49 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
     setTimeout(refreshFiles, 500)
   }
 
-  const formatSize = (bytes: number) => {
-    if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`
-    if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`
-    return `${bytes} B`
-  }
-
   return (
     <div className="space-y-6">
-      {/* Title Bar */}
+      {/* Title Bar matching Active eCommerce CMS */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-800">All Uploaded Files</h1>
+            <h1 className="text-2xl font-bold text-slate-800">All uploaded files</h1>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-              <Cloud className="w-3 h-3" /> Cloudinary Enabled
+              <Cloud className="w-3 h-3" /> Storage Ready
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Manage images, banners, and documents in high-speed CDN media library
+          <p className="text-xs text-slate-500 mt-1">
+            Browse and organize product media, images, and documents in high-speed storage
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={refreshFiles}
             disabled={isRefreshing}
-            title="Refresh Media Library"
-            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-[#d43533]" : ""}`} />
             <span>Refresh</span>
           </button>
-          <button
-            onClick={() => setIsUploadOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+          <Link
+            href="/admin/uploaded-files/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Upload New File
-          </button>
+          </Link>
         </div>
       </div>
 
       {/* Toolbar & Filters Card */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-gray-700">All Files ({filteredFiles.length})</span>
+            <span className="text-xs font-bold text-slate-700">All Files ({filteredFiles.length})</span>
             {selectedIds.length > 0 && (
               <button
                 onClick={() => setIsBulkDeleteOpen(true)}
-                className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded-md text-xs font-semibold hover:bg-red-100 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-md text-xs font-semibold hover:bg-rose-100 transition-colors flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Delete Selected ({selectedIds.length})
@@ -228,7 +185,7 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg outline-none bg-white text-gray-700"
+              className="text-xs px-3 py-1.5 border border-slate-300 rounded-lg outline-hidden bg-white text-slate-700"
             >
               <option value="all">All File Types</option>
               <option value="image">Images</option>
@@ -239,7 +196,7 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg outline-none bg-white text-gray-700"
+              className="text-xs px-3 py-1.5 border border-slate-300 rounded-lg outline-hidden bg-white text-slate-700"
             >
               <option value="newest">Sort by newest</option>
               <option value="oldest">Sort by oldest</option>
@@ -253,15 +210,15 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search files..."
-                className="text-xs pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg outline-none w-44 sm:w-56 focus:border-[#d43533]"
+                className="text-xs pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg outline-hidden w-44 sm:w-56 focus:border-[#d43533]"
               />
-              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
             </div>
           </div>
         </div>
 
         {/* Select All Checkbox */}
-        <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
+        <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
           <input
             type="checkbox"
             id="selectAll"
@@ -269,7 +226,7 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
             onChange={toggleSelectAll}
             className="w-4 h-4 rounded text-[#d43533] focus:ring-[#d43533] cursor-pointer"
           />
-          <label htmlFor="selectAll" className="text-xs text-gray-600 font-medium cursor-pointer">
+          <label htmlFor="selectAll" className="text-xs text-slate-600 font-medium cursor-pointer">
             Select All
           </label>
         </div>
@@ -277,102 +234,31 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
 
       {/* Media Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-        {filteredFiles.map((file) => {
-          const isSelected = selectedIds.includes(file.id)
-          const isImage = file.type === "image" || ["jpg", "jpeg", "png", "webp", "gif"].includes(file.extension || "")
-          const fileUrl = file.externalLink || file.fileName
-
-          return (
-            <div
-              key={file.id}
-              className={`bg-white border rounded-xl p-2.5 shadow-sm transition-all group relative flex flex-col justify-between ${
-                isSelected ? "border-[#d43533] ring-1 ring-[#d43533]" : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              {/* Top Row: Checkbox + Actions */}
-              <div className="flex items-center justify-between mb-2">
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => toggleSelectOne(file.id)}
-                  className="w-3.5 h-3.5 rounded text-[#d43533] focus:ring-[#d43533] cursor-pointer"
-                />
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleCopyLink(file)}
-                    title={copiedId === file.id ? "Copied!" : "Copy Link"}
-                    className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded"
-                  >
-                    {copiedId === file.id ? (
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setInfoModalFile(file)}
-                    title="Details Info"
-                    className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded"
-                  >
-                    <Info className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setDeleteTargetFile(file)}
-                    title="Delete"
-                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Preview Thumbnail */}
-              <div className="h-28 bg-gray-50 rounded-lg overflow-hidden flex items-center justify-center border border-gray-100">
-                {isImage ? (
-                  <img
-                    src={fileUrl}
-                    alt={file.fileOriginalName || "Media thumbnail"}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-1 text-gray-400">
-                    <FileText className="w-8 h-8" />
-                    <span className="text-[10px] uppercase font-bold text-gray-500">{file.extension}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Metadata */}
-              <div className="mt-2.5">
-                <p className="text-xs font-semibold text-gray-800 truncate" title={file.fileOriginalName || ""}>
-                  {file.fileOriginalName || file.fileName}
-                </p>
-                <div className="flex items-center justify-between text-[11px] text-gray-400 mt-1">
-                  <span>{formatSize(file.fileSize || 0)}</span>
-                  <span className="uppercase text-[10px] font-bold px-1.5 py-0.5 bg-gray-100 rounded">
-                    {file.extension}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )
-        })}
+        {filteredFiles.map((file) => (
+          <UploadedFileCard
+            key={file.id}
+            file={file}
+            isSelected={selectedIds.includes(file.id)}
+            copiedId={copiedId}
+            onToggleSelect={toggleSelectOne}
+            onCopyLink={handleCopyLink}
+            onShowDetails={setInfoModalFile}
+            onDelete={setDeleteTargetFile}
+          />
+        ))}
       </div>
 
-      {/* Upload File Modal */}
       <UploadFileModal
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         onUploaded={handleUploadedFiles}
       />
 
-      {/* Details Info Modal */}
       <FileDetailsModal
         file={infoModalFile}
         onClose={() => setInfoModalFile(null)}
       />
 
-      {/* Active eCommerce 1:1 Single Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={!!deleteTargetFile}
         onClose={() => setDeleteTargetFile(null)}
@@ -381,7 +267,6 @@ export function UploadedFilesView({ initialFiles }: UploadedFilesViewProps) {
         title="Confirmation"
       />
 
-      {/* Active eCommerce 1:1 Bulk Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={isBulkDeleteOpen}
         onClose={() => setIsBulkDeleteOpen(false)}
