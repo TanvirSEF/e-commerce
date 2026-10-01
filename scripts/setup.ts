@@ -1717,6 +1717,280 @@ async function runSetup() {
       console.log("[OK] Canonical Support Tickets & Replies seeded")
     }
 
+    // 26. Seed Canonical Blog Categories & Blogs
+    const existingBlogCatsCount = await db.select({ val: count() }).from(schema.blogCategories)
+    if (Number(existingBlogCatsCount[0]?.val || 0) === 0) {
+      const [cat1, cat2, cat3, cat4] = await db
+        .insert(schema.blogCategories)
+        .values([
+          { categoryName: "Fashion & Trends", slug: "fashion-trends" },
+          { categoryName: "Technology & Gadgets", slug: "technology-gadgets" },
+          { categoryName: "Lifestyle & Living", slug: "lifestyle-living" },
+          { categoryName: "Shopping Tips", slug: "shopping-tips" },
+        ])
+        .returning()
+
+      await db.insert(schema.blogs).values([
+        {
+          categoryId: cat2.id,
+          title: "10 Essential Gadgets Every Remote Worker Needs in 2026",
+          slug: "10-essential-gadgets-remote-worker-2026",
+          shortDescription:
+            "Discover the top productivity boosters and smart desktop accessories to elevate your daily home office experience.",
+          description:
+            "Working remotely has become the standard for modern professionals. Having the right tools and ergonomic peripherals not only enhances your daily workflow efficiency but also protects your physical well-being. From active noise-cancelling headphones to wireless charging stations and ultrawide monitors, here is our ultimate gear checklist for 2026.",
+          banner: "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=1200&auto=format&fit=crop&q=80",
+          status: true,
+          metaTitle: "10 Essential Gadgets for Remote Work (2026)",
+          metaImg: "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=600&auto=format&fit=crop&q=80",
+          metaDescription: "Boost your productivity with top home office and remote work accessories.",
+          metaKeywords: "gadgets, remote work, home office, technology",
+        },
+        {
+          categoryId: cat1.id,
+          title: "The Ultimate Guide to Seasonal Fashion & Sustainable Fabrics",
+          slug: "ultimate-guide-seasonal-fashion-sustainable-fabrics",
+          shortDescription:
+            "Explore eco-friendly wardrobe staples, organic cotton blends, and modern minimalist outfit styling.",
+          description:
+            "Sustainable fashion is more than a trend—it is a conscious choice towards enduring quality. In this article, our stylists break down the essential pieces you need for versatile seasonal layering, breathable pure cottons, and timeless colors that never go out of style.",
+          banner: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&auto=format&fit=crop&q=80",
+          status: true,
+          metaTitle: "Seasonal Fashion & Sustainable Fabrics Guide",
+          metaImg: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&auto=format&fit=crop&q=80",
+          metaDescription: "Tips and advice for choosing sustainable and eco-friendly outfits this season.",
+          metaKeywords: "fashion, sustainable clothing, seasonal styles",
+        },
+        {
+          categoryId: cat4.id,
+          title: "How to Maximize Your Savings During Flash Sales and Festival Promos",
+          slug: "how-to-maximize-savings-flash-sales",
+          shortDescription:
+            "Smart coupon stacking tricks, wallet cashbacks, and early-bird checkout tips to get the highest discounts.",
+          description:
+            "Online flash sales offer incredible price drops, but items go out of stock in minutes. Learn the best strategies: setting wishlist alerts, pre-filling shipping addresses, combining store vouchers with bank payment discounts, and collecting club points for extra savings.",
+          banner: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80",
+          status: true,
+          metaTitle: "Maximize Savings in Flash Sales & Promotions",
+          metaImg: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&auto=format&fit=crop&q=80",
+          metaDescription: "Proven shopping strategies to score the biggest savings on ecommerce sales.",
+          metaKeywords: "flash sale, coupons, discount tips, smart shopping",
+        },
+        {
+          categoryId: cat3.id,
+          title: "The Modern Home: Minimalist Living and Smart Organization in 2026",
+          slug: "modern-home-minimalist-living",
+          shortDescription:
+            "Declutter your living space and create a calm, functional home environment with smart interior design.",
+          description:
+            "Minimalist living is not about having less—it is about making room for what truly matters. Transform your home using neutral palettes, modular storage units, and ambient smart lighting to achieve a serene daily sanctuary.",
+          banner: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1200&auto=format&fit=crop&q=80",
+          status: true,
+          metaTitle: "Minimalist Living & Modern Home Organization",
+          metaImg: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=80",
+          metaDescription: "Discover tips to organize your modern home and embrace peaceful minimalist design.",
+          metaKeywords: "interior design, minimalism, home organization, lifestyle",
+        },
+      ])
+      console.log("[OK] Canonical Blog Categories & Blogs seeded")
+    }
+
+    // ─── Step 27: Ensure banned/is_suspicious columns exist on users ──────────
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned boolean NOT NULL DEFAULT false`)
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspicious boolean NOT NULL DEFAULT false`)
+    console.log("[OK] Step 27: users.banned + users.is_suspicious columns ensured")
+
+    // ─── Step 28: Canonical Customer Packages ─────────────────────────────────
+    const pkgCount = await db.select({ c: count() }).from(schema.customerPackages)
+    if (Number(pkgCount[0]?.c ?? 0) === 0) {
+      await db.insert(schema.customerPackages).values([
+        { name: "Free", amount: "0.00", productUpload: 3, logo: null, status: true },
+        { name: "Basic", amount: "500.00", productUpload: 10, logo: null, status: true },
+        { name: "Premium", amount: "1500.00", productUpload: 30, logo: null, status: true },
+      ])
+      console.log("[OK] Step 28: 3 canonical customer packages seeded")
+    } else {
+      console.log("[OK] Step 28: Customer packages already seeded — skipped")
+    }
+
+    // ─── Step 29: Canonical Wallet Recharges ──────────────────────────────────
+    const walletRechargeCount = await db.select({ c: count() }).from(schema.wallets).where(eq(schema.wallets.offlinePayment, true))
+    if (Number(walletRechargeCount[0]?.c ?? 0) === 0) {
+      // Use first real user or skip gracefully
+      const allUsers = await db.select({ id: schema.users.id }).from(schema.users).limit(3)
+      if (allUsers.length > 0) {
+        const uid0 = allUsers[0].id
+        const uid1 = allUsers[1]?.id ?? uid0
+        const uid2 = allUsers[2]?.id ?? uid0
+        await db.insert(schema.wallets).values([
+          { userId: uid0, amount: "5000.00", paymentMethod: "bKash", paymentDetails: "Sender: 01711-223344 | TrxID: BKH948271049", offlinePayment: true, approval: false, addedBy: "customer" },
+          { userId: uid1, amount: "2500.00", paymentMethod: "Nagad", paymentDetails: "Sender: 01812-998877 | TrxID: NGD849201948", offlinePayment: true, approval: true, addedBy: "customer" },
+          { userId: uid2, amount: "10000.00", paymentMethod: "Bank Transfer", paymentDetails: "Branch: Gulshan | Slip: 84920 | TrxID: CBL-849201", offlinePayment: true, approval: false, addedBy: "customer" },
+          { userId: uid0, amount: "1500.00", paymentMethod: "Admin Credit", paymentDetails: "Admin adjustment", offlinePayment: true, approval: true, addedBy: "admin" },
+          { userId: uid1, amount: "3000.00", paymentMethod: "bKash", paymentDetails: "Sender: 01900-112233 | TrxID: BKH128374650", offlinePayment: true, approval: false, addedBy: "customer" },
+        ])
+        console.log("[OK] Step 29: 5 canonical wallet offline recharge requests seeded")
+      } else {
+        console.log("[SKIP] Step 29: No users found — wallet recharges skipped")
+      }
+    } else {
+      console.log("[OK] Step 29: Wallet recharges already seeded — skipped")
+    }
+
+    // ─── Step 30: Canonical Staff Roles & Staffs ──────────────────────────────
+    const roleCount = await db.select({ c: count() }).from(schema.staffRoles)
+    if (Number(roleCount[0]?.c ?? 0) === 0) {
+      await db.insert(schema.staffRoles).values([
+        {
+          name: "Super Admin",
+          permissions: [
+            "manage_products",
+            "manage_orders",
+            "manage_sellers",
+            "manage_refunds",
+            "manage_customers",
+            "manage_marketing",
+            "manage_reports",
+            "manage_settings",
+            "manage_staffs",
+          ],
+        },
+        {
+          name: "Order & Logistics Manager",
+          permissions: ["manage_orders", "manage_refunds", "track_couriers"],
+        },
+        {
+          name: "Customer Support Specialist",
+          permissions: ["manage_support_tickets", "conversations", "reviews"],
+        },
+        {
+          name: "Product & Catalog Editor",
+          permissions: ["manage_products", "manage_categories", "manage_brands", "manage_attributes"],
+        },
+      ])
+      console.log("[OK] Step 30a: 4 canonical staff roles seeded")
+    } else {
+      console.log("[OK] Step 30a: Staff roles already seeded — skipped")
+    }
+
+    const staffCount = await db.select({ c: count() }).from(schema.staffs)
+    if (Number(staffCount[0]?.c ?? 0) === 0) {
+      const existingRoles = await db.select().from(schema.staffRoles).limit(4)
+      const r1 = existingRoles.find((r) => r.name === "Super Admin") || existingRoles[0]
+      const r2 = existingRoles.find((r) => r.name === "Customer Support Specialist") || existingRoles[1] || r1
+      const r3 = existingRoles.find((r) => r.name === "Order & Logistics Manager") || existingRoles[2] || r1
+
+      await db.insert(schema.staffs).values([
+        {
+          name: "Mahmud Hasan",
+          email: "mahmud.admin@huipper.com",
+          phone: "+880 1711-223344",
+          roleId: r1.id,
+          roleName: r1.name,
+          isActive: true,
+        },
+        {
+          name: "Farhana Akter",
+          email: "farhana.support@huipper.com",
+          phone: "+880 1812-998877",
+          roleId: r2.id,
+          roleName: r2.name,
+          isActive: true,
+        },
+        {
+          name: "Kamrul Islam",
+          email: "kamrul.ops@huipper.com",
+          phone: "+880 1913-445566",
+          roleId: r3.id,
+          roleName: r3.name,
+          isActive: true,
+        },
+      ])
+      console.log("[OK] Step 30b: 3 canonical staff accounts seeded")
+    } else {
+      console.log("[OK] Step 30b: Staff accounts already seeded — skipped")
+    }
+
+    // ─── Step 31: Canonical SMS Templates & OTP Settings ──────────────────────
+    const templateCount = await db.select({ c: count() }).from(schema.smsTemplates)
+    if (Number(templateCount[0]?.c ?? 0) === 0) {
+      await db.insert(schema.smsTemplates).values([
+        {
+          identifier: "phone_verification_otp",
+          title: "Phone Verification OTP Code",
+          body: "Your verification code is [[otp_code]]. Valid for 5 minutes. Do not share this PIN with anyone - [[site_name]].",
+          variables: ["[[otp_code]]", "[[site_name]]"],
+          status: true,
+        },
+        {
+          identifier: "order_placed",
+          title: "Order Placed Successfully",
+          body: "Dear [[customer_name]], your order [[order_code]] has been received. Total: [[total_amount]]. Thank you for shopping with [[site_name]]!",
+          variables: ["[[customer_name]]", "[[order_code]]", "[[total_amount]]", "[[site_name]]"],
+          status: true,
+        },
+        {
+          identifier: "order_confirmed",
+          title: "Order Confirmed & Processing",
+          body: "Hello [[customer_name]], your order [[order_code]] is confirmed and packed for courier dispatch by [[site_name]].",
+          variables: ["[[customer_name]]", "[[order_code]]", "[[site_name]]"],
+          status: true,
+        },
+        {
+          identifier: "order_picked_up",
+          title: "Order Picked Up by Delivery Boy",
+          body: "Dear [[customer_name]], order [[order_code]] has been picked up by delivery personnel [[delivery_boy_name]].",
+          variables: ["[[customer_name]]", "[[order_code]]", "[[delivery_boy_name]]", "[[site_name]]"],
+          status: true,
+        },
+        {
+          identifier: "order_on_the_way",
+          title: "Order On The Way",
+          body: "Dear [[customer_name]], your order [[order_code]] is out for delivery. Rider: [[delivery_boy_name]] (Phone: [[delivery_boy_phone]]).",
+          variables: ["[[customer_name]]", "[[order_code]]", "[[delivery_boy_name]]", "[[delivery_boy_phone]]"],
+          status: true,
+        },
+        {
+          identifier: "order_shipped",
+          title: "Order Shipped with Tracking",
+          body: "Your order [[order_code]] has been handed over to [[courier_name]] (Tracking: [[tracking_code]]). Track online at [[site_url]].",
+          variables: ["[[customer_name]]", "[[order_code]]", "[[courier_name]]", "[[tracking_code]]", "[[site_url]]"],
+          status: true,
+        },
+        {
+          identifier: "delivery_completed",
+          title: "Order Delivered Successfully",
+          body: "Order [[order_code]] has been delivered successfully. We appreciate your purchase with [[site_name]]!",
+          variables: ["[[customer_name]]", "[[order_code]]", "[[site_name]]"],
+          status: true,
+        },
+        {
+          identifier: "order_cancelled",
+          title: "Order Cancelled Notification",
+          body: "Dear [[customer_name]], your order [[order_code]] has been cancelled. Please visit [[site_url]] for more details.",
+          variables: ["[[customer_name]]", "[[order_code]]", "[[site_name]]", "[[site_url]]"],
+          status: true,
+        },
+        {
+          identifier: "order_paid",
+          title: "Order Payment Received",
+          body: "Payment of [[amount]] for order [[order_code]] received successfully. Thank you - [[site_name]].",
+          variables: ["[[customer_name]]", "[[order_code]]", "[[amount]]", "[[site_name]]"],
+          status: true,
+        },
+        {
+          identifier: "assign_delivery_boy",
+          title: "Delivery Boy Assignment",
+          body: "New delivery assigned: Order [[order_code]]. Pickup and deliver promptly - [[site_name]].",
+          variables: ["[[order_code]]", "[[delivery_boy_name]]", "[[site_name]]"],
+          status: true,
+        },
+      ])
+      console.log("[OK] Step 31: 10 canonical SMS notification templates seeded")
+    } else {
+      console.log("[OK] Step 31: SMS templates already seeded — skipped")
+    }
+
     console.log("==================================================")
     console.log("[OK] Installation completed")
     console.log("==================================================")

@@ -1,13 +1,35 @@
 import React from "react"
-import { getBlogs, getBlogCategories } from "@/services/blog-service"
-import { BlogsAdminView } from "./_components/blogs-admin-view"
+import { getAllBlogsAdmin } from "@/services/blog-service"
+import { BlogsListContainer } from "./_components/blogs-list-container"
 
 export const metadata = {
-  title: "Blog Management | Active eCommerce Admin",
+  title: "All Blog Posts | Active eCommerce Admin",
 }
 
-export default async function AdminBlogsPage() {
-  const [blogs, categories] = await Promise.all([getBlogs(), getBlogCategories()])
+interface PageProps {
+  searchParams: Promise<{
+    search?: string
+    status?: string
+  }>
+}
 
-  return <BlogsAdminView initialBlogs={blogs} categories={categories} />
+export default async function AdminBlogsPage({ searchParams }: PageProps) {
+  const resolvedParams = await searchParams
+  const search = resolvedParams?.search || ""
+  const status = resolvedParams?.status || "all"
+
+  const blogsData = await getAllBlogsAdmin({
+    search,
+    status,
+  })
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4">
+      <BlogsListContainer
+        initialData={blogsData}
+        currentSearch={search}
+        currentStatus={status}
+      />
+    </div>
+  )
 }

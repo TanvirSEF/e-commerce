@@ -1,24 +1,9 @@
 import { db } from "../db"
 import { customerProducts } from "../db/schema"
-import { eq, desc } from "drizzle-orm"
+import { eq, desc, ilike, or, count } from "drizzle-orm"
 
-export interface ClassifiedProductItem {
-  id: number
-  name: string
-  slug: string
-  category: string
-  thumbnailImg: string
-  unitPrice: number
-  condition: string
-  customerName: string
-  customerPhone: string
-  customerEmail?: string
-  location: string
-  published: boolean
-  status: string
-  date: string
-  description?: string
-}
+import type { ClassifiedProductItem, AdminClassifiedResponse } from "@/types/customer-product"
+export type { ClassifiedProductItem, AdminClassifiedResponse } from "@/types/customer-product"
 
 const SEED_CLASSIFIED: ClassifiedProductItem[] = [
   {
@@ -143,6 +128,55 @@ export async function deleteClassifiedProduct(id: number) {
     return { success: true }
   }
 }
+
+export async function getClassifiedProductsAdminPaginated(params: {
+  search?: string
+  page?: number
+  limit?: number
+} = {}): Promise<AdminClassifiedResponse> {
+  const { search = "", page = 1, limit = 15 } = params
+  const offset = (page - 1) * limit
+
+  try {
+    const whereClause = search
+      ? or(ilike(customerProducts.name, `%${search}%`), ilike(customerProducts.customerName, `%${search}%`))
+      : undefined
+
+    const [rows, countResult] = await Promise.all([
+      db
+        .select()
+        .from(customerProducts)
+        .where(whereClause)
+        .orderBy(desc(customerProducts.id))
+        .limit(limit)
+        .offset(offset),
+      db.select({ c: count() }).from(customerProducts).where(whereClause),
+    ])
+
+    const items: ClassifiedProductItem[] = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      category: r.category,
+      thumbnailImg: r.thumbnailImg,
+      unitPrice: Number(r.unitPrice),
+      condition: r.condition,
+      customerName: r.customerName,
+      customerPhone: r.customerPhone,
+      customerEmail: r.customerEmail || undefined,
+      location: r.location,
+      published: r.published,
+      status: r.status,
+      date: r.createdAt.toISOString().slice(0, 10),
+    }))
+
+    return { items, total: Number(countResult[0]?.c ?? 0) }
+  } catch (err) {
+    console.error("getClassifiedProductsAdminPaginated error:", err)
+    return { items: [], total: 0 }
+  }
+}
+
 
 export async function getPublishedCustomerProducts(filters?: {
   category?: string

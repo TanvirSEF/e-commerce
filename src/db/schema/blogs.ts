@@ -26,7 +26,9 @@ export const blogs = pgTable("blogs", {
   banner: text("banner"),
   status: boolean("status").default(true).notNull(),
   metaTitle: text("meta_title"),
+  metaImg: text("meta_img"),
   metaDescription: text("meta_description"),
+  metaKeywords: text("meta_keywords"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })

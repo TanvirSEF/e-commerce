@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { wallets, clubPoints, users } from "../db/schema"
-import { eq, desc } from "drizzle-orm"
+import { eq, desc, ilike, or, and, count } from "drizzle-orm"
 import {
   SEED_WALLET_TRANSACTIONS,
   SeedWalletTransaction,
@@ -132,90 +132,101 @@ export async function convertClubPoints(
   return { success: true, creditedAmount }
 }
 
-export interface WalletRechargeItem {
-  id: number
-  userId: string
-  userName: string
-  amount: number
-  paymentMethod: string
-  paymentDetails?: string
-  trxId?: string
-  approval: boolean
-  date: string
-}
+import type { WalletRechargeItem, AdminWalletRechargesResponse } from "@/types/wallet-recharge"
+export type { WalletRechargeItem, AdminWalletRechargesResponse } from "@/types/wallet-recharge"
 
-const SEED_WALLET_RECHARGES: WalletRechargeItem[] = [
-  {
-    id: 101,
-    userId: "usr_1",
-    userName: "Tanvir Ahmed",
-    amount: 5000,
-    paymentMethod: "bKash Send Money",
-    paymentDetails: "Sender: 01711-223344",
-    trxId: "BKH948271049",
-    approval: false,
-    date: "2026-03-23",
-  },
-  {
-    id: 102,
-    userId: "usr_2",
-    userName: "Mahmud Hasan",
-    amount: 2500,
-    paymentMethod: "Nagad Personal",
-    paymentDetails: "Sender: 01812-998877",
-    trxId: "NGD849201948",
-    approval: true,
-    date: "2026-03-21",
-  },
-  {
-    id: 103,
-    userId: "usr_3",
-    userName: "Farhana Akter",
-    amount: 10000,
-    paymentMethod: "City Bank Wire",
-    paymentDetails: "Branch: Gulshan, Slip: 84920",
-    trxId: "CBL-849201",
-    approval: false,
-    date: "2026-03-22",
-  },
-]
+export async function getAllWalletRechargesAdmin(params: {
+  search?: string
+  status?: string
+  page?: number
+  limit?: number
+} = {}): Promise<AdminWalletRechargesResponse> {
+  const { search = "", status = "all", page = 1, limit = 15 } = params
+  const offset = (page - 1) * limit
 
-export async function getAllWalletRechargesAdmin(): Promise<WalletRechargeItem[]> {
   try {
-    const rows = await db
-      .select({
-        id: wallets.id,
-        userId: wallets.userId,
-        userName: users.name,
-        amount: wallets.amount,
-        paymentMethod: wallets.paymentMethod,
-        paymentDetails: wallets.paymentDetails,
-        approval: wallets.approval,
-        createdAt: wallets.createdAt,
-      })
-      .from(wallets)
-      .leftJoin(users, eq(wallets.userId, users.id))
-      .where(eq(wallets.offlinePayment, true))
-      .orderBy(desc(wallets.id))
+    const buildStatusWhere = (s: string) => {
+      if (s === "pending")              return and(eq(wallets.offlinePayment, true), eq(wallets.approval, false))
+      if (s === "approved")             return and(eq(wallets.offlinePayment, true), eq(wallets.approval, true))
+      if (s === "recharged_by_admin")   return and(eq(wallets.offlinePayment, true), eq(wallets.addedBy, "admin"))
+      if (s === "recharged_by_customer") return and(eq(wallets.offlinePayment, true), eq(wallets.addedBy, "customer"))
+      return eq(wallets.offlinePayment, true) // all offline
+    }
 
-    if (rows.length > 0) {
-      return rows.map((r) => ({
-        id: r.id,
-        userId: r.userId,
-        userName: r.userName || "Customer",
-        amount: Number(r.amount),
-        paymentMethod: r.paymentMethod,
-        paymentDetails: r.paymentDetails || undefined,
-        trxId: r.paymentDetails?.match(/TrxID:?\s*([A-Za-z0-9_-]+)/i)?.[1] || "TRX-MANUAL",
-        approval: r.approval,
-        date: r.createdAt.toISOString().slice(0, 10),
-      }))
+    const statusWhere = buildStatusWhere(status)
+
+    const searchWhere = search
+      ? or(ilike(users.name, `%${search}%`), ilike(wallets.paymentDetails, `%${search}%`))
+      : undefined
+
+    const baseWhere = searchWhere ? and(statusWhere, searchWhere) : statusWhere
+
+    const [rows, countResult] = await Promise.all([
+      db
+        .select({
+          id: wallets.id,
+          userId: wallets.userId,
+          userName: users.name,
+          userEmail: users.email,
+          amount: wallets.amount,
+          paymentMethod: wallets.paymentMethod,
+          paymentDetails: wallets.paymentDetails,
+          addedBy: wallets.addedBy,
+          approval: wallets.approval,
+          createdAt: wallets.createdAt,
+        })
+        .from(wallets)
+        .leftJoin(users, eq(wallets.userId, users.id))
+        .where(baseWhere)
+        .orderBy(desc(wallets.id))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ c: count() })
+        .from(wallets)
+        .leftJoin(users, eq(wallets.userId, users.id))
+        .where(baseWhere),
+    ])
+
+    // Tab counts
+    const [allC, pendingC, approvedC, adminC, customerC] = await Promise.all([
+      db.select({ c: count() }).from(wallets).where(eq(wallets.offlinePayment, true)),
+      db.select({ c: count() }).from(wallets).where(and(eq(wallets.offlinePayment, true), eq(wallets.approval, false))),
+      db.select({ c: count() }).from(wallets).where(and(eq(wallets.offlinePayment, true), eq(wallets.approval, true))),
+      db.select({ c: count() }).from(wallets).where(and(eq(wallets.offlinePayment, true), eq(wallets.addedBy, "admin"))),
+      db.select({ c: count() }).from(wallets).where(and(eq(wallets.offlinePayment, true), eq(wallets.addedBy, "customer"))),
+    ])
+
+    const items: WalletRechargeItem[] = rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      userName: r.userName || "Customer",
+      userEmail: r.userEmail || "",
+      amount: Number(r.amount),
+      paymentMethod: r.paymentMethod,
+      paymentDetails: r.paymentDetails ?? null,
+      addedBy: r.addedBy,
+      approval: r.approval,
+      createdAt: r.createdAt.toISOString().slice(0, 10),
+    }))
+
+    return {
+      items,
+      total: Number(countResult[0]?.c ?? 0),
+      counts: {
+        all:                  Number(allC[0]?.c ?? 0),
+        pending:              Number(pendingC[0]?.c ?? 0),
+        approved:             Number(approvedC[0]?.c ?? 0),
+        rechargedByAdmin:     Number(adminC[0]?.c ?? 0),
+        rechargedByCustomer:  Number(customerC[0]?.c ?? 0),
+      },
     }
   } catch (err) {
-    console.warn("DB getAllWalletRechargesAdmin fallback:", (err as Error).message)
+    console.error("getAllWalletRechargesAdmin error:", err)
+    return { items: [], total: 0, counts: { all: 0, pending: 0, approved: 0, rechargedByAdmin: 0, rechargedByCustomer: 0 } }
   }
-  return SEED_WALLET_RECHARGES
 }
+
 
 export async function processWalletRechargeAdmin(id: number, approved: boolean) {
   try {

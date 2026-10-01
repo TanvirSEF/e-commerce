@@ -8,11 +8,17 @@ export const metadata: Metadata = {
 }
 
 export default async function BlogsPage() {
-  const [blogs, categories, recent] = await Promise.all([
+  const [blogs, rawCategories, recent] = await Promise.all([
     getBlogs(),
     getBlogCategories(),
     getRecentBlogs(4),
   ])
+
+  const categories = rawCategories.map((c) => ({
+    id: String(c.id),
+    name: c.name,
+    slug: c.slug,
+  }))
 
   return (
     <BlogsView

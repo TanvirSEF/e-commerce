@@ -9,6 +9,8 @@ export const users = pgTable("users", {
   role: text("role").default("customer").notNull(),
   phone: text("phone"),
   balance: numeric("balance", { precision: 12, scale: 2 }).default("0.00").notNull(),
+  banned: boolean("banned").default(false).notNull(),
+  isSuspicious: boolean("is_suspicious").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })

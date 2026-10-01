@@ -1,16 +1,28 @@
-import React from "react"
-import { getAllStaffs, getAllRoles } from "@/services/staff-service"
-import { StaffManagementView } from "./_components/staff-management-view"
+import { Metadata } from "next"
+import { getAllStaffsAdmin } from "@/services/staff-service"
+import { StaffsListContainer } from "./_components/staffs-list-container"
 
-export const metadata = {
-  title: "Staffs & Roles Management | Admin Panel",
+export const metadata: Metadata = {
+  title: "All Staffs | Admin",
+  description: "View and manage staff accounts and role assignments",
 }
 
-export default async function AdminStaffsPage() {
-  const [staffs, roles] = await Promise.all([
-    getAllStaffs(),
-    getAllRoles(),
-  ])
+interface PageProps {
+  searchParams: Promise<{ search?: string; page?: string }>
+}
 
-  return <StaffManagementView initialStaffs={staffs} roles={roles} />
+export default async function AdminStaffsPage({ searchParams }: PageProps) {
+  const params = await searchParams
+  const search = params.search ?? ""
+  const page = Number(params.page ?? 1)
+
+  const data = await getAllStaffsAdmin({ search, page, limit: 15 })
+
+  return (
+    <StaffsListContainer
+      initialData={data}
+      initialSearch={search}
+      initialPage={page}
+    />
+  )
 }

@@ -1,23 +1,21 @@
 "use client"
 
 import React, { useState, useTransition } from "react"
-import {
-  FileText,
-  Save,
-  CheckCircle2,
-  AlertCircle,
-  Tag,
-} from "lucide-react"
-import { updateSmsTemplateAction } from "@/app/actions/ecommerce-actions"
-import type { SmsTemplate } from "@/db/schema"
+import { Save, CheckCircle2, AlertCircle, Tag } from "lucide-react"
+import type { SmsTemplateItem } from "@/types/otp-sms"
+import { updateSmsTemplateAction } from "@/app/actions/otp-sms-actions"
 
-interface SmsTemplatesViewProps {
-  initialTemplates: SmsTemplate[]
+interface Props {
+  initialTemplates: SmsTemplateItem[]
 }
 
-export function SmsTemplatesView({ initialTemplates }: SmsTemplatesViewProps) {
-  const [templates, setTemplates] = useState<SmsTemplate[]>(initialTemplates)
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
+export function SmsTemplatesView({ initialTemplates }: Props) {
+  const [templates, setTemplates] = useState<SmsTemplateItem[]>(initialTemplates)
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
+  const [savingId, setSavingId] = useState<number | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const handleBodyChange = (id: number, val: string) => {
@@ -26,9 +24,9 @@ export function SmsTemplatesView({ initialTemplates }: SmsTemplatesViewProps) {
     )
   }
 
-  const handleToggleStatus = (id: number, current: boolean) => {
+  const handleToggleStatus = (id: number) => {
     setTemplates((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: !current } : t))
+      prev.map((t) => (t.id === id ? { ...t, status: !t.status } : t))
     )
   }
 
@@ -38,37 +36,40 @@ export function SmsTemplatesView({ initialTemplates }: SmsTemplatesViewProps) {
     )
   }
 
-  const handleSave = (template: SmsTemplate) => {
+  const handleSave = (template: SmsTemplateItem) => {
+    setSavingId(template.id)
     startTransition(async () => {
-      const res = await updateSmsTemplateAction(template.id, {
-        body: template.body,
-        status: template.status,
-      })
-      if (res.success) {
-        setFeedback({ type: "success", text: `"${template.title}" template updated!` })
-      } else {
-        setFeedback({ type: "error", text: "Failed to update template" })
+      try {
+        await updateSmsTemplateAction(template.id, {
+          body: template.body,
+          status: template.status,
+        })
+        setFeedback({
+          type: "success",
+          text: `"${template.title}" template updated successfully!`,
+        })
+      } catch {
+        setFeedback({
+          type: "error",
+          text: `Failed to update template "${template.title}".`,
+        })
+      } finally {
+        setSavingId(null)
       }
       setTimeout(() => setFeedback(null), 3000)
     })
   }
 
   return (
-    <div className="space-y-6">
-      {/* Title Bar */}
+    <div className="space-y-4">
+      {/* 1:1 Active eCommerce Titlebar */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <FileText className="h-6 w-6 text-[#d43533]" />
-          SMS Notification Templates
-        </h1>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Customize automated SMS messages dispatched to customers on order progress, dispatch, and OTP verification
-        </p>
+        <h1 className="text-xl font-bold text-gray-800">SMS Templates</h1>
       </div>
 
       {feedback && (
         <div
-          className={`flex items-center gap-2 p-3 text-xs rounded-lg border ${
+          className={`flex items-center gap-2 p-3 text-xs rounded border transition-all ${
             feedback.type === "success"
               ? "bg-emerald-50 text-emerald-800 border-emerald-200"
               : "bg-red-50 text-red-800 border-red-200"
@@ -83,83 +84,92 @@ export function SmsTemplatesView({ initialTemplates }: SmsTemplatesViewProps) {
         </div>
       )}
 
-      {/* Templates List */}
-      <div className="space-y-4">
-        {templates.map((tpl) => (
-          <div
-            key={tpl.id}
-            className="rounded-xl border border-gray-200 bg-white p-5 shadow-xs space-y-4"
-          >
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="font-bold text-sm text-gray-900">{tpl.title}</h3>
-                <span className="text-[10px] text-gray-400 font-mono">
-                  Trigger Identifier: {tpl.identifier}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-500">
-                  {tpl.status ? "Active (Sends SMS)" : "Disabled"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleToggleStatus(tpl.id, tpl.status)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                    tpl.status ? "bg-emerald-500" : "bg-gray-200"
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                      tpl.status ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
+      {/* Card container matching backend/otp_systems/sms/templates.blade.php */}
+      <div className="bg-white border border-gray-200 rounded shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h5 className="text-sm font-semibold text-gray-800">All SMS Templates</h5>
+        </div>
 
-            {/* Variable Pills */}
-            <div>
-              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">
-                Insertable Placeholders:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {(tpl.variables || []).map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => handleInsertTag(tpl.id, v)}
-                    className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-mono font-medium text-gray-700 hover:bg-red-50 hover:text-[#d43533] transition"
-                  >
-                    <Tag className="w-2.5 h-2.5 text-gray-400" />
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Template Body */}
-            <div>
-              <textarea
-                rows={3}
-                value={tpl.body}
-                onChange={(e) => handleBodyChange(tpl.id, e.target.value)}
-                className="w-full rounded-lg border border-gray-200 p-3 text-xs text-gray-800 focus:border-[#d43533] focus:outline-hidden leading-relaxed"
-              />
-            </div>
-
-            <div className="flex justify-end pt-1">
-              <button
-                type="button"
-                onClick={() => handleSave(tpl)}
-                disabled={isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#d43533] px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#b02a28] transition"
-              >
-                <Save className="w-3.5 h-3.5" />
-                Update Template
-              </button>
-            </div>
-          </div>
-        ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] font-semibold border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 w-12">#</th>
+                <th className="px-4 py-3 w-56">Template Name</th>
+                <th className="px-4 py-3">SMS Body</th>
+                <th className="px-4 py-3 w-28">Status</th>
+                <th className="px-4 py-3 text-right w-24">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {templates.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                    No SMS templates found.
+                  </td>
+                </tr>
+              ) : (
+                templates.map((tmpl, idx) => (
+                  <tr key={tmpl.id} className="hover:bg-gray-50/50 align-top">
+                    <td className="px-4 py-4 text-gray-400 font-medium">{idx + 1}</td>
+                    <td className="px-4 py-4">
+                      <p className="font-semibold text-gray-800">{tmpl.title}</p>
+                      <span className="text-[10px] font-mono text-gray-400">{tmpl.identifier}</span>
+                    </td>
+                    <td className="px-4 py-4 space-y-2">
+                      <textarea
+                        rows={2}
+                        value={tmpl.body}
+                        onChange={(e) => handleBodyChange(tmpl.id, e.target.value)}
+                        className="w-full text-xs border border-gray-300 rounded p-2 focus:outline-none focus:border-blue-400"
+                      />
+                      {tmpl.variables && tmpl.variables.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                            <Tag className="w-3 h-3" /> Placeholders:
+                          </span>
+                          {tmpl.variables.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => handleInsertTag(tmpl.id, tag)}
+                              className="px-1.5 py-0.5 text-[10px] bg-gray-100 hover:bg-gray-200 rounded font-mono text-gray-700 transition-colors"
+                              title={`Click to append ${tag}`}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={tmpl.status}
+                          onChange={() => handleToggleStatus(tmpl.id)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-[#28a745] after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border after:border-gray-300 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
+                      </label>
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleSave(tmpl)}
+                        disabled={isPending && savingId === tmpl.id}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#1d3557] hover:bg-[#16304d] text-white rounded disabled:opacity-60 transition-colors"
+                      >
+                        <Save className="w-3 h-3" />
+                        <span>{savingId === tmpl.id ? "Saving..." : "Save"}</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
