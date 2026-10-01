@@ -1,10 +1,15 @@
 import React from "react"
+import { getEarningPayoutReport } from "@/services/report-service"
 import { AdminEarningPayoutReportView } from "./_components/admin-earning-payout-report-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
-  title: "Earnings vs Payouts Report | Admin Panel",
+  title: "Earning Report | Active eCommerce Admin",
 }
 
-export default function AdminEarningPayoutReportPage() {
-  return <AdminEarningPayoutReportView />
+export default async function AdminEarningPayoutReportPage() {
+  const data = await getEarningPayoutReport()
+
+  return <AdminEarningPayoutReportView data={data} />
 }

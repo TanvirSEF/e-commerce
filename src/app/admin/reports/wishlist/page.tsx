@@ -4,6 +4,8 @@ import { getProductWishlistReport } from "@/services/report-service"
 import { getCategories } from "@/services/category-service"
 import { WishlistReportView } from "./_components/wishlist-report-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Product Wish Report | Active eCommerce Admin",
 }

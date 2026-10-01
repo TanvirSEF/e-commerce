@@ -3,6 +3,8 @@ import { Metadata } from "next"
 import { getSellerSalesReport } from "@/services/report-service"
 import { SellerSalesView } from "./_components/seller-sales-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Seller Based Selling Report | Active eCommerce Admin",
 }

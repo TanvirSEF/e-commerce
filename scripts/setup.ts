@@ -193,6 +193,39 @@ async function runSetup() {
         status VARCHAR(50) NOT NULL DEFAULT 'pending',
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS user_searches (
+        id SERIAL PRIMARY KEY,
+        query VARCHAR(255) NOT NULL,
+        count INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS commission_histories (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER,
+        order_code VARCHAR(100) NOT NULL,
+        seller_id VARCHAR(100),
+        seller_name VARCHAR(150),
+        admin_commission NUMERIC(12, 2) NOT NULL DEFAULT '0.00',
+        seller_earning NUMERIC(12, 2) NOT NULL DEFAULT '0.00',
+        order_from VARCHAR(20) NOT NULL DEFAULT 'web',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS ai_token_logs (
+        id SERIAL PRIMARY KEY,
+        user_id VARCHAR(100),
+        user_name VARCHAR(150),
+        feature VARCHAR(255) NOT NULL,
+        model VARCHAR(100) NOT NULL,
+        prompt_tokens INTEGER NOT NULL DEFAULT 0,
+        completion_tokens INTEGER NOT NULL DEFAULT 0,
+        total_tokens INTEGER NOT NULL DEFAULT 0,
+        cost_usd NUMERIC(10, 4) NOT NULL DEFAULT '0.0000',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
     `)
 
     // 3. Seed Default Business Settings
@@ -1411,6 +1444,143 @@ async function runSetup() {
         },
       ])
       console.log("[OK] Canonical Delivery Cancel Requests seeded")
+    }
+
+    // 18. Seed Reports Tables (user_searches, commission_histories, ai_token_logs)
+    const existingSearchesCount = await db.select({ val: count() }).from(schema.userSearches)
+    if (Number(existingSearchesCount[0]?.val || 0) === 0) {
+      await db.insert(schema.userSearches).values([
+        { query: "iPhone 15 Pro Max", count: 482 },
+        { query: "Samsung Galaxy S24 Ultra", count: 329 },
+        { query: "Wireless Bluetooth Earbuds", count: 274 },
+        { query: "Smartwatch AMOLED Display", count: 215 },
+        { query: "Mechanical Gaming Keyboard RGB", count: 184 },
+        { query: "USB-C Fast Charger 65W GaN", count: 142 },
+        { query: "Noise Cancelling Headphones", count: 118 },
+        { query: "Power Bank 20000mAh", count: 96 },
+        { query: "Men Casual Cotton Shirt", count: 78 },
+        { query: "Leather Formal Wallet & Belt", count: 64 },
+      ])
+      console.log("[OK] Canonical User Searches seeded")
+    }
+
+    const existingCommissionsCount = await db.select({ val: count() }).from(schema.commissionHistories)
+    if (Number(existingCommissionsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.commissionHistories).values([
+        {
+          orderId: 1,
+          orderCode: "ORD-202609-0891",
+          sellerId: "usr_seller_demo",
+          sellerName: "TechZone Official",
+          adminCommission: "45.00",
+          sellerEarning: "405.00",
+          orderFrom: "web",
+          createdAt: new Date("2026-09-25T15:30:00Z"),
+        },
+        {
+          orderId: 2,
+          orderCode: "ORD-202609-0895",
+          sellerId: "usr_seller_demo_2",
+          sellerName: "Electro Gadgets Hub",
+          adminCommission: "12.00",
+          sellerEarning: "108.00",
+          orderFrom: "web",
+          createdAt: new Date("2026-09-25T12:10:00Z"),
+        },
+        {
+          orderId: 3,
+          orderCode: "ORD-202609-0902",
+          sellerId: "usr_seller_demo",
+          sellerName: "Fashion Fusion BD",
+          adminCommission: "10.20",
+          sellerEarning: "74.80",
+          orderFrom: "pos",
+          createdAt: new Date("2026-09-24T18:45:00Z"),
+        },
+        {
+          orderId: 4,
+          orderCode: "ORD-202609-0915",
+          sellerId: "usr_seller_demo_2",
+          sellerName: "TechZone Official",
+          adminCommission: "78.00",
+          sellerEarning: "702.00",
+          orderFrom: "web",
+          createdAt: new Date("2026-09-24T10:15:00Z"),
+        },
+        {
+          orderId: 5,
+          orderCode: "ORD-202609-0922",
+          sellerId: "usr_seller_demo",
+          sellerName: "Smart Accessories",
+          adminCommission: "18.50",
+          sellerEarning: "166.50",
+          orderFrom: "web",
+          createdAt: new Date("2026-09-23T14:20:00Z"),
+        },
+      ])
+      console.log("[OK] Canonical Commission Histories seeded")
+    }
+
+    const existingAiLogsCount = await db.select({ val: count() }).from(schema.aiTokenLogs)
+    if (Number(existingAiLogsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.aiTokenLogs).values([
+        {
+          userId: "usr_admin_demo",
+          userName: "Admin Officer",
+          feature: "Product Title & Description Generation",
+          model: "gpt-4o",
+          promptTokens: 420,
+          completionTokens: 1000,
+          totalTokens: 1420,
+          costUsd: "0.0210",
+          createdAt: new Date("2026-09-25T14:22:10Z"),
+        },
+        {
+          userId: "usr_seller_demo",
+          userName: "Rahim Chowdhury",
+          feature: "SEO Meta Tags & Snippet Optimization",
+          model: "gpt-4o-mini",
+          promptTokens: 180,
+          completionTokens: 400,
+          totalTokens: 580,
+          costUsd: "0.0030",
+          createdAt: new Date("2026-09-25T11:15:45Z"),
+        },
+        {
+          userId: "usr_admin_demo",
+          userName: "Admin Officer",
+          feature: "Customer Review Sentiment Extraction",
+          model: "gpt-4o-mini",
+          promptTokens: 350,
+          completionTokens: 540,
+          totalTokens: 890,
+          costUsd: "0.0040",
+          createdAt: new Date("2026-09-24T16:40:02Z"),
+        },
+        {
+          userId: "usr_seller_demo_2",
+          userName: "Tanvir Ahmed",
+          feature: "Product Bulk Features Bullet Generator",
+          model: "gpt-4o",
+          promptTokens: 800,
+          completionTokens: 2300,
+          totalTokens: 3100,
+          costUsd: "0.0460",
+          createdAt: new Date("2026-09-24T09:12:30Z"),
+        },
+        {
+          userId: "usr_admin_demo",
+          userName: "Admin Officer",
+          feature: "Marketing Email Copywriter",
+          model: "gpt-4o",
+          promptTokens: 450,
+          completionTokens: 980,
+          totalTokens: 1430,
+          costUsd: "0.0215",
+          createdAt: new Date("2026-09-23T16:05:12Z"),
+        },
+      ])
+      console.log("[OK] Canonical AI Token Logs seeded")
     }
 
     console.log("==================================================")

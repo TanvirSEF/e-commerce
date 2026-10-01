@@ -1,119 +1,140 @@
 "use client"
 
 import React, { useState } from "react"
-import { Bot, Search, Zap, Calendar, TrendingUp } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Bot, Search, Zap, Calendar, TrendingUp, Cpu } from "lucide-react"
+import type { AiTokenReportData } from "@/services/report-service"
 
-interface TokenLog {
-  id: number
-  feature: string
-  model: string
-  tokensUsed: number
-  costUsd: string
-  generatedAt: string
+interface AdminAiTokenReportViewProps {
+  data: AiTokenReportData
+  currentDateFilter?: string
 }
 
-const MOCK_TOKEN_LOGS: TokenLog[] = [
-  {
-    id: 1,
-    feature: "Product Title & Description Generation",
-    model: "gpt-4o",
-    tokensUsed: 1420,
-    costUsd: "0.021",
-    generatedAt: "2026-09-25 14:22:10",
-  },
-  {
-    id: 2,
-    feature: "SEO Meta Tags & Snippet Optimization",
-    model: "gpt-4o-mini",
-    tokensUsed: 580,
-    costUsd: "0.003",
-    generatedAt: "2026-09-25 11:15:45",
-  },
-  {
-    id: 3,
-    feature: "Customer Review Sentiment Extraction",
-    model: "gpt-4o-mini",
-    tokensUsed: 890,
-    costUsd: "0.004",
-    generatedAt: "2026-09-24 16:40:02",
-  },
-  {
-    id: 4,
-    feature: "Product Bulk Features Bullet Generator",
-    model: "gpt-4o",
-    tokensUsed: 3100,
-    costUsd: "0.046",
-    generatedAt: "2026-09-24 09:12:30",
-  },
-]
+export function AdminAiTokenReportView({ data, currentDateFilter }: AdminAiTokenReportViewProps) {
+  const router = useRouter()
+  const [search, setSearch] = useState("")
 
-export function AdminAiTokenReportView() {
-  const [logs] = useState(MOCK_TOKEN_LOGS)
-  const totalTokens = logs.reduce((acc, l) => acc + l.tokensUsed, 0)
+  const filteredLogs = data.logs.filter(
+    (l) =>
+      l.feature.toLowerCase().includes(search.toLowerCase()) ||
+      l.model.toLowerCase().includes(search.toLowerCase()) ||
+      l.userName.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-          <Bot className="w-7 h-7 text-[#d43533]" />
-          AI Writer Token Usage Report
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Monitor token consumption, API calls, and OpenAI expenses across platform writers
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Total Tokens Consumed</span>
-          <div className="text-2xl font-black text-slate-900">{totalTokens.toLocaleString()}</div>
-          <span className="text-[11px] text-emerald-600 font-medium">Current Month</span>
-        </div>
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Total OpenAI API Cost</span>
-          <div className="text-2xl font-black text-emerald-600">$0.074</div>
-          <span className="text-[11px] text-slate-400">GPT-4o + Mini</span>
-        </div>
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Active Model</span>
-          <div className="text-2xl font-black text-blue-600">GPT-4o</div>
-          <span className="text-[11px] text-slate-400">High fidelity mode</span>
+      {/* Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <Bot className="w-6 h-6 text-[#d43533]" />
+            Token Usage History
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Audit log of AI completions, token consumption metrics, and estimated API usage costs
+          </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-800">Token Consumption Ledger</h2>
-          <span className="text-xs text-slate-500">{logs.length} Generation Events</span>
+      {/* 3 Realtime Stats Cards (1:1 with Laravel ai_token_usage.blade.php) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="rounded-xl p-5 text-white shadow-xs overflow-hidden flex items-center justify-between bg-[#207AFC]">
+          <div>
+            <div className="text-3xl font-bold tracking-tight mb-1">{data.totalRequests}</div>
+            <div className="text-xs font-semibold opacity-90">Total Requests</div>
+          </div>
+          <div className="w-12 h-12 rounded-full border border-white/30 bg-white/10 flex items-center justify-center">
+            <Cpu className="w-6 h-6 text-white" />
+          </div>
+        </div>
+
+        <div className="rounded-xl p-5 text-white shadow-xs overflow-hidden flex items-center justify-between bg-[#9D87EC]">
+          <div>
+            <div className="text-3xl font-bold tracking-tight mb-1">{data.totalTokens.toLocaleString()}</div>
+            <div className="text-xs font-semibold opacity-90">Total Tokens</div>
+          </div>
+          <div className="w-12 h-12 rounded-full border border-white/30 bg-white/10 flex items-center justify-center">
+            <Zap className="w-6 h-6 text-white" />
+          </div>
+        </div>
+
+        <div className="rounded-xl p-5 text-white shadow-xs overflow-hidden flex items-center justify-between bg-[#EE4D5D]">
+          <div>
+            <div className="text-3xl font-bold tracking-tight mb-1">{data.avgPerRequest.toLocaleString()}</div>
+            <div className="text-xs font-semibold opacity-90">Avg Tokens/Request</div>
+          </div>
+          <div className="w-12 h-12 rounded-full border border-white/30 bg-white/10 flex items-center justify-center">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+        </div>
+      </div>
+
+      {/* Logs Table Card */}
+      <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by feature, model, or user..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-hidden focus:ring-1 focus:ring-[#d43533]"
+            />
+          </div>
+          <div className="text-xs text-slate-500">
+            Audit Records: <span className="font-bold text-slate-800">{filteredLogs.length}</span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-xs uppercase tracking-wider">
               <tr>
-                <th className="px-4 py-3.5">#</th>
-                <th className="px-4 py-3.5">AI Writer Task</th>
-                <th className="px-4 py-3.5">LLM Engine</th>
-                <th className="px-4 py-3.5">Tokens Used</th>
-                <th className="px-4 py-3.5">Estimated Cost</th>
-                <th className="px-4 py-3.5">Timestamp</th>
+                <th className="px-4 py-3">Date & Time</th>
+                <th className="px-4 py-3">User</th>
+                <th className="px-4 py-3">Feature & Model</th>
+                <th className="px-4 py-3 text-right">Prompt Tokens</th>
+                <th className="px-4 py-3 text-right">Completion Tokens</th>
+                <th className="px-4 py-3 text-right">Total Tokens</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
-              {logs.map((l, idx) => (
-                <tr key={l.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="px-4 py-3.5 text-slate-400">{idx + 1}</td>
-                  <td className="px-4 py-3.5 font-semibold text-slate-800">{l.feature}</td>
-                  <td className="px-4 py-3.5">
-                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200">
-                      {l.model}
-                    </span>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                    No AI token usage logs found.
                   </td>
-                  <td className="px-4 py-3.5 font-bold text-slate-900">{l.tokensUsed.toLocaleString()}</td>
-                  <td className="px-4 py-3.5 font-bold text-emerald-600">${l.costUsd}</td>
-                  <td className="px-4 py-3.5 text-xs text-slate-500">{l.generatedAt}</td>
                 </tr>
-              ))}
+              ) : (
+                filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-4 py-3.5 text-slate-600 font-medium">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3.5 font-semibold text-slate-800">
+                      {log.userName}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="font-medium text-slate-900">{log.feature}</div>
+                      <span className="inline-block mt-0.5 text-[11px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                        {log.model}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-mono text-slate-600">
+                      {log.promptTokens}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-mono text-slate-600">
+                      {log.completionTokens}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-mono font-bold text-slate-900">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {log.totalTokens}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

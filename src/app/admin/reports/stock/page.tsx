@@ -1,14 +1,32 @@
 import React from "react"
-import { getProducts } from "@/services/product-service"
+import { getStockReport } from "@/services/report-service"
+import { getCategories } from "@/services/category-service"
 import { StockReportView } from "./_components/stock-report-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
-  title: "Stock Alert Report | Active eCommerce Admin",
+  title: "Product Wise Stock Report | Active eCommerce Admin",
 }
 
-export default async function AdminStockReportPage() {
-  const { data: products } = await getProducts({ limit: 100 })
-  const lowStockProducts = products.filter((p) => p.stock <= 5)
+interface PageProps {
+  searchParams: Promise<{ category_id?: string }>
+}
 
-  return <StockReportView lowStockProducts={lowStockProducts} allProducts={products} />
+export default async function AdminStockReportPage({ searchParams }: PageProps) {
+  const params = await searchParams
+  const categoryId = params.category_id ? parseInt(params.category_id, 10) : undefined
+
+  const [products, categories] = await Promise.all([
+    getStockReport(categoryId),
+    getCategories(),
+  ])
+
+  return (
+    <StockReportView
+      products={products}
+      categories={categories}
+      currentCategoryId={categoryId}
+    />
+  )
 }

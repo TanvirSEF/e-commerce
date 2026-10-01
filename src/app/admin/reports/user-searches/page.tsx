@@ -3,6 +3,8 @@ import { Metadata } from "next"
 import { getUserSearchReport } from "@/services/report-service"
 import { UserSearchesView } from "./_components/user-searches-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "User Search Report | Active eCommerce Admin",
 }

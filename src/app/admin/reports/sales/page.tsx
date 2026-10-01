@@ -3,6 +3,8 @@ import { getOrdersAdmin } from "@/services/order-service"
 import { getCategories } from "@/services/category-service"
 import { SalesReportView } from "./_components/sales-report-view"
 
+export const dynamic = "force-dynamic"
+
 export const metadata = {
   title: "Sales Report | Active eCommerce Admin",
 }

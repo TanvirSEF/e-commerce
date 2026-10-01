@@ -1,226 +1,177 @@
 "use client"
 
 import React, { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import {
-  AlertTriangle,
-  Package,
-  Search,
-  Download,
-  ChevronDown,
-} from "lucide-react"
-import { formatPrice } from "@/lib/utils"
-import type { SeedProduct } from "@/db/seed/data"
+import { useRouter } from "next/navigation"
+import { Search, Filter, AlertTriangle, Package, CheckCircle2 } from "lucide-react"
+import type { StockReportItem } from "@/services/report-service"
 
 interface StockReportViewProps {
-  lowStockProducts: SeedProduct[]
-  allProducts: SeedProduct[]
+  products: StockReportItem[]
+  categories: { id: number | string; name: string }[]
+  currentCategoryId?: number
 }
 
-export function StockReportView({ lowStockProducts, allProducts }: StockReportViewProps) {
+export function StockReportView({
+  products,
+  categories,
+  currentCategoryId,
+}: StockReportViewProps) {
+  const router = useRouter()
+  const [selectedCat, setSelectedCat] = useState<string>(
+    currentCategoryId ? String(currentCategoryId) : ""
+  )
   const [searchTerm, setSearchTerm] = useState("")
-  const [stockFilter, setStockFilter] = useState<"low" | "all">("low")
 
-  const list = stockFilter === "low" ? lowStockProducts : allProducts
-  const filtered = list.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleFilter = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedCat) {
+      router.push(`/admin/reports/stock?category_id=${selectedCat}`)
+    } else {
+      router.push(`/admin/reports/stock`)
+    }
+  }
+
+  const filtered = products.filter((p) =>
+    p.productName.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const outOfStock = allProducts.filter((p) => p.stock === 0).length
-  const criticalStock = allProducts.filter((p) => p.stock > 0 && p.stock <= 3).length
+  const outOfStockCount = products.filter((p) => p.currentStock === 0).length
+  const lowStockCount = products.filter((p) => p.currentStock > 0 && p.currentStock <= 5).length
+  const inStockCount = products.filter((p) => p.currentStock > 5).length
 
   return (
     <div className="space-y-6">
       {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Stock Alert Report</h1>
+          <h1 className="text-xl font-bold text-slate-800">Product wise stock report</h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Monitor inventory levels and identify products requiring restocking
+            Monitor real-time inventory levels, reorder thresholds, and warehouse availability
           </p>
         </div>
-        <button
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-md shadow-sm transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          Export / Print Report
-        </button>
       </div>
 
-      {/* Metric Cards */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-rose-50 text-[#d43533] flex items-center justify-center">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
             <div className="text-xs text-slate-500 font-medium">Out of Stock</div>
-            <div className="text-xl font-bold text-red-600">{outOfStock}</div>
+            <div className="text-xl font-bold text-slate-900">{outOfStockCount}</div>
           </div>
         </div>
-
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
             <Package className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs text-slate-500 font-medium">Critical (1–3 units)</div>
-            <div className="text-xl font-bold text-amber-600">{criticalStock}</div>
+            <div className="text-xs text-slate-500 font-medium">Low Stock (&le; 5 units)</div>
+            <div className="text-xl font-bold text-amber-600">{lowStockCount}</div>
           </div>
         </div>
-
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-            <Package className="w-5 h-5" />
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs text-slate-500 font-medium">Low Stock (≤5 units)</div>
-            <div className="text-xl font-bold text-slate-800">{lowStockProducts.length}</div>
+            <div className="text-xs text-slate-500 font-medium">Sufficient Stock</div>
+            <div className="text-xl font-bold text-emerald-600">{inStockCount}</div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search product by name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:border-[#d43533]"
-          />
+      <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+        {/* Category Filter Form (1:1 with Laravel) */}
+        <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+          <form onSubmit={handleFilter} className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <label className="text-sm font-semibold text-slate-700 whitespace-nowrap">
+              Sort by Category :
+            </label>
+            <select
+              value={selectedCat}
+              onChange={(e) => setSelectedCat(e.target.value)}
+              className="w-full sm:w-72 px-3 py-2 text-sm bg-white border border-slate-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-[#d43533]/20 focus:border-[#d43533]"
+            >
+              <option value="">Choose Category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="w-full sm:w-auto px-5 py-2 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded-md shadow-xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Filter className="w-3.5 h-3.5" /> Filter
+            </button>
+          </form>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setStockFilter("low")}
-            className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-              stockFilter === "low"
-                ? "bg-[#d43533] text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            Low Stock Only
-          </button>
-          <button
-            onClick={() => setStockFilter("all")}
-            className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-              stockFilter === "all"
-                ? "bg-[#d43533] text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            All Products
-          </button>
+        {/* Quick Search */}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search product..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-hidden focus:ring-1 focus:ring-[#d43533]"
+            />
+          </div>
+          <div className="text-xs text-slate-500">
+            Total Catalog Records: <span className="font-bold text-slate-800">{filtered.length}</span>
+          </div>
         </div>
-      </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-semibold text-[11px] tracking-wider">
-                <th className="py-3 px-4">#</th>
-                <th className="py-3 px-4">Product</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Unit Price</th>
-                <th className="py-3 px-4">Current Stock</th>
-                <th className="py-3 px-4">Stock Status</th>
-                <th className="py-3 px-4 text-right">Action</th>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-xs">
+              <tr>
+                <th className="px-4 py-3 w-16">#</th>
+                <th className="px-4 py-3">Product Name</th>
+                <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3 text-right">Stock</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((product, idx) => {
-                const stockStatus =
-                  product.stock === 0
-                    ? "out-of-stock"
-                    : product.stock <= 3
-                    ? "critical"
-                    : "low"
-
-                return (
-                  <tr key={product.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-slate-500">{idx + 1}</td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="relative w-10 h-10 rounded border border-slate-200 overflow-hidden bg-slate-100 shrink-0">
-                          <Image
-                            src={product.thumbnail}
-                            alt={product.name}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                        <div className="max-w-[200px]">
-                          <Link
-                            href={`/product/${product.slug}`}
-                            target="_blank"
-                            className="font-bold text-slate-800 hover:text-[#d43533] line-clamp-2 text-sm"
-                          >
-                            {product.name}
-                          </Link>
-                          {product.sku && (
-                            <div className="text-[11px] text-slate-400 font-mono">
-                              SKU: {product.sku}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-600 capitalize">
-                      {product.categorySlug?.replace(/-/g, " ") || "—"}
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-800">
-                      {formatPrice(product.price)}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`font-bold text-base ${
-                        product.stock === 0 ? "text-red-600" : product.stock <= 3 ? "text-amber-600" : "text-slate-800"
-                      }`}>
-                        {product.stock}
-                      </span>
-                      <span className="text-slate-400 text-[11px] ml-1">units</span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                          stockStatus === "out-of-stock"
-                            ? "bg-red-50 text-red-700 border border-red-200"
-                            : stockStatus === "critical"
-                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                            : "bg-blue-50 text-blue-700 border border-blue-200"
-                        }`}
-                      >
-                        {stockStatus === "out-of-stock"
-                          ? "Out of Stock"
-                          : stockStatus === "critical"
-                          ? "Critical"
-                          : "Low Stock"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <Link
-                        href={`/admin/products`}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold rounded border border-slate-200 transition-colors"
-                      >
-                        Restock
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-              {filtered.length === 0 && (
+              {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-400 text-sm">
-                    ✅ No low stock products found
+                  <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
+                    No products found for the selected category.
                   </td>
                 </tr>
+              ) : (
+                filtered.map((item, idx) => (
+                  <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-4 py-3.5 text-xs text-slate-400">{idx + 1}</td>
+                    <td className="px-4 py-3.5 font-medium text-slate-900 text-sm">
+                      {item.productName}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-slate-500">
+                      {item.categoryName}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-bold">
+                      {item.currentStock === 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          Out of stock (0)
+                        </span>
+                      ) : item.currentStock <= 5 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          Low: {item.currentStock}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {item.currentStock}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

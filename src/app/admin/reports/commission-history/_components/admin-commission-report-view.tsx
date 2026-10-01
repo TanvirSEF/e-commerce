@@ -1,142 +1,177 @@
 "use client"
 
 import React, { useState } from "react"
-import { DollarSign, Search, Store, Calendar, TrendingUp } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { DollarSign, Search, Filter, Store, Calendar, TrendingUp } from "lucide-react"
+import type { CommissionReportItem } from "@/services/report-service"
 
-interface CommissionEntry {
-  id: number
-  sellerName: string
-  orderCode: string
-  orderAmount: string
-  adminCommission: string
-  sellerEarning: string
-  calculatedAt: string
+interface AdminCommissionReportViewProps {
+  commissions: CommissionReportItem[]
+  sellers: { id: string; name: string }[]
+  currentSellerId?: string
+  currentDateRange?: string
 }
 
-const MOCK_COMMISSIONS: CommissionEntry[] = [
-  {
-    id: 1,
-    sellerName: "TechVision MegaStore",
-    orderCode: "ORD-202609-0891",
-    orderAmount: "450.00",
-    adminCommission: "45.00",
-    sellerEarning: "405.00",
-    calculatedAt: "2026-09-25 15:30:00",
-  },
-  {
-    id: 2,
-    sellerName: "Gadget Galaxy",
-    orderCode: "ORD-202609-0895",
-    orderAmount: "120.00",
-    adminCommission: "12.00",
-    sellerEarning: "108.00",
-    calculatedAt: "2026-09-25 12:10:00",
-  },
-  {
-    id: 3,
-    sellerName: "Elegance Fashion House",
-    orderCode: "ORD-202609-0902",
-    orderAmount: "85.00",
-    adminCommission: "10.20",
-    sellerEarning: "74.80",
-    calculatedAt: "2026-09-24 18:45:00",
-  },
-  {
-    id: 4,
-    sellerName: "TechVision MegaStore",
-    orderCode: "ORD-202609-0915",
-    orderAmount: "780.00",
-    adminCommission: "78.00",
-    sellerEarning: "702.00",
-    calculatedAt: "2026-09-24 10:15:00",
-  },
-]
-
-export function AdminCommissionReportView() {
-  const [commissions] = useState(MOCK_COMMISSIONS)
+export function AdminCommissionReportView({
+  commissions,
+  sellers,
+  currentSellerId,
+  currentDateRange,
+}: AdminCommissionReportViewProps) {
+  const router = useRouter()
+  const [selectedSeller, setSelectedSeller] = useState(currentSellerId || "")
   const [search, setSearch] = useState("")
 
-  const filtered = commissions.filter((c) =>
-    c.sellerName.toLowerCase().includes(search.toLowerCase()) ||
-    c.orderCode.toLowerCase().includes(search.toLowerCase())
+  const handleFilter = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedSeller) {
+      router.push(`/admin/reports/commission-history?seller_id=${selectedSeller}`)
+    } else {
+      router.push(`/admin/reports/commission-history`)
+    }
+  }
+
+  const filtered = commissions.filter(
+    (c) =>
+      (c.sellerName || "").toLowerCase().includes(search.toLowerCase()) ||
+      c.orderCode.toLowerCase().includes(search.toLowerCase())
   )
 
-  const totalAdminCommission = filtered.reduce((acc, c) => acc + parseFloat(c.adminCommission), 0)
+  const totalAdminComm = filtered.reduce((acc, c) => acc + Number(c.adminCommission || 0), 0)
+  const totalSellerEarnings = filtered.reduce((acc, c) => acc + Number(c.sellerEarning || 0), 0)
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <DollarSign className="w-7 h-7 text-emerald-600" />
-            Seller Commission Breakdown Report
+          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <DollarSign className="w-6 h-6 text-[#d43533]" />
+            Commission History report
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Audit platform marketplace fees collected across third-party vendor orders
+          <p className="text-xs text-slate-500 mt-0.5">
+            Log of marketplace commissions retained by the platform versus net payouts credited to sellers
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Total Platform Commission</span>
-          <div className="text-2xl font-black text-emerald-600">${totalAdminCommission.toFixed(2)}</div>
-          <span className="text-[11px] text-slate-400">Net earned marketplace revenue</span>
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs text-slate-500 font-medium">Total Admin Commission</div>
+            <div className="text-xl font-bold text-emerald-600">${totalAdminComm.toFixed(2)}</div>
+          </div>
         </div>
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Recorded Multi-Vendor Orders</span>
-          <div className="text-2xl font-black text-slate-900">{filtered.length}</div>
-          <span className="text-[11px] text-blue-600 font-medium">Calculated per rate policy</span>
-        </div>
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Average Take Rate</span>
-          <div className="text-2xl font-black text-slate-900">10.0%</div>
-          <span className="text-[11px] text-slate-400">Standard vendor commission</span>
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <Store className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs text-slate-500 font-medium">Total Seller Earnings</div>
+            <div className="text-xl font-bold text-indigo-600">${totalSellerEarnings.toFixed(2)}</div>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
-          <div className="relative w-full md:w-80">
+      {/* Main Card (1:1 with Laravel commission_history_section) */}
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+        {/* Header Filter Form */}
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+          <form onSubmit={handleFilter} className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-slate-800 whitespace-nowrap">
+              Commission History
+            </h2>
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+              <select
+                value={selectedSeller}
+                onChange={(e) => setSelectedSeller(e.target.value)}
+                className="w-full sm:w-48 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-md focus:outline-hidden focus:ring-1 focus:ring-[#d43533]"
+              >
+                <option value="">Choose Seller</option>
+                {sellers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="w-full sm:w-auto px-4 py-1.5 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded-md shadow-xs transition-colors flex items-center justify-center gap-1"
+              >
+                <Filter className="w-3.5 h-3.5" /> Filter
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Quick Search */}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
+          <div className="relative w-full sm:w-72">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by vendor or order..."
+              placeholder="Search by order code or seller..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d43533]/20 focus:border-[#d43533]"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-hidden focus:ring-1 focus:ring-[#d43533]"
             />
           </div>
           <div className="text-xs text-slate-500">
-            Entries: <span className="font-bold text-slate-900">{filtered.length}</span>
+            Records: <span className="font-bold text-slate-800">{filtered.length}</span>
           </div>
         </div>
 
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-xs">
               <tr>
-                <th className="px-4 py-3.5">#</th>
-                <th className="px-4 py-3.5">Seller Shop</th>
-                <th className="px-4 py-3.5">Order Code</th>
-                <th className="px-4 py-3.5">Order Total</th>
-                <th className="px-4 py-3.5">Admin Commission (Retained)</th>
-                <th className="px-4 py-3.5">Seller Balance Credited</th>
-                <th className="px-4 py-3.5">Date</th>
+                <th className="px-4 py-3 w-16">#</th>
+                <th className="px-4 py-3">Order Code</th>
+                <th className="px-4 py-3">Seller Name</th>
+                <th className="px-4 py-3 text-right">Admin Commission</th>
+                <th className="px-4 py-3 text-right">Seller Earning</th>
+                <th className="px-4 py-3 text-right">Created At</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
-              {filtered.map((c, idx) => (
-                <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="px-4 py-3.5 text-slate-400">{idx + 1}</td>
-                  <td className="px-4 py-3.5 font-semibold text-slate-800">{c.sellerName}</td>
-                  <td className="px-4 py-3.5 font-mono text-xs font-bold text-slate-900">{c.orderCode}</td>
-                  <td className="px-4 py-3.5 font-bold text-slate-900">${c.orderAmount}</td>
-                  <td className="px-4 py-3.5 font-bold text-emerald-600 text-base">+${c.adminCommission}</td>
-                  <td className="px-4 py-3.5 font-medium text-slate-600">${c.sellerEarning}</td>
-                  <td className="px-4 py-3.5 text-xs text-slate-500">{c.calculatedAt}</td>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                    No commission history logs found.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((item, idx) => (
+                  <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-4 py-3.5 text-slate-400">{idx + 1}</td>
+                    <td className="px-4 py-3.5 font-mono font-bold text-slate-900">
+                      {item.orderCode}
+                      {item.orderFrom === "pos" && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                          POS
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 font-medium text-slate-800">
+                      {item.sellerName || "Marketplace Seller"}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-bold text-emerald-600">
+                      ${item.adminCommission}
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-bold text-indigo-600">
+                      ${item.sellerEarning}
+                    </td>
+                    <td className="px-4 py-3.5 text-right text-slate-500">
+                      {new Date(item.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
