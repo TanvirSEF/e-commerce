@@ -1649,6 +1649,74 @@ async function runSetup() {
       console.log("[OK] Canonical Uploads seeded")
     }
 
+    // 25. Seed Canonical Support Tickets & Replies
+    const existingTicketsCount = await db.select({ val: count() }).from(schema.tickets)
+    if (Number(existingTicketsCount[0]?.val || 0) === 0) {
+      const [t1] = await db.insert(schema.tickets).values({
+        code: "100234",
+        userId: "usr_customer_default_01",
+        subject: "Delivery delay for Order #20260920-101122",
+        details: "I placed an order 3 days ago and the delivery status has not updated yet. Please assist with courier tracking.",
+        files: ["https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=800"],
+        status: "open",
+        viewed: false,
+        clientViewed: true,
+      }).returning()
+
+      if (t1) {
+        await db.insert(schema.ticketReplies).values({
+          ticketId: t1.id,
+          userId: "usr_admin_default_01",
+          reply: "Hello Tanvir! We apologize for the delay. The logistics rider picked up your parcel today and it is currently out for delivery.",
+          files: [],
+        })
+      }
+
+      const [t2] = await db.insert(schema.tickets).values({
+        code: "100189",
+        userId: "usr_customer_default_01",
+        subject: "Inquiry regarding return policy on electronics",
+        details: "Can I replace an earphone if the left earbud stops working within 7 days of purchase?",
+        files: [],
+        status: "solved",
+        viewed: true,
+        clientViewed: true,
+      }).returning()
+
+      if (t2) {
+        await db.insert(schema.ticketReplies).values({
+          ticketId: t2.id,
+          userId: "usr_admin_default_01",
+          reply: "Yes! All electronic accessories have a 7-day hassle-free replacement warranty. Please keep the original packaging and invoice intact.",
+          files: ["/docs/warranty_terms.pdf"],
+        })
+      }
+
+      await db.insert(schema.tickets).values([
+        {
+          code: "100412",
+          userId: "usr_seller_default_01",
+          subject: "Seller commission withdrawal inquiry",
+          details: "My monthly withdrawal request of ৳45,000 has been submitted. When will the bank transfer be processed by the accounts team?",
+          files: [],
+          status: "pending",
+          viewed: true,
+          clientViewed: true,
+        },
+        {
+          code: "100508",
+          userId: "usr_customer_default_01",
+          subject: "Wrong color received for Wireless Bluetooth Headphones",
+          details: "I ordered the Matte Black version but received the Silver edition. Here is the invoice and photo of the received box.",
+          files: ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800"],
+          status: "open",
+          viewed: false,
+          clientViewed: true,
+        },
+      ])
+      console.log("[OK] Canonical Support Tickets & Replies seeded")
+    }
+
     console.log("==================================================")
     console.log("[OK] Installation completed")
     console.log("==================================================")

@@ -1,13 +1,35 @@
 import React from "react"
 import { getAllTicketsAdmin } from "@/services/ticket-service"
-import { SupportTicketsAdminView } from "./_components/support-tickets-admin-view"
+import { SupportDeskContainer } from "./_components/support-desk-container"
 
 export const metadata = {
-  title: "Support Ticket Desk | Active eCommerce Admin",
+  title: "Support Desk | Active eCommerce Admin",
 }
 
-export default async function AdminSupportTicketsPage() {
-  const tickets = await getAllTicketsAdmin()
+interface PageProps {
+  searchParams: Promise<{
+    search?: string
+    status?: string
+  }>
+}
 
-  return <SupportTicketsAdminView initialTickets={tickets} />
+export default async function AdminSupportTicketsPage({ searchParams }: PageProps) {
+  const resolvedParams = await searchParams
+  const search = resolvedParams?.search || ""
+  const status = resolvedParams?.status || "all"
+
+  const ticketsData = await getAllTicketsAdmin({
+    search,
+    status,
+  })
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4">
+      <SupportDeskContainer
+        initialData={ticketsData}
+        currentSearch={search}
+        currentStatus={status}
+      />
+    </div>
+  )
 }
