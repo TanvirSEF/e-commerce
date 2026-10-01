@@ -1,6 +1,9 @@
 import React from "react"
 import { getRefundsAdminWithPagination, getRefundReasons } from "@/services/refund-service"
+import { ensureAddonActivated } from "@/services/addon-service"
 import { RefundRequestsAdminView } from "./_components/refund-requests-admin-view"
+
+export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "Refund Requests | Active eCommerce CMS",
@@ -16,6 +19,7 @@ interface PageProps {
 }
 
 export default async function AdminRefundRequestsPage(props: PageProps) {
+  await ensureAddonActivated("refund_system")
   const searchParams = props.searchParams ? await props.searchParams : {}
   const page = parseInt(searchParams.page || "1", 10) || 1
   const search = searchParams.search || ""

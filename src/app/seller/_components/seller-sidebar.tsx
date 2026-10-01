@@ -33,7 +33,8 @@ interface NavItem {
   title: string
   href?: string
   icon: React.ElementType
-  children?: { title: string; href: string }[]
+  addonKey?: string
+  children?: { title: string; href: string; addonKey?: string }[]
 }
 
 const navItems: NavItem[] = [
@@ -45,6 +46,7 @@ const navItems: NavItem[] = [
   {
     title: "POS System",
     icon: Receipt,
+    addonKey: "pos_system",
     children: [
       { title: "POS Manager", href: "/seller/pos" },
       { title: "POS Orders", href: "/seller/pos-orders" },
@@ -58,7 +60,7 @@ const navItems: NavItem[] = [
       { title: "All Products", href: "/seller/products" },
       { title: "Add New Product", href: "/seller/products/create" },
       { title: "Digital Products", href: "/seller/digital-products" },
-      { title: "Wholesale Products", href: "/seller/wholesale-products" },
+      { title: "Wholesale Products", href: "/seller/wholesale-products", addonKey: "wholesale_system" },
       { title: "Category Discount", href: "/seller/category-discount" },
       { title: "Category Commission", href: "/seller/category-commission" },
       { title: "Bulk Upload", href: "/seller/product-bulk-upload" },
@@ -83,10 +85,12 @@ const navItems: NavItem[] = [
     title: "Refund Requests",
     href: "/seller/refund-requests",
     icon: RotateCcw,
+    addonKey: "refund_system",
   },
   {
     title: "Pre-Orders",
     icon: CalendarClock,
+    addonKey: "preorder_system",
     children: [
       { title: "Pre-Order Products", href: "/seller/preorder/products" },
       { title: "Pre-Order Orders", href: "/seller/preorder/orders" },
@@ -95,6 +99,7 @@ const navItems: NavItem[] = [
   {
     title: "Auction Desk",
     icon: Gavel,
+    addonKey: "auction_system",
     children: [
       { title: "Auction Products", href: "/seller/auction/products" },
       { title: "Add Auction Product", href: "/seller/auction/products/create" },
@@ -176,9 +181,35 @@ interface SellerSidebarProps {
 export function SellerSidebar({ isOpen, onClose }: SellerSidebarProps) {
   const pathname = usePathname()
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Products: true })
+  const [disabledAddons, setDisabledAddons] = useState<string[]>([])
+
+  React.useEffect(() => {
+    fetch("/api/addons")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const disabled = data.filter((a) => !a.activated).map((a) => a.uniqueIdentifier)
+          setDisabledAddons(disabled)
+        }
+      })
+      .catch(() => {})
+  }, [pathname])
 
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }))
+  }
+
+  const isAddonDisabled = (addonKey?: string) => {
+    if (!addonKey) return false
+    const key = addonKey.toLowerCase().trim()
+    return disabledAddons.some((d) => {
+      const dKey = d.toLowerCase().trim()
+      if (dKey === key) return true
+      if (dKey === `${key}_system` || `${dKey}_system` === key) return true
+      if (dKey.replace(/_system$/, "") === key.replace(/_system$/, "")) return true
+      if (dKey.replace(/s$/, "") === key.replace(/s$/, "")) return true
+      return false
+    })
   }
 
   return (
@@ -229,7 +260,7 @@ export function SellerSidebar({ isOpen, onClose }: SellerSidebarProps) {
 
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {navItems.map((item) => {
+          {navItems.filter((item) => !isAddonDisabled(item.addonKey)).map((item) => {
             const Icon = item.icon
 
             if (!item.children) {
@@ -251,7 +282,10 @@ export function SellerSidebar({ isOpen, onClose }: SellerSidebarProps) {
               )
             }
 
-            const isGroupActive = item.children.some((c) => pathname === c.href)
+            const visibleChildren = item.children.filter((child) => !isAddonDisabled(child.addonKey))
+            if (visibleChildren.length === 0) return null
+
+            const isGroupActive = visibleChildren.some((c) => pathname === c.href)
             const isOpen = openGroups[item.title] ?? isGroupActive
 
             return (
@@ -276,7 +310,7 @@ export function SellerSidebar({ isOpen, onClose }: SellerSidebarProps) {
                 </button>
                 {isOpen && (
                   <div className="mt-1 ml-7 space-y-0.5">
-                    {item.children.map((child) => {
+                    {visibleChildren.map((child) => {
                       const isChildActive = pathname === child.href
                       return (
                         <Link

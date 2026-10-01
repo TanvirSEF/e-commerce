@@ -8,15 +8,20 @@ import type { AdminProfileData } from "@/services/admin-profile-service"
 interface AdminShellProps {
   children: React.ReactNode
   initialProfile?: AdminProfileData
+  initialDisabledAddons?: string[]
 }
 
-export function AdminShell({ children, initialProfile }: AdminShellProps) {
+export function AdminShell({ children, initialProfile, initialDisabledAddons = [] }: AdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] text-slate-800 flex">
       {/* Sidebar Navigation */}
-      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AdminSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        initialDisabledAddons={initialDisabledAddons}
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0">

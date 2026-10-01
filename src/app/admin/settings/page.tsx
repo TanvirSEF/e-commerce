@@ -1,6 +1,6 @@
 import React from "react"
 import { Metadata } from "next"
-import { siteConfig } from "@/config/site"
+import { getGeneralSettings } from "@/services/settings-service"
 import { AdminSettingsView } from "./_components/admin-settings-view"
 
 export const metadata: Metadata = {
@@ -8,15 +8,9 @@ export const metadata: Metadata = {
   description: "Configure general settings, currency, and contacts",
 }
 
-export default function AdminSettingsPage() {
-  const initialSettings = {
-    siteName: siteConfig.name,
-    siteMotto: siteConfig.motto,
-    currencySymbol: siteConfig.currency.symbol,
-    currencyCode: siteConfig.currency.code,
-    helpline: siteConfig.helpline,
-    email: siteConfig.email,
-  }
+export const dynamic = "force-dynamic"
 
-  return <AdminSettingsView initialSettings={initialSettings} />
+export default async function AdminSettingsPage() {
+  const settings = await getGeneralSettings()
+  return <AdminSettingsView initialSettings={settings} />
 }

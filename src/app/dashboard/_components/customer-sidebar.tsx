@@ -29,18 +29,44 @@ export function CustomerSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const [deleteModalOpen, setDeleteModalOpen] = React.useState(false)
+  const [disabledAddons, setDisabledAddons] = React.useState<string[]>([])
+
+  React.useEffect(() => {
+    fetch("/api/addons")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const disabled = data.filter((a) => !a.activated).map((a) => a.uniqueIdentifier)
+          setDisabledAddons(disabled)
+        }
+      })
+      .catch(() => {})
+  }, [pathname])
+
+  const isAddonDisabled = (addonKey?: string) => {
+    if (!addonKey) return false
+    const key = addonKey.toLowerCase().trim()
+    return disabledAddons.some((d) => {
+      const dKey = d.toLowerCase().trim()
+      if (dKey === key) return true
+      if (dKey === `${key}_system` || `${dKey}_system` === key) return true
+      if (dKey.replace(/_system$/, "") === key.replace(/_system$/, "")) return true
+      if (dKey.replace(/s$/, "") === key.replace(/s$/, "")) return true
+      return false
+    })
+  }
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Purchase History", href: "/dashboard/purchase-history", icon: ShoppingBag },
     { label: "Digital Purchases", href: "/dashboard/digital-purchases", icon: Download },
-    { label: "Refund Requests", href: "/dashboard/refund-requests", icon: RotateCcw },
+    { label: "Refund Requests", href: "/dashboard/refund-requests", icon: RotateCcw, addonKey: "refund_system" },
     { label: "Wishlist", href: "/dashboard/wishlist", icon: Heart },
     { label: "Classified Products", href: "/dashboard/customer-products", icon: Tag },
     { label: "Followed Stores", href: "/dashboard/followed-sellers", icon: Store },
     { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
     { label: "My Wallet", href: "/dashboard/wallet", icon: Wallet },
-    { label: "Earning Points", href: "/dashboard/club-points", icon: Award },
+    { label: "Earning Points", href: "/dashboard/club-points", icon: Award, addonKey: "club_points" },
     { label: "Support Ticket", href: "/dashboard/support-tickets", icon: Headphones },
     { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
     { label: "Manage Profile", href: "/dashboard/profile", icon: User },
@@ -77,7 +103,7 @@ export function CustomerSidebar() {
 
       {/* Nav List */}
       <nav className="p-3 space-y-1">
-        {navItems.map((item) => {
+        {navItems.filter((item) => !isAddonDisabled(item.addonKey)).map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
           return (

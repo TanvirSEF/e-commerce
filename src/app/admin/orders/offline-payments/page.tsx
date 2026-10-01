@@ -1,6 +1,7 @@
 import React from "react"
 import { Metadata } from "next"
 import { getAdminOrdersList } from "@/services/admin-orders-service"
+import { ensureAddonActivated } from "@/services/addon-service"
 import { OfflinePaymentsAdminView } from "./_components/offline-payments-admin-view"
 
 export const metadata: Metadata = {
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic"
 
 export default async function AdminOfflinePaymentsPage() {
+  await ensureAddonActivated("offline_payments")
   // Fetch real database offline payment orders directly from PostgreSQL (Zero mock data)
   const initialData = await getAdminOrdersList({
     offlinePaymentOnly: true,

@@ -1,7 +1,10 @@
 import React from "react"
 import { Metadata } from "next"
 import { getAllWholesaleProducts } from "@/services/wholesale-service"
+import { ensureAddonActivated } from "@/services/addon-service"
 import { SellerWholesaleView } from "./_components/seller-wholesale-view"
+
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Wholesale Pricing | Seller Central",
@@ -9,6 +12,7 @@ export const metadata: Metadata = {
 }
 
 export default async function SellerWholesaleProductsPage() {
+  await ensureAddonActivated("wholesale_system")
   const products = await getAllWholesaleProducts("seller")
 
   return (

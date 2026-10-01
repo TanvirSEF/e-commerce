@@ -6,6 +6,32 @@ import { LayoutGrid, Zap, Clock, Gavel, ChevronLeft, ChevronRight } from "lucide
 
 export function FloatingButtons() {
   const [collapsed, setCollapsed] = useState(false)
+  const [disabledAddons, setDisabledAddons] = useState<string[]>([])
+
+  React.useEffect(() => {
+    fetch("/api/addons")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const disabled = data.filter((a) => !a.activated).map((a) => a.uniqueIdentifier)
+          setDisabledAddons(disabled)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const isAddonDisabled = (addonKey?: string) => {
+    if (!addonKey) return false
+    const key = addonKey.toLowerCase().trim()
+    return disabledAddons.some((d) => {
+      const dKey = d.toLowerCase().trim()
+      if (dKey === key) return true
+      if (dKey === `${key}_system` || `${dKey}_system` === key) return true
+      if (dKey.replace(/_system$/, "") === key.replace(/_system$/, "")) return true
+      if (dKey.replace(/s$/, "") === key.replace(/s$/, "")) return true
+      return false
+    })
+  }
 
   const BUTTONS = [
     {
@@ -27,8 +53,11 @@ export function FloatingButtons() {
       label: "Auction",
       href: "/auction-products",
       icon: Gavel,
+      addonKey: "auction_system",
     },
   ]
+
+  const visibleButtons = BUTTONS.filter((btn) => !isAddonDisabled(btn.addonKey))
 
   return (
     <aside
@@ -49,7 +78,7 @@ export function FloatingButtons() {
 
       {/* Floating Buttons List (Active eCommerce 1:1) */}
       <div className="flex flex-col gap-2.5 p-2">
-        {BUTTONS.map((btn) => {
+        {visibleButtons.map((btn) => {
           const Icon = btn.icon
           return (
             <Link

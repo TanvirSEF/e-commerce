@@ -1,22 +1,29 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useTransition } from "react"
 import Link from "next/link"
-import { Printer, ChevronLeft, Save, CheckCircle } from "lucide-react"
+import { Printer, ChevronLeft, Save, CheckCircle, Loader2 } from "lucide-react"
+import { updateThermalPrinterAction } from "@/app/actions/settings-actions"
+import type { ThermalPrinterSettings } from "@/services/settings-service"
 
-export function ThermalPrinterView() {
-  const [enabled, setEnabled] = useState(true)
+interface ThermalPrinterViewProps {
+  initialSettings: ThermalPrinterSettings
+}
+
+export function ThermalPrinterView({ initialSettings }: ThermalPrinterViewProps) {
+  const [enabled, setEnabled] = useState(initialSettings.enabled)
   const [fields, setFields] = useState({
-    show_logo: true,
-    show_tracking_code: true,
-    show_platform_contact: true,
-    show_seller_contact: true,
-    show_sku: true,
-    show_product_variation: true,
-    show_barcode: true,
-    show_qr_code: true,
+    showLogo: initialSettings.showLogo,
+    showTrackingCode: initialSettings.showTrackingCode,
+    showPlatformContact: initialSettings.showPlatformContact,
+    showSellerContact: initialSettings.showSellerContact,
+    showSku: initialSettings.showSku,
+    showProductVariation: initialSettings.showProductVariation,
+    showBarcode: initialSettings.showBarcode,
+    showQrCode: initialSettings.showQrCode,
   })
   const [saved, setSaved] = useState(false)
+  const [isPending, startTransition] = useTransition()
 
   const toggleField = (key: keyof typeof fields) => {
     setFields((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -24,19 +31,22 @@ export function ThermalPrinterView() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    startTransition(async () => {
+      await updateThermalPrinterAction({ enabled, ...fields })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    })
   }
 
   const fieldLabels: Record<keyof typeof fields, string> = {
-    show_logo: "Show Logo",
-    show_tracking_code: "Show Tracking Code",
-    show_platform_contact: "Show Platform Contact",
-    show_seller_contact: "Show Seller Contact",
-    show_sku: "Show SKU",
-    show_product_variation: "Show Product Variation",
-    show_barcode: "Show Barcode",
-    show_qr_code: "Show QR Code",
+    showLogo: "Show Logo",
+    showTrackingCode: "Show Tracking Code",
+    showPlatformContact: "Show Platform Contact",
+    showSellerContact: "Show Seller Contact",
+    showSku: "Show SKU",
+    showProductVariation: "Show Product Variation",
+    showBarcode: "Show Barcode",
+    showQrCode: "Show QR Code",
   }
 
   return (
@@ -132,10 +142,11 @@ export function ThermalPrinterView() {
         <div className="pt-4 border-t border-gray-100 text-right">
           <button
             type="submit"
-            className="px-5 py-2.5 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-bold rounded-lg shadow-sm transition-colors inline-flex items-center gap-2"
+            disabled={isPending}
+            className="px-5 py-2.5 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-bold rounded-lg shadow-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60"
           >
-            <Save className="w-4 h-4" />
-            Save Thermal Configuration
+            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isPending ? "Saving..." : "Save Thermal Configuration"}
           </button>
         </div>
       </form>

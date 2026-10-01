@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { X } from "lucide-react"
+import { X, Loader2 } from "lucide-react"
 
 export interface Area {
   id: number
@@ -10,6 +10,12 @@ export interface Area {
   state: string
   country: string
   status: boolean
+}
+
+export interface CityOption {
+  name: string
+  state: string
+  country: string
 }
 
 interface AreaModalProps {
@@ -22,11 +28,20 @@ interface AreaModalProps {
     state: string
     country: string
     status: boolean
-  }) => void
+  }) => Promise<void> | void
   initialData?: Area | null
+  availableCities?: CityOption[]
+  isLoading?: boolean
 }
 
-export function AreaModal({ isOpen, onClose, onSave, initialData }: AreaModalProps) {
+export function AreaModal({
+  isOpen,
+  onClose,
+  onSave,
+  initialData,
+  availableCities = [],
+  isLoading = false,
+}: AreaModalProps) {
   const [formName, setFormName] = useState("")
   const [formCity, setFormCity] = useState("Dhaka")
   const [formState, setFormState] = useState("Dhaka Division")
@@ -42,20 +57,32 @@ export function AreaModal({ isOpen, onClose, onSave, initialData }: AreaModalPro
       setFormStatus(initialData.status)
     } else {
       setFormName("")
-      setFormCity("Dhaka")
-      setFormState("Dhaka Division")
-      setFormCountry("Bangladesh")
+      const defaultCity = availableCities[0]?.name || "Dhaka"
+      const defaultState = availableCities[0]?.state || "Dhaka Division"
+      const defaultCountry = availableCities[0]?.country || "Bangladesh"
+      setFormCity(defaultCity)
+      setFormState(defaultState)
+      setFormCountry(defaultCountry)
       setFormStatus(true)
     }
-  }, [initialData, isOpen])
+  }, [initialData, isOpen, availableCities])
 
   if (!isOpen) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCityChange = (cityName: string) => {
+    setFormCity(cityName)
+    const match = availableCities.find((c) => c.name.toLowerCase() === cityName.toLowerCase())
+    if (match) {
+      setFormState(match.state)
+      setFormCountry(match.country)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formName.trim()) return
 
-    onSave({
+    await onSave({
       id: initialData?.id,
       name: formName.trim(),
       city: formCity.trim(),
@@ -76,7 +103,8 @@ export function AreaModal({ isOpen, onClose, onSave, initialData }: AreaModalPro
             <button
               type="button"
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              disabled={isLoading}
+              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
             >
               <X className="w-4 h-4" />
             </button>
@@ -101,13 +129,27 @@ export function AreaModal({ isOpen, onClose, onSave, initialData }: AreaModalPro
               <label className="block text-xs font-semibold text-gray-700 mb-1">
                 City <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={formCity}
-                onChange={(e) => setFormCity(e.target.value)}
-                className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
-                required
-              />
+              {availableCities.length > 0 ? (
+                <select
+                  value={formCity}
+                  onChange={(e) => handleCityChange(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533] bg-white"
+                >
+                  {availableCities.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name} ({c.state})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={formCity}
+                  onChange={(e) => setFormCity(e.target.value)}
+                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
+                  required
+                />
+              )}
             </div>
 
             <div>
@@ -154,14 +196,17 @@ export function AreaModal({ isOpen, onClose, onSave, initialData }: AreaModalPro
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 text-xs rounded-lg hover:bg-gray-50"
+              disabled={isLoading}
+              className="px-4 py-2 border border-gray-300 text-gray-700 text-xs rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#d43533] text-white text-xs font-semibold rounded-lg hover:bg-[#b82d2b]"
+              disabled={isLoading}
+              className="px-4 py-2 bg-[#d43533] text-white text-xs font-semibold rounded-lg hover:bg-[#b82d2b] disabled:opacity-50 inline-flex items-center gap-1.5"
             >
+              {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               {initialData ? "Update Area" : "Create Area"}
             </button>
           </div>

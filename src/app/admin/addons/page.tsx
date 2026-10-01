@@ -1,12 +1,23 @@
 import React from "react"
+import { Metadata } from "next"
 import { AdminAddonsView } from "./_components/admin-addons-view"
-import { getAddons } from "@/services/addon-service"
+import { getAddons, getAvailableAddons } from "@/services/addon-service"
 
-export const metadata = {
-  title: "Addon Manager | Admin Panel",
+export const metadata: Metadata = {
+  title: "Addon Manager | Admin",
+  description: "Manage installed CodeCanyon addons and explore available extensions",
 }
 
 export default async function AdminAddonsPage() {
-  const initialAddons = await getAddons()
-  return <AdminAddonsView initialAddons={initialAddons} />
+  const [initialAddons, availableAddons] = await Promise.all([
+    getAddons(),
+    getAvailableAddons(),
+  ])
+
+  return (
+    <AdminAddonsView
+      initialAddons={initialAddons}
+      availableAddons={availableAddons}
+    />
+  )
 }

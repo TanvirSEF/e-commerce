@@ -1370,4 +1370,207 @@ export async function updateAuthLayoutSettings(settings: AuthLayoutSettings) {
   return { success: true, settings }
 }
 
+// ----------------------------------------------------------------------------
+// General / Business Settings (Laravel: BusinessSettingsController@generalSetting)
+// ----------------------------------------------------------------------------
+export interface GeneralSettings {
+  systemName: string
+  systemMotto: string
+  systemEmail: string
+  systemPhone: string
+  systemFax: string
+  address: string
+  currencySymbol: string
+  currencyCode: string
+  currencyExchangeRate: string
+  systemLanguage: string
+  dateFormat: string
+  timeZone: string
+  systemLogo: string
+  systemIcon: string
+}
 
+export const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
+  systemName: "Active eCommerce",
+  systemMotto: "Best eCommerce Platform",
+  systemEmail: "admin@example.com",
+  systemPhone: "+1 000 000 0000",
+  systemFax: "",
+  address: "",
+  currencySymbol: "$",
+  currencyCode: "USD",
+  currencyExchangeRate: "1",
+  systemLanguage: "en",
+  dateFormat: "d-m-Y",
+  timeZone: "UTC",
+  systemLogo: "",
+  systemIcon: "",
+}
+
+export async function getGeneralSettings(): Promise<GeneralSettings> {
+  try {
+    const raw = await getSetting("general_settings")
+    if (raw) return { ...DEFAULT_GENERAL_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getGeneralSettings fallback:", err)
+  }
+  return DEFAULT_GENERAL_SETTINGS
+}
+
+export async function updateGeneralSettings(data: Partial<GeneralSettings>) {
+  const current = await getGeneralSettings()
+  const merged = { ...current, ...data }
+  await updateSetting("general_settings", JSON.stringify(merged))
+  return { success: true, settings: merged }
+}
+
+// ----------------------------------------------------------------------------
+// Thermal Printer Settings (Laravel: BusinessSettingsController@thermalPrinterUpdate)
+// ----------------------------------------------------------------------------
+export interface ThermalPrinterSettings {
+  enabled: boolean
+  showLogo: boolean
+  showTrackingCode: boolean
+  showPlatformContact: boolean
+  showSellerContact: boolean
+  showSku: boolean
+  showProductVariation: boolean
+  showBarcode: boolean
+  showQrCode: boolean
+}
+
+export const DEFAULT_THERMAL_PRINTER_SETTINGS: ThermalPrinterSettings = {
+  enabled: true,
+  showLogo: true,
+  showTrackingCode: true,
+  showPlatformContact: true,
+  showSellerContact: true,
+  showSku: true,
+  showProductVariation: true,
+  showBarcode: true,
+  showQrCode: true,
+}
+
+export async function getThermalPrinterSettings(): Promise<ThermalPrinterSettings> {
+  try {
+    const raw = await getSetting("thermal_printer_settings")
+    if (raw) return { ...DEFAULT_THERMAL_PRINTER_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getThermalPrinterSettings fallback:", err)
+  }
+  return DEFAULT_THERMAL_PRINTER_SETTINGS
+}
+
+export async function updateThermalPrinterSettings(data: Partial<ThermalPrinterSettings>) {
+  const current = await getThermalPrinterSettings()
+  const merged = { ...current, ...data }
+  await updateSetting("thermal_printer_settings", JSON.stringify(merged))
+  return { success: true, settings: merged }
+}
+
+// ----------------------------------------------------------------------------
+// File System / Storage Settings (Laravel: BusinessSettingsController@fileSystemUpdate)
+// ----------------------------------------------------------------------------
+export interface FileSystemSettings {
+  driver: "local" | "cloudinary" | "aws_s3"
+  cloudinaryCloudName: string
+  cloudinaryApiKey: string
+  cloudinaryApiSecret: string
+  awsAccessKey: string
+  awsSecretKey: string
+  awsRegion: string
+  awsBucket: string
+}
+
+export const DEFAULT_FILE_SYSTEM_SETTINGS: FileSystemSettings = {
+  driver: "local",
+  cloudinaryCloudName: "",
+  cloudinaryApiKey: "",
+  cloudinaryApiSecret: "",
+  awsAccessKey: "",
+  awsSecretKey: "",
+  awsRegion: "us-east-1",
+  awsBucket: "",
+}
+
+export async function getFileSystemSettings(): Promise<FileSystemSettings> {
+  try {
+    const raw = await getSetting("file_system_settings")
+    if (raw) return { ...DEFAULT_FILE_SYSTEM_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getFileSystemSettings fallback:", err)
+  }
+  return DEFAULT_FILE_SYSTEM_SETTINGS
+}
+
+export async function updateFileSystemSettings(data: Partial<FileSystemSettings>) {
+  const current = await getFileSystemSettings()
+  const merged = { ...current, ...data }
+  await updateSetting("file_system_settings", JSON.stringify(merged))
+  return { success: true, settings: merged }
+}
+
+// ----------------------------------------------------------------------------
+// Third-Party & Analytics Settings (Laravel: BusinessSettingsController@thirdPartyUpdate)
+// ----------------------------------------------------------------------------
+export interface ThirdPartySettings {
+  googleAnalyticsId: string
+  gtmCode: string
+  googleMapsApiKey: string
+  fbPixelId: string
+  fbCapiToken: string
+  fbAppId: string
+  fbPixelActive: boolean
+  recaptchaVersion: "v2" | "v3"
+  recaptchaSiteKey: string
+  recaptchaSecretKey: string
+  recaptchaActive: boolean
+}
+
+export const DEFAULT_THIRD_PARTY_SETTINGS: ThirdPartySettings = {
+  googleAnalyticsId: "",
+  gtmCode: "",
+  googleMapsApiKey: "",
+  fbPixelId: "",
+  fbCapiToken: "",
+  fbAppId: "",
+  fbPixelActive: false,
+  recaptchaVersion: "v2",
+  recaptchaSiteKey: "",
+  recaptchaSecretKey: "",
+  recaptchaActive: false,
+}
+
+export async function getThirdPartySettings(): Promise<ThirdPartySettings> {
+  try {
+    const raw = await getSetting("third_party_settings")
+    if (raw) return { ...DEFAULT_THIRD_PARTY_SETTINGS, ...JSON.parse(raw) }
+  } catch (err) {
+    console.warn("getThirdPartySettings fallback:", err)
+  }
+  return DEFAULT_THIRD_PARTY_SETTINGS
+}
+
+export async function updateThirdPartySettings(data: Partial<ThirdPartySettings>) {
+  const current = await getThirdPartySettings()
+  const merged = { ...current, ...data }
+  await updateSetting("third_party_settings", JSON.stringify(merged))
+  return { success: true, settings: merged }
+}
+
+// ----------------------------------------------------------------------------
+// Sitemap Timestamp (Laravel: SitemapController@generate)
+// ----------------------------------------------------------------------------
+export async function getSitemapLastGenerated(): Promise<Date | null> {
+  try {
+    const raw = await getSetting("sitemap_last_generated")
+    if (raw) return new Date(raw)
+  } catch (err) {
+    console.warn("getSitemapLastGenerated fallback:", err)
+  }
+  return null
+}
+
+export async function updateSitemapTimestamp(): Promise<boolean> {
+  return updateSetting("sitemap_last_generated", new Date().toISOString())
+}

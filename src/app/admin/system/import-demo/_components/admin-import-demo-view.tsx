@@ -1,25 +1,22 @@
 "use client"
 
-import React, { useState } from "react"
-import { Database, Download, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react"
+import React, { useState, useTransition } from "react"
+import { Database, CheckCircle2, AlertTriangle, RefreshCw, Loader2 } from "lucide-react"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import { importDemoDataAction } from "@/app/actions/demo-actions"
 
 export function AdminImportDemoView() {
-  const [importing, setImporting] = useState(false)
-  const [imported, setImported] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
   const [confirmModalOpen, setConfirmModalOpen] = useState(false)
-
-  const handleImportClick = () => {
-    setConfirmModalOpen(true)
-  }
 
   const handleConfirmImport = () => {
     setConfirmModalOpen(false)
-    setImporting(true)
-    setTimeout(() => {
-      setImporting(false)
-      setImported(true)
-    }, 2000)
+    setResult(null)
+    startTransition(async () => {
+      const res = await importDemoDataAction()
+      setResult({ success: res.success, message: res.message })
+    })
   }
 
   return (
@@ -34,10 +31,16 @@ export function AdminImportDemoView() {
         </p>
       </div>
 
-      {imported && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-          Demo data seeded successfully! All categories, products, and dummy shops are active.
+      {result && (
+        <div
+          className={`p-4 rounded-xl border text-sm font-medium flex items-center gap-2 ${
+            result.success
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-red-50 border-red-200 text-red-800"
+          }`}
+        >
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          {result.message}
         </div>
       )}
 
@@ -47,7 +50,9 @@ export function AdminImportDemoView() {
           <div className="text-xs text-amber-800 space-y-1">
             <h4 className="font-bold">Important Notice Before Import</h4>
             <p>
-              This will populate your database with canonical CodeCanyon Active eCommerce sample records (Categories, Brands, Inhouse Products, Vendor Stores, and Flash Deals). Existing records with identical slugs will be merged.
+              This will populate your database with canonical CodeCanyon Active eCommerce sample records
+              (Categories, Brands, Inhouse Products, Vendor Stores, and Flash Deals).
+              Existing records with identical slugs will be merged. This operation is idempotent.
             </p>
           </div>
         </div>
@@ -57,9 +62,9 @@ export function AdminImportDemoView() {
             <h3 className="font-bold text-sm text-slate-900">What will be imported:</h3>
             <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
               <li>10 Canonical eCommerce Categories</li>
-              <li>12 Top Brand Logos & Configurations</li>
-              <li>24 Pre-configured Products with Variations</li>
-              <li>5 Verified Demo Vendor Shops</li>
+              <li>8 Top Brand Configurations</li>
+              <li>Sample Products with Variations</li>
+              <li>Demo Vendor Shops</li>
               <li>Hero Sliders & Promotional Banner Cards</li>
             </ul>
           </div>
@@ -78,12 +83,16 @@ export function AdminImportDemoView() {
 
         <div className="flex justify-end pt-2">
           <button
-            onClick={handleImportClick}
-            disabled={importing}
+            onClick={() => setConfirmModalOpen(true)}
+            disabled={isPending}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d43533] hover:bg-red-700 disabled:opacity-60 text-white font-medium text-sm rounded-lg transition-colors shadow-sm"
           >
-            <RefreshCw className={`w-4 h-4 ${importing ? "animate-spin" : ""}`} />
-            {importing ? "Seeding Demo Data..." : "Run 1-Click Demo Import"}
+            {isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            {isPending ? "Seeding Demo Data..." : "Run 1-Click Demo Import"}
           </button>
         </div>
       </div>

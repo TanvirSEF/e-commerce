@@ -39,7 +39,12 @@ const FAQS = [
   },
 ]
 
-export default function HowToPreorderPage() {
+import { ensureAddonActivated } from "@/services/addon-service"
+
+export const dynamic = "force-dynamic"
+
+export default async function HowToPreorderPage() {
+  await ensureAddonActivated("preorder_system")
   return (
     <div className="min-h-screen bg-gray-50/60 py-8">
       <div className="mx-auto max-w-4xl px-4">

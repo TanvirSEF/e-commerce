@@ -23,6 +23,21 @@ export const shippingCities = pgTable("shipping_cities", {
 export type ShippingCity = typeof shippingCities.$inferSelect
 export type NewShippingCity = typeof shippingCities.$inferInsert
 
+export const shippingAreas = pgTable("shipping_areas", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  city: varchar("city", { length: 255 }).notNull(),
+  state: varchar("state", { length: 255 }).notNull().default("Dhaka Division"),
+  country: varchar("country", { length: 100 }).notNull().default("Bangladesh"),
+  cityId: integer("city_id"),
+  status: boolean("status").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
+export type ShippingArea = typeof shippingAreas.$inferSelect
+export type NewShippingArea = typeof shippingAreas.$inferInsert
+
 export const pickupAddresses = pgTable("pickup_addresses", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),

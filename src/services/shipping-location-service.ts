@@ -3,67 +3,18 @@ import {
   shippingCities,
   type ShippingCity,
   type NewShippingCity,
+  shippingAreas,
+  type ShippingArea,
+  type NewShippingArea,
   carriers,
   type Carrier,
   type NewCarrier,
 } from "../db/schema"
-import { eq, desc, ilike } from "drizzle-orm"
+import { eq, desc, ilike, and, sql } from "drizzle-orm"
 
-const SEED_CITIES: ShippingCity[] = [
-  { id: 1, name: "Dhaka North", state: "Dhaka", country: "Bangladesh", zoneId: 1, cost: "60.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 2, name: "Dhaka South", state: "Dhaka", country: "Bangladesh", zoneId: 1, cost: "60.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 3, name: "Gazipur", state: "Dhaka", country: "Bangladesh", zoneId: 2, cost: "80.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 4, name: "Narayanganj", state: "Dhaka", country: "Bangladesh", zoneId: 2, cost: "80.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 5, name: "Chattogram Metro", state: "Chattogram", country: "Bangladesh", zoneId: 3, cost: "120.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 6, name: "Cox's Bazar", state: "Chattogram", country: "Bangladesh", zoneId: 3, cost: "130.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 7, name: "Sylhet Sadar", state: "Sylhet", country: "Bangladesh", zoneId: 3, cost: "120.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 8, name: "Rajshahi City", state: "Rajshahi", country: "Bangladesh", zoneId: 3, cost: "120.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 9, name: "Khulna Metro", state: "Khulna", country: "Bangladesh", zoneId: 3, cost: "120.00", status: true, createdAt: new Date("2026-01-01") },
-  { id: 10, name: "Barishal Sadar", state: "Barishal", country: "Bangladesh", zoneId: 3, cost: "120.00", status: true, createdAt: new Date("2026-01-01") },
-]
-
-const SEED_CARRIERS: Carrier[] = [
-  {
-    id: 1,
-    name: "DHL Express",
-    transitTime: "1-3 Business Days",
-    logo: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=200",
-    status: true,
-    freeShipping: false,
-    createdAt: new Date("2026-01-01"),
-    updatedAt: new Date("2026-01-01"),
-  },
-  {
-    id: 2,
-    name: "FedEx International",
-    transitTime: "2-4 Business Days",
-    logo: "https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=200",
-    status: true,
-    freeShipping: false,
-    createdAt: new Date("2026-01-01"),
-    updatedAt: new Date("2026-01-01"),
-  },
-  {
-    id: 3,
-    name: "UPS Standard",
-    transitTime: "3-5 Business Days",
-    logo: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=200",
-    status: true,
-    freeShipping: true,
-    createdAt: new Date("2026-01-01"),
-    updatedAt: new Date("2026-01-01"),
-  },
-  {
-    id: 4,
-    name: "RedX Logistics",
-    transitTime: "24-48 Hours",
-    logo: "https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=200",
-    status: true,
-    freeShipping: false,
-    createdAt: new Date("2026-01-01"),
-    updatedAt: new Date("2026-01-01"),
-  },
-]
+// ----------------------------------------------------------------------------
+// Shipping Cities (Pure DB - Laravel: CityController)
+// ----------------------------------------------------------------------------
 
 export async function getAllShippingCities(search?: string): Promise<ShippingCity[]> {
   try {
@@ -73,19 +24,10 @@ export async function getAllShippingCities(search?: string): Promise<ShippingCit
       .where(search ? ilike(shippingCities.name, `%${search}%`) : undefined)
       .orderBy(shippingCities.state, shippingCities.name)
 
-    if (!list || list.length === 0) {
-      if (search) {
-        return SEED_CITIES.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-      }
-      return SEED_CITIES
-    }
-    return list
+    return list || []
   } catch (error) {
-    console.warn("DB getAllShippingCities fallback:", error)
-    if (search) {
-      return SEED_CITIES.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-    }
-    return SEED_CITIES
+    console.warn("DB getAllShippingCities error:", error)
+    return []
   }
 }
 
@@ -127,6 +69,10 @@ export async function createShippingCity(data: {
   }
 }
 
+// ----------------------------------------------------------------------------
+// Shipping Carriers (Pure DB - Laravel: CarrierController)
+// ----------------------------------------------------------------------------
+
 export async function getAllCarriers(search?: string): Promise<Carrier[]> {
   try {
     const query = db.select().from(carriers)
@@ -134,19 +80,10 @@ export async function getAllCarriers(search?: string): Promise<Carrier[]> {
       ? await query.where(ilike(carriers.name, `%${search}%`)).orderBy(desc(carriers.id))
       : await query.orderBy(desc(carriers.id))
 
-    if (!list || list.length === 0) {
-      if (search) {
-        return SEED_CARRIERS.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-      }
-      return SEED_CARRIERS
-    }
-    return list
+    return list || []
   } catch (error) {
-    console.warn("DB getAllCarriers fallback:", error)
-    if (search) {
-      return SEED_CARRIERS.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-    }
-    return SEED_CARRIERS
+    console.warn("DB getAllCarriers error:", error)
+    return []
   }
 }
 
@@ -217,3 +154,126 @@ export async function deleteCarrier(id: number): Promise<boolean> {
   }
 }
 
+// ----------------------------------------------------------------------------
+// Shipping Areas (Pure DB - Laravel: AreaController)
+// ----------------------------------------------------------------------------
+
+let areasTableInitialized = false
+
+async function ensureShippingAreasTable() {
+  if (areasTableInitialized) return
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS "shipping_areas" (
+        "id" serial PRIMARY KEY,
+        "name" varchar(255) NOT NULL,
+        "city" varchar(255) NOT NULL,
+        "state" varchar(255) NOT NULL DEFAULT 'Dhaka Division',
+        "country" varchar(100) NOT NULL DEFAULT 'Bangladesh',
+        "city_id" integer,
+        "status" boolean NOT NULL DEFAULT true,
+        "created_at" timestamp NOT NULL DEFAULT now(),
+        "updated_at" timestamp NOT NULL DEFAULT now()
+      );
+    `)
+    areasTableInitialized = true
+  } catch (err) {
+    console.warn("ensureShippingAreasTable error:", err)
+  }
+}
+
+export async function getAllAreas(search?: string, city?: string): Promise<ShippingArea[]> {
+  await ensureShippingAreasTable()
+  try {
+    const conditions = []
+    if (search) {
+      conditions.push(ilike(shippingAreas.name, `%${search}%`))
+    }
+    if (city && city !== "all") {
+      conditions.push(eq(shippingAreas.city, city))
+    }
+
+    if (conditions.length > 0) {
+      return await db
+        .select()
+        .from(shippingAreas)
+        .where(and(...conditions))
+        .orderBy(desc(shippingAreas.id))
+    }
+    return await db.select().from(shippingAreas).orderBy(desc(shippingAreas.id))
+  } catch (error) {
+    console.warn("DB getAllAreas error:", error)
+    return []
+  }
+}
+
+export async function createArea(data: {
+  name: string
+  city: string
+  state?: string
+  country?: string
+  status?: boolean
+}): Promise<ShippingArea | null> {
+  await ensureShippingAreasTable()
+  try {
+    const [inserted] = await db
+      .insert(shippingAreas)
+      .values({
+        name: data.name,
+        city: data.city,
+        state: data.state || "Dhaka Division",
+        country: data.country || "Bangladesh",
+        status: data.status ?? true,
+      })
+      .returning()
+    return inserted || null
+  } catch (error) {
+    console.error("Failed to create area:", error)
+    return null
+  }
+}
+
+export async function updateArea(
+  id: number,
+  data: Partial<Omit<ShippingArea, "id" | "createdAt" | "updatedAt">>
+): Promise<boolean> {
+  await ensureShippingAreasTable()
+  try {
+    await db
+      .update(shippingAreas)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(shippingAreas.id, id))
+    return true
+  } catch (error) {
+    console.error("Failed to update area:", error)
+    return false
+  }
+}
+
+export async function toggleAreaStatus(id: number, status: boolean): Promise<boolean> {
+  await ensureShippingAreasTable()
+  try {
+    await db
+      .update(shippingAreas)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(shippingAreas.id, id))
+    return true
+  } catch (error) {
+    console.error("Failed to toggle area status:", error)
+    return false
+  }
+}
+
+export async function deleteArea(id: number): Promise<boolean> {
+  await ensureShippingAreasTable()
+  try {
+    await db.delete(shippingAreas).where(eq(shippingAreas.id, id))
+    return true
+  } catch (error) {
+    console.error("Failed to delete area:", error)
+    return false
+  }
+}

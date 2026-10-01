@@ -1,7 +1,10 @@
 import React from "react"
 import { notFound } from "next/navigation"
 import { getAuctionProductBySlug, getAuctionBidsByProduct } from "@/services/auction-service"
+import { ensureAddonActivated } from "@/services/addon-service"
 import { AuctionProductDetailView } from "./_components/auction-product-detail-view"
+
+export const dynamic = "force-dynamic"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -18,6 +21,7 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 export default async function AuctionProductPage({ params }: PageProps) {
+  await ensureAddonActivated("auction_system")
   const { slug } = await params
   const product = await getAuctionProductBySlug(slug)
 

@@ -9,11 +9,12 @@ import { adminNavItems, type NavItem } from "./admin-nav-items"
 interface AdminSidebarProps {
   isOpen: boolean
   onClose?: () => void
+  initialDisabledAddons?: string[]
 }
 
-export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
+export function AdminSidebar({ isOpen, onClose, initialDisabledAddons = [] }: AdminSidebarProps) {
   const pathname = usePathname()
-  const [disabledAddons, setDisabledAddons] = useState<string[]>([])
+  const [disabledAddons, setDisabledAddons] = useState<string[]>(initialDisabledAddons)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Products: true,
     Sales: true,
@@ -38,16 +39,26 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
   const isAddonDisabled = (addonKey?: string) => {
     if (!addonKey) return false
-    return disabledAddons.includes(addonKey)
+    const key = addonKey.toLowerCase().trim()
+    return disabledAddons.some((d) => {
+      const dKey = d.toLowerCase().trim()
+      if (dKey === key) return true
+      if (dKey === `${key}_system` || `${dKey}_system` === key) return true
+      if (dKey.replace(/_system$/, "") === key.replace(/_system$/, "")) return true
+      if (dKey.replace(/s$/, "") === key.replace(/s$/, "")) return true
+      return false
+    })
   }
 
-  const filteredNav = adminNavItems.filter((item) => {
-    if (!searchQuery) return true
-    const q = searchQuery.toLowerCase()
-    if (item.title.toLowerCase().includes(q)) return true
-    if (item.children?.some((c) => c.title.toLowerCase().includes(q))) return true
-    return false
-  })
+  const filteredNav = adminNavItems
+    .filter((item) => !isAddonDisabled(item.addonKey))
+    .filter((item) => {
+      if (!searchQuery) return true
+      const q = searchQuery.toLowerCase()
+      if (item.title.toLowerCase().includes(q)) return true
+      if (item.children?.some((c) => c.title.toLowerCase().includes(q))) return true
+      return false
+    })
 
   return (
     <>
@@ -109,9 +120,13 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             const isGroupOpen = !!openGroups[item.title]
             const isActive = item.href ? pathname === item.href : false
             const isChildActive = item.children?.some((c) => pathname === c.href)
-            const itemDisabled = isAddonDisabled(item.addonKey)
 
             if (hasChildren) {
+              const visibleChildren = item.children?.filter((sub) => !isAddonDisabled(sub.addonKey))
+              if (!visibleChildren || visibleChildren.length === 0) {
+                return null
+              }
+
               return (
                 <div key={item.title} className="space-y-0.5">
                   <button
@@ -121,16 +136,11 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                       isChildActive
                         ? "text-white bg-slate-800/80"
                         : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                    } ${itemDisabled ? "opacity-50" : ""}`}
+                    }`}
                   >
                     <div className="flex items-center space-x-3">
                       <Icon className="w-4 h-4 text-slate-400" />
                       <span>{item.title}</span>
-                      {itemDisabled && (
-                        <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
-                          Off
-                        </span>
-                      )}
                     </div>
                     {isGroupOpen ? (
                       <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
@@ -141,9 +151,8 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
                   {isGroupOpen && (
                     <div className="pl-9 pr-2 space-y-0.5 pt-0.5">
-                      {item.children?.map((sub) => {
+                      {visibleChildren.map((sub) => {
                         const isSubActive = pathname === sub.href
-                        const subDisabled = isAddonDisabled(sub.addonKey) || itemDisabled
                         return (
                           <Link
                             key={sub.href}
@@ -153,14 +162,9 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                               isSubActive
                                 ? "bg-[#d43533] text-white font-bold"
                                 : "text-slate-400 hover:text-white hover:bg-slate-800/40"
-                            } ${subDisabled ? "opacity-60" : ""}`}
+                            }`}
                           >
                             <span>{sub.title}</span>
-                            {subDisabled && (
-                              <span className="text-[8px] uppercase px-1 rounded bg-slate-700 text-slate-400">
-                                Off
-                              </span>
-                            )}
                           </Link>
                         )
                       })}
@@ -179,17 +183,12 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                   isActive
                     ? "bg-[#d43533] text-white"
                     : "text-slate-400 hover:text-white hover:bg-slate-800/50"
-                } ${itemDisabled ? "opacity-50" : ""}`}
+                }`}
               >
                 <div className="flex items-center space-x-3">
                   <Icon className="w-4 h-4 text-slate-400" />
                   <span>{item.title}</span>
                 </div>
-                {itemDisabled && (
-                  <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">
-                    Off
-                  </span>
-                )}
               </Link>
             )
           })}

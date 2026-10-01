@@ -1,6 +1,9 @@
 import React from "react"
 import { getAllAuctionProducts } from "@/services/auction-service"
+import { ensureAddonActivated } from "@/services/addon-service"
 import { AuctionShowcaseView } from "./_components/auction-showcase-view"
+
+export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "Live Auction Marketplace | Bid on Luxury & Rare Collectibles",
@@ -8,6 +11,7 @@ export const metadata = {
 }
 
 export default async function AuctionShowcasePage() {
+  await ensureAddonActivated("auction_system")
   const products = await getAllAuctionProducts()
   return <AuctionShowcaseView products={products} />
 }

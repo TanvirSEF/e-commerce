@@ -1,7 +1,10 @@
 import React from "react"
 import { Metadata } from "next"
 import { getAllPosSales } from "@/services/pos-service"
+import { ensureAddonActivated } from "@/services/addon-service"
 import { PosOrdersView } from "./_components/pos-orders-view"
+
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "POS Orders Ledger | Admin Dashboard",
@@ -9,6 +12,7 @@ export const metadata: Metadata = {
 }
 
 export default async function AdminPosOrdersPage() {
+  await ensureAddonActivated("pos_system")
   const sales = await getAllPosSales()
 
   return (

@@ -17,22 +17,33 @@ export async function toggleAddonAction(id: number, activated: boolean) {
 
 export async function installAddonAction(formData: FormData) {
   try {
-    const purchaseCode = (formData.get("purchaseCode") as string)?.trim()
-    const name = (formData.get("name") as string)?.trim() || "Custom Addon Extension"
-    const uniqueIdentifier =
-      (formData.get("uniqueIdentifier") as string)?.trim() ||
-      name.toLowerCase().replace(/[^a-z0-9]+/g, "_")
+    const mainPurchaseCode = (formData.get("domain_purchase_code") as string)?.trim() || ""
+    const purchaseCode = (formData.get("purchase_code") as string)?.trim() || ""
+    const zipFile = formData.get("addon_zip") as File | null
 
     if (!purchaseCode) {
-      return { success: false, error: "A valid CodeCanyon purchase code is required." }
+      return { success: false, error: "Addon purchase code is required." }
+    }
+
+    let addonName = "Custom Uploaded Addon"
+    let uniqueIdentifier = "custom_addon_" + Math.random().toString(36).substring(2, 8)
+
+    if (zipFile && zipFile.name) {
+      const baseName = zipFile.name.replace(/\.zip$/i, "").replace(/[-_]+/g, " ")
+      addonName = baseName
+        .split(" ")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ")
+      uniqueIdentifier = zipFile.name.replace(/\.zip$/i, "").toLowerCase().replace(/[^a-z0-9]+/g, "_")
     }
 
     const item = await installAddon({
-      name,
+      name: addonName,
       uniqueIdentifier,
       purchaseCode,
+      mainPurchaseCode,
       version: "1.0",
-      description: "Custom uploaded extension package for Active eCommerce CMS",
+      description: "CodeCanyon addon extension package installed via admin panel",
       image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&auto=format&fit=crop&q=80",
     })
 
