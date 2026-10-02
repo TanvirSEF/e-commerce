@@ -8,13 +8,13 @@ import { formatPrice } from "@/lib/utils"
 import type { RefundRequestItem } from "@/services/refund-service"
 
 interface RefundRequestsViewProps {
-  initialRefunds: RefundRequestItem[]
+  initialRefunds?: RefundRequestItem[]
 }
 
 type TabType = "all" | "pending" | "approved" | "rejected"
 
-export function RefundRequestsView({ initialRefunds }: RefundRequestsViewProps) {
-  const [refunds] = useState<RefundRequestItem[]>(initialRefunds)
+export function RefundRequestsView({ initialRefunds = [] }: RefundRequestsViewProps) {
+  const [refunds] = useState<RefundRequestItem[]>(initialRefunds ?? [])
   const [activeTab, setActiveTab] = useState<TabType>("all")
   const [search, setSearch] = useState("")
   const [selectedRefund, setSelectedRefund] = useState<RefundRequestItem | null>(null)

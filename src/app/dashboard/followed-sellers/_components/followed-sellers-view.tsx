@@ -8,11 +8,11 @@ import { unfollowShopAction } from "@/app/actions/followed-seller-actions"
 import type { FollowedSellerItem } from "@/services/customer-extra-service"
 
 interface FollowedSellersViewProps {
-  initialSellers: FollowedSellerItem[]
+  initialSellers?: FollowedSellerItem[]
 }
 
-export function FollowedSellersView({ initialSellers }: FollowedSellersViewProps) {
-  const [sellers, setSellers] = useState<FollowedSellerItem[]>(initialSellers)
+export function FollowedSellersView({ initialSellers = [] }: FollowedSellersViewProps) {
+  const [sellers, setSellers] = useState<FollowedSellerItem[]>(initialSellers ?? [])
   const [shopToUnfollow, setShopToUnfollow] = useState<FollowedSellerItem | null>(null)
   const [isUnfollowing, setIsUnfollowing] = useState(false)
 

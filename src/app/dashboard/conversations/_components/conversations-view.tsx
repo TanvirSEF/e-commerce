@@ -7,18 +7,22 @@ import { Search } from "lucide-react"
 import type { ConversationItem } from "@/services/conversation-service"
 
 interface ConversationsViewProps {
-  initialConversations: ConversationItem[]
+  initialConversations?: ConversationItem[]
+  initialMessages?: any[]
 }
 
-export function ConversationsView({ initialConversations }: ConversationsViewProps) {
-  const [conversations] = useState<ConversationItem[]>(initialConversations)
+export function ConversationsView({ initialConversations = [] }: ConversationsViewProps) {
+  const [conversations] = useState<ConversationItem[]>(initialConversations ?? [])
   const [search, setSearch] = useState("")
 
-  const filtered = conversations.filter(
+  const list = Array.isArray(conversations) ? conversations : []
+
+  const filtered = list.filter(
     (c) =>
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.shopName.toLowerCase().includes(search.toLowerCase()) ||
-      c.lastMessage.toLowerCase().includes(search.toLowerCase())
+      c &&
+      ((c.title || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.shopName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.lastMessage || "").toLowerCase().includes(search.toLowerCase()))
   )
 
   return (

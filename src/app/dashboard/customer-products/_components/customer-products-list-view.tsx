@@ -12,11 +12,11 @@ import {
 import type { ClassifiedProductItem } from "@/services/customer-product-service"
 
 interface CustomerProductsListViewProps {
-  initialProducts: ClassifiedProductItem[]
+  initialProducts?: ClassifiedProductItem[]
 }
 
-export function CustomerProductsListView({ initialProducts }: CustomerProductsListViewProps) {
-  const [products, setProducts] = useState<ClassifiedProductItem[]>(initialProducts)
+export function CustomerProductsListView({ initialProducts = [] }: CustomerProductsListViewProps) {
+  const [products, setProducts] = useState<ClassifiedProductItem[]>(initialProducts ?? [])
   const [productToDelete, setProductToDelete] = useState<ClassifiedProductItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [togglingId, setTogglingId] = useState<number | null>(null)

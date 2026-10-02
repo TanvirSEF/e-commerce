@@ -24,7 +24,7 @@ export default async function CustomerConversationsPage() {
     // fallback
   }
 
-  const conversations = await getUserConversations(currentUserId)
+  const conversations = (await getUserConversations(currentUserId)) ?? []
 
-  return <ConversationsView initialConversations={conversations} />
+  return <ConversationsView initialConversations={conversations} initialMessages={[]} />
 }
