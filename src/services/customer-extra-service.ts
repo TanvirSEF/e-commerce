@@ -1,6 +1,6 @@
 import { db } from "@/db"
 import { shops, shopFollowers } from "@/db/schema/shops"
-import { orders, orderItems } from "@/db/schema/orders"
+import { orders, orderItems, customerAddresses } from "@/db/schema/orders"
 import { products } from "@/db/schema/products"
 import { wishlists } from "@/db/schema/customer"
 import { eq, and, desc } from "drizzle-orm"
@@ -245,3 +245,100 @@ export async function toggleWishlistProduct(
     return { added: false }
   }
 }
+
+export interface CustomerAddressItem {
+  id: number
+  userId: string
+  address: string
+  country: string
+  city: string | null
+  state: string | null
+  postalCode: string | null
+  phone: string | null
+  setDefault: boolean
+}
+
+export async function getCustomerAddresses(userId: string): Promise<CustomerAddressItem[]> {
+  try {
+    if (!userId) return []
+    const rows = await db
+      .select()
+      .from(customerAddresses)
+      .where(eq(customerAddresses.userId, userId))
+      .orderBy(desc(customerAddresses.setDefault), desc(customerAddresses.id))
+
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId || "",
+      address: r.address,
+      country: r.country,
+      city: r.city,
+      state: r.state,
+      postalCode: r.postalCode,
+      phone: r.phone,
+      setDefault: r.setDefault,
+    }))
+  } catch (err) {
+    console.warn("getCustomerAddresses fallback:", err)
+    return []
+  }
+}
+
+export async function getDefaultShippingAddress(userId: string): Promise<CustomerAddressItem | null> {
+  try {
+    const list = await getCustomerAddresses(userId)
+    return list.find((a) => a.setDefault) || list[0] || null
+  } catch {
+    return null
+  }
+}
+
+export async function addCustomerAddress(data: {
+  userId: string
+  address: string
+  country?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  phone?: string
+  setDefault?: boolean
+}): Promise<CustomerAddressItem | null> {
+  try {
+    if (data.setDefault) {
+      await db
+        .update(customerAddresses)
+        .set({ setDefault: false })
+        .where(eq(customerAddresses.userId, data.userId))
+    }
+    const [inserted] = await db
+      .insert(customerAddresses)
+      .values({
+        userId: data.userId,
+        address: data.address,
+        country: data.country || "Bangladesh",
+        city: data.city || "Dhaka",
+        state: data.state || "",
+        postalCode: data.postalCode || "",
+        phone: data.phone || "",
+        setDefault: data.setDefault ?? true,
+      })
+      .returning()
+    return inserted
+      ? {
+          id: inserted.id,
+          userId: inserted.userId || "",
+          address: inserted.address,
+          country: inserted.country,
+          city: inserted.city,
+          state: inserted.state,
+          postalCode: inserted.postalCode,
+          phone: inserted.phone,
+          setDefault: inserted.setDefault,
+        }
+      : null
+  } catch (err) {
+    console.error("addCustomerAddress error:", err)
+    return null
+  }
+}
+

@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { orders, orderItems, products } from "../db/schema"
-import { eq, or, desc } from "drizzle-orm"
+import { eq, or, desc, and } from "drizzle-orm"
 
 export interface CreateOrderInput {
   userId?: string
@@ -186,6 +186,21 @@ export async function getUserOrders(userId: string) {
     return []
   }
 }
+
+export async function getUserTotalExpenditure(userId: string): Promise<number> {
+  try {
+    const rows = await db
+      .select({ grandTotal: orders.grandTotal })
+      .from(orders)
+      .where(and(eq(orders.userId, userId), eq(orders.paymentStatus, "paid")))
+
+    return rows.reduce((sum, r) => sum + (Number(r.grandTotal) || 0), 0)
+  } catch (err) {
+    console.warn("DB getUserTotalExpenditure failed:", (err as Error).message)
+    return 0
+  }
+}
+
 
 export interface AdminOrderRow {
   id: string
