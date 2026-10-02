@@ -1,35 +1,59 @@
 "use client"
 
 import React, { useState } from "react"
-import { X, Star, Upload, CheckCircle2 } from "lucide-react"
+import { X, Star, Upload, CheckCircle2, Loader2 } from "lucide-react"
+import { submitProductReviewAction } from "@/app/actions/customer-order-actions"
 
 interface ReviewModalProps {
   isOpen: boolean
   onClose: () => void
   product: {
-    id: string
+    id: string | number
     name: string
     thumbnail: string
     orderCode: string
   } | null
+  onSuccess?: (productId: number) => void
 }
 
-export function ReviewModal({ isOpen, onClose, product }: ReviewModalProps) {
+export function ReviewModal({ isOpen, onClose, product, onSuccess }: ReviewModalProps) {
   const [rating, setRating] = useState(5)
   const [hoverRating, setHoverRating] = useState(0)
   const [comment, setComment] = useState("")
+  const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
   if (!isOpen || !product) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      setComment("")
-      onClose()
-    }, 1500)
+    if (!comment.trim()) return
+
+    setSubmitting(true)
+    try {
+      const res = await submitProductReviewAction({
+        productId: Number(product.id),
+        orderCode: product.orderCode,
+        rating,
+        comment,
+      })
+      if (res.success) {
+        setSubmitted(true)
+        onSuccess?.(Number(product.id))
+        setTimeout(() => {
+          setSubmitted(false)
+          setComment("")
+          setSubmitting(false)
+          onClose()
+        }, 1200)
+      } else {
+        alert(res.message || "Failed to submit review.")
+        setSubmitting(false)
+      }
+    } catch {
+      alert("Failed to submit review. Please try again.")
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -64,6 +88,12 @@ export function ReviewModal({ isOpen, onClose, product }: ReviewModalProps) {
                 src={product.thumbnail || "/assets/img/placeholder.jpg"}
                 alt={product.name}
                 className="h-12 w-12 rounded object-cover border border-gray-200"
+                onError={(e) => {
+                  const target = e.currentTarget
+                  if (!target.src.includes("placeholder.jpg")) {
+                    target.src = "/assets/img/placeholder.jpg"
+                  }
+                }}
               />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-gray-900 truncate">{product.name}</p>
@@ -133,15 +163,18 @@ export function ReviewModal({ isOpen, onClose, product }: ReviewModalProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded border border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                disabled={submitting}
+                className="rounded border border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="rounded bg-[#d43533] px-5 py-2 text-xs font-bold text-white hover:bg-[#b82a28] shadow-sm transition-colors"
+                disabled={submitting}
+                className="inline-flex items-center gap-1.5 rounded bg-[#d43533] px-5 py-2 text-xs font-bold text-white hover:bg-[#b82a28] shadow-sm transition-colors disabled:opacity-50"
               >
-                Submit Review
+                {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {submitting ? "Submitting..." : "Submit Review"}
               </button>
             </div>
           </form>

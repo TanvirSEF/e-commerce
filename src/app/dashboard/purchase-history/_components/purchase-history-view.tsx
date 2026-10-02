@@ -1,153 +1,72 @@
 "use client"
 
 import React, { useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
 import { Search } from "lucide-react"
-import { PurchaseOrderCard, OrderRecord } from "./purchase-order-card"
+import { PurchaseOrderCard } from "./purchase-order-card"
 import { ReviewModal } from "./review-modal"
-
-const DEFAULT_ORDERS: OrderRecord[] = [
-  {
-    code: "20260923-847291",
-    date: "23 Sep 2026",
-    amount: 4760,
-    deliveryStatus: "on_the_way",
-    paymentStatus: "paid",
-    paymentType: "Cash on Delivery",
-    itemsCount: 2,
-    shopName: "ElectroMart Official Store",
-    items: [
-      {
-        id: "item-101",
-        name: "Noise Cancelling Wireless Headphones Pro",
-        slug: "noise-cancelling-wireless-headphones-pro",
-        price: 3200,
-        quantity: 1,
-        thumbnail: "/assets/img/placeholder.jpg",
-        reviewed: false,
-      },
-      {
-        id: "item-102",
-        name: "Fast Charging USB-C Braided Cable 2M",
-        slug: "fast-charging-usbc-cable-2m",
-        price: 1560,
-        quantity: 1,
-        thumbnail: "/assets/img/placeholder.jpg",
-        reviewed: false,
-      },
-    ],
-  },
-  {
-    code: "20260918-192842",
-    date: "18 Sep 2026",
-    amount: 1250,
-    deliveryStatus: "delivered",
-    paymentStatus: "paid",
-    paymentType: "bKash",
-    itemsCount: 1,
-    shopName: "Inhouse Products",
-    items: [
-      {
-        id: "item-103",
-        name: "Premium Cotton Graphic T-Shirt Navy",
-        slug: "premium-cotton-graphic-tshirt-navy",
-        price: 1250,
-        quantity: 1,
-        thumbnail: "/assets/img/placeholder.jpg",
-        reviewed: false,
-      },
-    ],
-  },
-  {
-    code: "20260830-671203",
-    date: "30 Aug 2026",
-    amount: 2440,
-    deliveryStatus: "delivered",
-    paymentStatus: "paid",
-    paymentType: "Nagad",
-    itemsCount: 1,
-    shopName: "Fashion Hub",
-    items: [
-      {
-        id: "item-104",
-        name: "Casual Slim Fit Denim Jeans Dark Blue",
-        slug: "casual-slim-fit-denim-jeans-dark-blue",
-        price: 2440,
-        quantity: 1,
-        thumbnail: "/assets/img/placeholder.jpg",
-        reviewed: true,
-      },
-    ],
-  },
-  {
-    code: "20260812-451928",
-    date: "12 Aug 2026",
-    amount: 5120,
-    deliveryStatus: "delivered",
-    paymentStatus: "paid",
-    paymentType: "Cards (Stripe)",
-    itemsCount: 2,
-    shopName: "Gadget World",
-    items: [
-      {
-        id: "item-105",
-        name: "Wireless Mechanical Gaming Keyboard RGB",
-        slug: "wireless-mechanical-gaming-keyboard-rgb",
-        price: 5120,
-        quantity: 1,
-        thumbnail: "/assets/img/placeholder.jpg",
-        reviewed: false,
-      },
-    ],
-  },
-]
+import type { CustomerOrderRecord } from "@/services/order-service"
 
 const TABS = ["All", "Unpaid", "Confirmed", "Picked Up", "Delivered", "To Review"]
 
 interface PurchaseHistoryViewProps {
-  initialOrders?: any[]
+  initialOrders?: CustomerOrderRecord[]
 }
 
-export function PurchaseHistoryView({ initialOrders }: PurchaseHistoryViewProps) {
+export function PurchaseHistoryView({ initialOrders = [] }: PurchaseHistoryViewProps) {
+  const [orders, setOrders] = useState<CustomerOrderRecord[]>(initialOrders)
   const [activeTab, setActiveTab] = useState("All")
   const [deliveryFilter, setDeliveryFilter] = useState("all")
   const [search, setSearch] = useState("")
 
   const [reviewProduct, setReviewProduct] = useState<{
-    id: string
+    id: string | number
     name: string
     thumbnail: string
     orderCode: string
   } | null>(null)
 
-  const allOrders: OrderRecord[] =
-    initialOrders && initialOrders.length > 0 ? initialOrders : DEFAULT_ORDERS
+  const handleOrderCancelled = (code: string) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.code === code ? { ...o, deliveryStatus: "cancelled" } : o))
+    )
+  }
 
-  // Filtering logic matching Active eCommerce
-  const filteredOrders = allOrders.filter((order) => {
-    // Tab filter
+  const handleReviewSuccess = (productId: number) => {
+    setOrders((prev) =>
+      prev.map((o) => ({
+        ...o,
+        items: o.items.map((it) => (it.productId === productId ? { ...it, reviewed: true } : it)),
+      }))
+    )
+  }
+
+  // Filtering logic matching Laravel Active eCommerce CMS
+  const filteredOrders = orders.filter((order) => {
+    // 1. Tab Filter
     if (activeTab === "Unpaid" && order.paymentStatus !== "unpaid") return false
     if (activeTab === "Confirmed" && order.deliveryStatus !== "confirmed") return false
     if (activeTab === "Picked Up" && order.deliveryStatus !== "picked_up") return false
     if (activeTab === "Delivered" && order.deliveryStatus !== "delivered") return false
     if (activeTab === "To Review") {
       const hasUnreviewed =
-        order.deliveryStatus === "delivered" &&
-        order.items?.some((i) => !i.reviewed)
+        order.deliveryStatus === "delivered" && order.items?.some((i) => !i.reviewed)
       if (!hasUnreviewed) return false
     }
 
-    // Delivery dropdown filter
+    // 2. Dropdown Filter
     if (deliveryFilter !== "all" && order.deliveryStatus !== deliveryFilter) {
       return false
     }
 
-    // Search query
+    // 3. Search Filter
     if (search.trim()) {
       const q = search.toLowerCase()
       const matchCode = (order.code || "").toLowerCase().includes(q)
       const matchShop = (order.shopName || "").toLowerCase().includes(q)
       const matchItem = order.items?.some((i) => i.name.toLowerCase().includes(q))
-      if (!matchCode && !matchShop && !matchItem) return false
+      if (!matchCode && !matchItem && !matchShop) return false
     }
 
     return true
@@ -155,18 +74,18 @@ export function PurchaseHistoryView({ initialOrders }: PurchaseHistoryViewProps)
 
   return (
     <div className="space-y-4">
-      {/* Header and Filter Controls */}
-      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      {/* Title & Tabs / Filters Container Matching Laravel aiz-titlebar 1:1 */}
+      <div className="rounded border border-gray-200 bg-white p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
           <div>
-            <h1 className="text-lg font-bold text-gray-900">Purchase History</h1>
-            <p className="text-xs text-gray-500">
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900">Purchase History</h1>
+            <p className="text-xs text-gray-500 mt-0.5">
               Track, view details, reorder, or review past purchases
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Delivery Status Dropdown Filter */}
+            {/* Delivery Status Dropdown matching Laravel selectpicker */}
             <select
               value={deliveryFilter}
               onChange={(e) => setDeliveryFilter(e.target.value)}
@@ -204,8 +123,8 @@ export function PurchaseHistoryView({ initialOrders }: PurchaseHistoryViewProps)
               onClick={() => setActiveTab(tab)}
               className={`rounded-full px-4 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
                 activeTab === tab
-                  ? "bg-[#d43533] text-white shadow-sm"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? "bg-[#d43533] text-white shadow-2xs"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
               {tab}
@@ -216,19 +135,47 @@ export function PurchaseHistoryView({ initialOrders }: PurchaseHistoryViewProps)
 
       {/* Orders List */}
       {filteredOrders.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center text-gray-500">
-          <p className="text-sm font-semibold">No orders found</p>
-          <p className="text-xs text-gray-400 mt-1">
-            Try adjusting your search filters or browse other tabs.
+        /* Empty State Matching Laravel 1:1 */
+        <div className="rounded border border-gray-200 bg-white p-12 text-center shadow-xs">
+          <div className="relative mx-auto w-32 h-24 mb-3">
+            <Image
+              src="/assets/img/empty.svg"
+              alt="No orders found"
+              fill
+              className="object-contain"
+              onError={(e) => {
+                const target = e.currentTarget
+                if (!target.src.includes("placeholder")) {
+                  target.src = "/assets/img/nothing.svg"
+                }
+              }}
+            />
+          </div>
+          <h3 className="text-sm font-semibold text-gray-700">No orders found</h3>
+          <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+            {orders.length === 0
+              ? "You haven't placed any orders yet. Start exploring our catalog!"
+              : "Try adjusting your search filters or browse other tabs."}
           </p>
+          {orders.length === 0 && (
+            <div className="mt-4">
+              <Link
+                href="/products"
+                className="inline-flex rounded bg-[#d43533] px-5 py-2 text-xs font-bold text-white hover:bg-[#9d1b1a] transition-colors shadow-2xs"
+              >
+                Browse Products
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           {filteredOrders.map((order) => (
             <PurchaseOrderCard
               key={order.code}
               order={order}
               onOpenReview={(item) => setReviewProduct(item)}
+              onOrderCancelled={handleOrderCancelled}
             />
           ))}
         </div>
@@ -239,6 +186,7 @@ export function PurchaseHistoryView({ initialOrders }: PurchaseHistoryViewProps)
         isOpen={Boolean(reviewProduct)}
         onClose={() => setReviewProduct(null)}
         product={reviewProduct}
+        onSuccess={handleReviewSuccess}
       />
     </div>
   )

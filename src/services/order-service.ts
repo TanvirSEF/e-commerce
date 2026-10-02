@@ -1,5 +1,5 @@
 import { db } from "../db"
-import { orders, orderItems, products } from "../db/schema"
+import { orders, orderItems, products, reviews } from "../db/schema"
 import { eq, or, desc, and } from "drizzle-orm"
 
 export interface CreateOrderInput {
@@ -165,7 +165,34 @@ export async function getOrderByCode(codeOrTracking: string) {
   return null
 }
 
-export async function getUserOrders(userId: string) {
+export interface CustomerOrderItem {
+  id: string
+  productId: number
+  name: string
+  slug: string
+  price: number
+  quantity: number
+  variation?: string
+  thumbnail: string
+  reviewed?: boolean
+}
+
+export interface CustomerOrderRecord {
+  id: string
+  numericId: number
+  code: string
+  trackingCode?: string
+  date: string
+  amount: number
+  deliveryStatus: string
+  paymentStatus: string
+  paymentType: string
+  shopName: string
+  itemsCount: number
+  items: CustomerOrderItem[]
+}
+
+export async function getUserOrders(userId: string): Promise<CustomerOrderRecord[]> {
   try {
     const rows = await db
       .select()
@@ -173,17 +200,223 @@ export async function getUserOrders(userId: string) {
       .where(eq(orders.userId, userId))
       .orderBy(desc(orders.createdAt))
 
-    return rows.map((o) => ({
-      id: String(o.id),
-      code: o.code,
-      date: o.createdAt.toISOString().split("T")[0],
-      amount: Number(o.grandTotal),
-      deliveryStatus: o.deliveryStatus,
-      paymentStatus: o.paymentStatus,
-    }))
+    if (!rows || rows.length === 0) return []
+
+    // Fetch user reviews to determine if an item is reviewed
+    const userReviews = await db
+      .select({ productId: reviews.productId })
+      .from(reviews)
+      .where(eq(reviews.userId, userId))
+    const reviewedSet = new Set(userReviews.map((r) => r.productId))
+
+    const fullOrders: CustomerOrderRecord[] = await Promise.all(
+      rows.map(async (o) => {
+        const itemRows = await db
+          .select({
+            id: orderItems.id,
+            productId: orderItems.productId,
+            variation: orderItems.variation,
+            price: orderItems.price,
+            quantity: orderItems.quantity,
+            productName: products.name,
+            productSlug: products.slug,
+            productThumbnail: products.thumbnailImg,
+          })
+          .from(orderItems)
+          .leftJoin(products, eq(orderItems.productId, products.id))
+          .where(eq(orderItems.orderId, o.id))
+
+        const items: CustomerOrderItem[] = itemRows.map((it) => ({
+          id: String(it.id),
+          productId: it.productId || 0,
+          name: it.productName || "Product",
+          slug: it.productSlug || "product",
+          price: Number(it.price) || 0,
+          quantity: it.quantity || 1,
+          variation: it.variation || undefined,
+          thumbnail: it.productThumbnail || "/assets/img/placeholder.jpg",
+          reviewed: it.productId ? reviewedSet.has(it.productId) : false,
+        }))
+
+        const createdDate = new Date(o.createdAt)
+        const d = String(createdDate.getDate()).padStart(2, "0")
+        const m = String(createdDate.getMonth() + 1).padStart(2, "0")
+        const y = createdDate.getFullYear()
+        const formattedDate = `${d}-${m}-${y}`
+
+        const paymentTypeLabel =
+          o.paymentType === "cash_on_delivery"
+            ? "Cash on Delivery"
+            : o.paymentType === "wallet"
+            ? "Wallet"
+            : o.paymentType
+            ? o.paymentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+            : "Cash on Delivery"
+
+        return {
+          id: String(o.id),
+          numericId: o.id,
+          code: o.code,
+          trackingCode: o.trackingCode || `TRK-${o.code}`,
+          date: formattedDate,
+          amount: Number(o.grandTotal) || 0,
+          deliveryStatus: o.deliveryStatus || "pending",
+          paymentStatus: o.paymentStatus || "unpaid",
+          paymentType: paymentTypeLabel,
+          shopName: "Inhouse Products",
+          itemsCount: items.length,
+          items,
+        }
+      })
+    )
+
+    return fullOrders
   } catch (err) {
     console.warn("DB getUserOrders failed:", (err as Error).message)
     return []
+  }
+}
+
+export async function cancelCustomerOrder(
+  userId: string,
+  orderId: number
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.id, orderId), eq(orders.userId, userId)))
+      .limit(1)
+
+    if (!order) {
+      return { success: false, message: "Order not found." }
+    }
+
+    if (order.deliveryStatus !== "pending" || order.paymentStatus !== "unpaid") {
+      return { success: false, message: "Only pending and unpaid orders can be cancelled." }
+    }
+
+    await db
+      .update(orders)
+      .set({
+        deliveryStatus: "cancelled",
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId))
+
+    // Restock items
+    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
+    const { sql } = await import("drizzle-orm")
+    for (const item of items) {
+      if (item.productId) {
+        await db
+          .update(products)
+          .set({
+            currentStock: sql`COALESCE(${products.currentStock}, 0) + ${item.quantity}`,
+          })
+          .where(eq(products.id, item.productId))
+      }
+    }
+
+    return { success: true, message: "Order has been canceled successfully." }
+  } catch (err) {
+    console.error("cancelCustomerOrder error:", err)
+    return { success: false, message: "Failed to cancel order. Please try again." }
+  }
+}
+
+export async function getCustomerOrderDetails(userId: string, code: string) {
+  try {
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.code, code), eq(orders.userId, userId)))
+      .limit(1)
+
+    if (!order) return null
+
+    const itemRows = await db
+      .select({
+        id: orderItems.id,
+        productId: orderItems.productId,
+        variation: orderItems.variation,
+        price: orderItems.price,
+        quantity: orderItems.quantity,
+        productName: products.name,
+        productSlug: products.slug,
+        productThumbnail: products.thumbnailImg,
+      })
+      .from(orderItems)
+      .leftJoin(products, eq(orderItems.productId, products.id))
+      .where(eq(orderItems.orderId, order.id))
+
+    const userReviews = await db
+      .select({ productId: reviews.productId })
+      .from(reviews)
+      .where(eq(reviews.userId, userId))
+    const reviewedSet = new Set(userReviews.map((r) => r.productId))
+
+    const items = itemRows.map((it) => ({
+      id: String(it.id),
+      productId: it.productId || 0,
+      name: it.productName || "Product",
+      slug: it.productSlug || "product",
+      price: Number(it.price) || 0,
+      quantity: it.quantity || 1,
+      variation: it.variation || undefined,
+      thumbnail: it.productThumbnail || "/assets/img/placeholder.jpg",
+      reviewed: it.productId ? reviewedSet.has(it.productId) : false,
+    }))
+
+    const addr = (order.shippingAddress as any) || {}
+    const createdDate = new Date(order.createdAt)
+    const formattedDate = `${String(createdDate.getDate()).padStart(2, "0")}-${String(
+      createdDate.getMonth() + 1
+    ).padStart(2, "0")}-${createdDate.getFullYear()} ${createdDate.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`
+
+    const grandTotal = Number(order.grandTotal) || 0
+    const shippingCost = Number(order.shippingCost) || 0
+    const couponDiscount = Number(order.couponDiscount) || 0
+    const subtotal = Math.max(0, grandTotal - shippingCost + couponDiscount)
+
+    return {
+      id: order.id,
+      code: order.code,
+      trackingCode: order.trackingCode || `TRK-${order.code}`,
+      date: formattedDate,
+      deliveryStatus: order.deliveryStatus || "pending",
+      paymentStatus: order.paymentStatus || "unpaid",
+      paymentType:
+        order.paymentType === "cash_on_delivery"
+          ? "Cash on Delivery"
+          : order.paymentType === "wallet"
+          ? "Wallet"
+          : order.paymentType || "Cash on Delivery",
+      customerName: addr.name || "Customer",
+      customerEmail: addr.email || "",
+      customerPhone: addr.phone || "",
+      shippingAddress: addr.address || "Dhaka, Bangladesh",
+      city: addr.city || "Dhaka",
+      state: addr.state || "",
+      postalCode: addr.postal_code || addr.postalCode || "",
+      country: addr.country || "Bangladesh",
+      billingAddress: addr.address || "Dhaka, Bangladesh",
+      sellerAddress: "Inhouse Products, Active eCommerce Main Warehouse, Dhaka",
+      shippingMethod: order.shippingMethod || "Flat shipping rate",
+      additionalInfo: (order as any).additionalInfo || "N/A",
+      subtotal,
+      shippingCost,
+      tax: 0,
+      couponDiscount,
+      grandTotal,
+      items,
+    }
+  } catch (err) {
+    console.error("getCustomerOrderDetails error:", err)
+    return null
   }
 }
 
