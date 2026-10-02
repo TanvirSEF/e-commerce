@@ -29,7 +29,7 @@ export function DashboardOverview({
   billingAddress: initialBilling,
   wishlistProducts: initialWishlist,
 }: DashboardOverviewProps) {
-  const { wishlist, toggleWishlist } = useAuth()
+  const { wishlist, removeFromWishlist } = useAuth()
   const { totalCount, addItem } = useCart()
   const [copied, setCopied] = useState(false)
   const [addressModalOpen, setAddressModalOpen] = useState(false)
@@ -42,12 +42,17 @@ export function DashboardOverview({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleRemoveWishlist = async (productId: number) => {
-    setWishlistItems((prev) => prev.filter((p) => p.productId !== productId))
+  const handleRemoveWishlist = async (wishlistId: number, productId: number) => {
+    // 1. Optimistic local state update
+    setWishlistItems((prev) => prev.filter((p) => p.productId !== productId && p.id !== wishlistId))
+    // 2. AuthContext sync (Middle Header badge updates)
+    removeFromWishlist(String(productId), wishlistId)
+    // 3. PostgreSQL persistence
     try {
-      toggleWishlist(String(productId))
-    } catch {
-      // rollback or ignore
+      const { removeFromWishlistAction } = await import("@/app/actions/wishlist-actions")
+      await removeFromWishlistAction(wishlistId, productId)
+    } catch (err) {
+      console.error("Failed to remove item from wishlist DB:", err)
     }
   }
 
@@ -187,7 +192,7 @@ export function DashboardOverview({
             </div>
             <div>
               <div className="text-xl font-bold text-gray-900 group-hover:text-[#3490f3] transition-colors leading-none mb-1">
-                {String(wishlistItems.length || wishlist.length).padStart(2, "0")}
+                {String(wishlistItems.length).padStart(2, "0")}
               </div>
               <div className="text-xs text-gray-500 font-normal">Products in Wishlist</div>
             </div>
@@ -332,7 +337,7 @@ export function DashboardOverview({
                   {/* Remove from Wishlist Trash Button (top-right) */}
                   <button
                     type="button"
-                    onClick={() => handleRemoveWishlist(item.productId)}
+                    onClick={() => handleRemoveWishlist(item.id, item.productId)}
                     title="Remove from wishlist"
                     className="absolute top-1.5 right-1.5 h-7 w-7 rounded-full bg-white/90 text-gray-400 hover:text-[#d43533] hover:bg-white flex items-center justify-center shadow-xs transition"
                   >
@@ -348,8 +353,13 @@ export function DashboardOverview({
                   >
                     {item.name}
                   </Link>
-                  <div className="text-xs font-bold text-[#d43533]">
-                    {formatPrice(item.price)}
+                  <div className="text-xs font-bold text-[#d43533] flex items-center gap-1">
+                    <span>{formatPrice(item.price)}</span>
+                    {item.originalPrice && item.originalPrice > item.price && (
+                      <del className="text-[10px] text-gray-400 font-normal">
+                        {formatPrice(item.originalPrice)}
+                      </del>
+                    )}
                   </div>
                 </div>
 

@@ -33,6 +33,7 @@ interface AuthContextType {
   updateProfile: (data: Partial<UserProfile>) => void
   wishlist: string[]
   toggleWishlist: (productId: string) => void
+  removeFromWishlist: (productId: string, wishlistId?: number) => void
   isInWishlist: (productId: string) => boolean
 }
 
@@ -71,6 +72,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     isInitialized.current = true
   }, [])
+
+  // Sync wishlist with PostgreSQL database
+  useEffect(() => {
+    async function syncWishlistWithDb() {
+      try {
+        const { getWishlistProductIdsAction } = await import("@/app/actions/wishlist-actions")
+        const ids = await getWishlistProductIdsAction()
+        if (Array.isArray(ids) && ids.length > 0) {
+          setWishlist(ids)
+          localStorage.setItem("active_ecom_wishlist", JSON.stringify(ids))
+        }
+      } catch {
+        // fallback to localStorage if offline
+      }
+    }
+    syncWishlistWithDb()
+  }, [user?.id])
 
   useEffect(() => {
     if (isInitialized.current) {
@@ -171,9 +189,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const toggleWishlist = (productId: string) => {
+    const isAdding = !wishlist.includes(productId)
     setWishlist((prev) =>
       prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
     )
+
+    // Persist to PostgreSQL asynchronously
+    import("@/app/actions/wishlist-actions")
+      .then(({ toggleWishlistAction }) => toggleWishlistAction(Number(productId)))
+      .catch((err) => {
+        console.error("Failed to sync toggleWishlist with DB:", err)
+        // Rollback optimistic update on error
+        setWishlist((prev) =>
+          isAdding ? prev.filter((id) => id !== productId) : [...prev, productId]
+        )
+      })
+  }
+
+  const removeFromWishlist = (productId: string, wishlistId?: number) => {
+    setWishlist((prev) => prev.filter((id) => id !== productId))
+
+    import("@/app/actions/wishlist-actions")
+      .then(({ removeFromWishlistAction }) =>
+        removeFromWishlistAction(wishlistId || 0, Number(productId))
+      )
+      .catch((err) => {
+        console.error("Failed to sync removeFromWishlist with DB:", err)
+      })
   }
 
   const isInWishlist = (productId: string) => wishlist.includes(productId)
@@ -189,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateProfile,
         wishlist,
         toggleWishlist,
+        removeFromWishlist,
         isInWishlist,
       }}
     >

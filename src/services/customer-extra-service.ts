@@ -184,6 +184,9 @@ export interface WishlistProductItem {
   name: string
   slug: string
   price: number
+  originalPrice?: number
+  discount?: number
+  discountType?: string
   thumbnail: string
   createdAt: string
 }
@@ -198,7 +201,9 @@ export async function getUserWishlistProducts(userId: string): Promise<WishlistP
         productId: products.id,
         name: products.name,
         slug: products.slug,
-        price: products.unitPrice,
+        unitPrice: products.unitPrice,
+        discount: products.discount,
+        discountType: products.discountType,
         thumbnail: products.thumbnailImg,
         createdAt: wishlists.createdAt,
       })
@@ -207,17 +212,48 @@ export async function getUserWishlistProducts(userId: string): Promise<WishlistP
       .where(eq(wishlists.userId, userId))
       .orderBy(desc(wishlists.createdAt))
 
-    return rows.map((r) => ({
-      id: r.id,
-      productId: r.productId,
-      name: r.name,
-      slug: r.slug,
-      price: Number(r.price) || 0,
-      thumbnail: r.thumbnail || "/assets/img/placeholder.jpg",
-      createdAt: r.createdAt.toISOString().slice(0, 10),
-    }))
+    return rows.map((r) => {
+      const rawPrice = Number(r.unitPrice) || 0
+      const discount = Number(r.discount) || 0
+      let discountedPrice = rawPrice
+
+      if (discount > 0) {
+        if (r.discountType === "percent") {
+          discountedPrice = rawPrice - (rawPrice * discount) / 100
+        } else {
+          discountedPrice = Math.max(0, rawPrice - discount)
+        }
+      }
+
+      return {
+        id: r.id,
+        productId: r.productId,
+        name: r.name,
+        slug: r.slug,
+        price: discountedPrice,
+        originalPrice: discount > 0 ? rawPrice : undefined,
+        discount,
+        discountType: r.discountType || "percent",
+        thumbnail: r.thumbnail || "/assets/img/placeholder.jpg",
+        createdAt: r.createdAt ? r.createdAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      }
+    })
   } catch (err) {
     console.warn("getUserWishlistProducts fallback:", err)
+    return []
+  }
+}
+
+export async function getUserWishlistProductIds(userId: string): Promise<string[]> {
+  try {
+    if (!userId) return []
+    const rows = await db
+      .select({ productId: wishlists.productId })
+      .from(wishlists)
+      .where(eq(wishlists.userId, userId))
+    return rows.map((r) => String(r.productId))
+  } catch (err) {
+    console.warn("getUserWishlistProductIds fallback:", err)
     return []
   }
 }
@@ -243,6 +279,34 @@ export async function toggleWishlistProduct(
   } catch (err) {
     console.error("toggleWishlistProduct error:", err)
     return { added: false }
+  }
+}
+
+export async function removeFromWishlist(
+  userId: string,
+  wishlistIdOrProductId: number
+): Promise<boolean> {
+  try {
+    if (!userId) return false
+
+    // Try deleting by wishlist id first
+    const byId = await db
+      .delete(wishlists)
+      .where(and(eq(wishlists.userId, userId), eq(wishlists.id, wishlistIdOrProductId)))
+      .returning({ id: wishlists.id })
+
+    if (byId.length > 0) return true
+
+    // Otherwise try deleting by productId
+    const byProduct = await db
+      .delete(wishlists)
+      .where(and(eq(wishlists.userId, userId), eq(wishlists.productId, wishlistIdOrProductId)))
+      .returning({ id: wishlists.id })
+
+    return byProduct.length > 0
+  } catch (err) {
+    console.error("removeFromWishlist error:", err)
+    return false
   }
 }
 

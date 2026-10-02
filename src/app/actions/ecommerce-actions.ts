@@ -2325,14 +2325,9 @@ export async function updateAuthLayoutAction(data: { layout: "boxed" | "free" | 
   return res
 }
 
-export async function toggleWishlistAction(productId: number, userId?: string) {
-  const effectiveUserId = userId || "usr_customer_demo"
-  const { toggleWishlistProduct } = await import("@/services/customer-extra-service")
-  const res = await toggleWishlistProduct(effectiveUserId, productId)
-  revalidatePath("/wishlists")
-  revalidatePath("/dashboard/wishlist")
-  revalidatePath("/admin/reports/wishlist")
-  return res
+export async function toggleWishlistAction(productId: number, _userId?: string) {
+  const { toggleWishlistAction: toggleAction } = await import("@/app/actions/wishlist-actions")
+  return await toggleAction(productId)
 }
 
 export async function createRefundReasonAction(reason: string, type: string = "customer_refund_reason") {
