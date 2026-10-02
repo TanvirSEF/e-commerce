@@ -107,6 +107,7 @@ export const ticketRepliesRelations = relations(ticketReplies, ({ one }) => ({
 
 export const customerProducts = pgTable("customer_products", {
   id: serial("id").primaryKey(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   category: varchar("category", { length: 150 }).notNull(),
@@ -118,7 +119,7 @@ export const customerProducts = pgTable("customer_products", {
   customerEmail: varchar("customer_email", { length: 255 }),
   location: varchar("location", { length: 255 }).default("Dhaka, Bangladesh").notNull(),
   published: boolean("published").default(true).notNull(),
-  status: varchar("status", { length: 50 }).default("approved").notNull(),
+  status: varchar("status", { length: 50 }).default("1").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 

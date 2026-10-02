@@ -223,16 +223,55 @@ export async function getPublishedCustomerProducts(filters?: {
 }
 
 export async function getCustomerProductsByUser(
-  customerName: string = "Sakib Al Hasan"
+  userId?: string
 ): Promise<ClassifiedProductItem[]> {
   try {
-    const all = await getAllClassifiedProductsAdmin()
-    return all.filter(
-      (p) => p.customerName.toLowerCase() === customerName.toLowerCase()
-    )
+    const whereCond = userId ? eq(customerProducts.userId, userId) : undefined
+    const rows = await db
+      .select()
+      .from(customerProducts)
+      .where(whereCond)
+      .orderBy(desc(customerProducts.id))
+
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        slug: r.slug,
+        category: r.category,
+        thumbnailImg: r.thumbnailImg || "/assets/img/placeholder.jpg",
+        unitPrice: Number(r.unitPrice),
+        condition: r.condition,
+        customerName: r.customerName,
+        customerPhone: r.customerPhone,
+        customerEmail: r.customerEmail || undefined,
+        location: r.location,
+        published: r.published,
+        status: r.status,
+        date: r.createdAt.toISOString().slice(0, 10),
+      }))
+    }
+
+    return []
   } catch (err) {
     console.warn("getCustomerProductsByUser fallback:", (err as Error).message)
-    return SEED_CLASSIFIED
+    return []
+  }
+}
+
+export async function updateCustomerProductStatus(
+  id: number,
+  status: string
+): Promise<{ success: boolean }> {
+  try {
+    await db
+      .update(customerProducts)
+      .set({ status })
+      .where(eq(customerProducts.id, id))
+    return { success: true }
+  } catch (err) {
+    console.error("updateCustomerProductStatus error:", err)
+    return { success: false }
   }
 }
 

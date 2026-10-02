@@ -3,10 +3,12 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Tag, Plus, Trash2, Eye, CheckCircle2, Clock } from "lucide-react"
+import { Plus, ChevronRight, Package, Edit3, Trash2, X } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
-import { deleteCustomerProductAction } from "@/app/actions/ecommerce-actions"
-import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
+import {
+  toggleCustomerProductStatusAction,
+  deleteCustomerProductAction,
+} from "@/app/actions/customer-product-actions"
 import type { ClassifiedProductItem } from "@/services/customer-product-service"
 
 interface CustomerProductsListViewProps {
@@ -15,175 +17,279 @@ interface CustomerProductsListViewProps {
 
 export function CustomerProductsListView({ initialProducts }: CustomerProductsListViewProps) {
   const [products, setProducts] = useState<ClassifiedProductItem[]>(initialProducts)
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
-  const [productToDelete, setProductToDelete] = useState<number | null>(null)
+  const [productToDelete, setProductToDelete] = useState<ClassifiedProductItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [togglingId, setTogglingId] = useState<number | null>(null)
 
-  const handleDeleteClick = (id: number) => {
-    setProductToDelete(id)
-    setDeleteModalOpen(true)
+  const handleToggleStatus = async (item: ClassifiedProductItem) => {
+    const isCurrentlyActive = item.status === "1" || item.status === "approved"
+    const nextStatus = !isCurrentlyActive
+    const nextStatusVal = nextStatus ? "1" : "0"
+
+    // Optimistic UI update
+    setProducts((prev) =>
+      prev.map((p) => (p.id === item.id ? { ...p, status: nextStatusVal } : p))
+    )
+    setTogglingId(item.id)
+
+    try {
+      await toggleCustomerProductStatusAction(item.id, nextStatus)
+    } catch {
+      // revert on error
+      setProducts((prev) =>
+        prev.map((p) => (p.id === item.id ? { ...p, status: item.status } : p))
+      )
+    } finally {
+      setTogglingId(null)
+    }
   }
 
   const handleConfirmDelete = async () => {
     if (!productToDelete) return
     setIsDeleting(true)
     try {
-      await deleteCustomerProductAction(productToDelete)
-      setProducts((prev) => prev.filter((p) => p.id !== productToDelete))
+      await deleteCustomerProductAction(productToDelete.id)
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id))
+      setProductToDelete(null)
     } finally {
       setIsDeleting(false)
-      setDeleteModalOpen(false)
-      setProductToDelete(null)
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Tag className="w-5 h-5 text-[#d43533]" />
-            My Classified Advertisements
-          </h1>
-          <p className="text-xs text-gray-500 mt-1">
-            Manage and track your second-hand items listed for sale on the marketplace.
-          </p>
+    <div className="space-y-4">
+      {/* 1:1 Active eCommerce CMS Titlebar */}
+      <div>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900">Classified Products</h1>
+      </div>
+
+      {/* 3 Top Cards Matching products.blade.php 1:1 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Remaining Uploads (Dark Background matching Laravel 1:1) */}
+        <div className="bg-[#1b1b28] text-white text-center p-5 rounded border border-gray-900 flex flex-col items-center justify-center min-h-[140px]">
+          {/* Active eCommerce Upload SVG */}
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 32 32" className="fill-current mb-2">
+            <g transform="translate(-1364 -447)">
+              <rect width="2" height="22" rx="1" transform="translate(1379 449)" fill="#fff" />
+              <rect width="2" height="12" rx="1" transform="translate(1380 447) rotate(45)" fill="#fff" />
+              <rect width="12" height="2" rx="1" transform="translate(1380 447) rotate(45)" fill="#fff" />
+              <rect width="32" height="2" rx="1" transform="translate(1364 477)" fill="#fff" />
+            </g>
+          </svg>
+          <div className="text-xs text-gray-300">Remaining Uploads</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1">10</div>
         </div>
+
+        {/* Card 2: Add New Product */}
         <Link
           href="/dashboard/customer-products/create"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-bold rounded-lg shadow-sm transition-colors self-start sm:self-auto"
+          className="bg-gray-50/80 hover:bg-gray-100 text-center p-5 rounded border border-gray-200 transition-colors flex flex-col items-center justify-center min-h-[140px] group"
         >
-          <Plus className="w-4 h-4" />
-          Add New Product
+          <span className="w-12 h-12 rounded-full bg-gray-900 group-hover:bg-[#d43533] text-white flex items-center justify-center mb-2 transition-colors shadow-2xs">
+            <Plus className="w-6 h-6" />
+          </span>
+          <span className="text-xs sm:text-sm font-bold text-gray-900">Add New Product</span>
         </Link>
-      </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-xs text-gray-500">Remaining Free Uploads</div>
-            <div className="text-2xl font-bold text-gray-900 mt-1">8 Remaining</div>
+        {/* Card 3: Current Package */}
+        <div className="bg-gray-50/80 text-center p-5 rounded border border-gray-200 flex flex-col items-center justify-center min-h-[140px]">
+          <div className="w-10 h-10 rounded-full bg-blue-50 text-[#3490f3] flex items-center justify-center mb-2">
+            <Package className="w-5 h-5" />
           </div>
-          <div className="w-12 h-12 rounded-xl bg-red-50 text-[#d43533] flex items-center justify-center font-bold text-sm">
-            8/10
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-xs text-gray-500">Active Advertisements</div>
-            <div className="text-2xl font-bold text-emerald-600 mt-1">{products.length} Items</div>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
-            LIVE
-          </div>
+          <div className="text-xs font-semibold text-gray-800">Current Package: Free Package</div>
+          <Link
+            href="/dashboard/customer-packages"
+            className="text-xs font-bold text-[#3490f3] hover:text-[#d43533] mt-1.5 inline-flex items-center gap-0.5 transition-colors"
+          >
+            Upgrade Package <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-gray-600">
-            <thead className="bg-gray-50 text-gray-700 font-semibold border-b border-gray-200">
-              <tr>
-                <th className="py-3 px-4">#</th>
-                <th className="py-3 px-4">Product Details</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Condition</th>
-                <th className="py-3 px-4">Asking Price</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {products.length === 0 ? (
+      {/* Main Table Card */}
+      <div className="rounded border border-gray-200 bg-white shadow-2xs overflow-hidden">
+        {/* Card Header */}
+        <div className="border-b border-gray-100 p-4 bg-white flex items-center justify-between">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900">All Products</h2>
+          <span className="text-xs text-gray-500 font-medium">
+            {products.length} {products.length === 1 ? "ad" : "ads"} listed
+          </span>
+        </div>
+
+        {/* Body */}
+        {products.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="relative mx-auto w-40 h-32 mb-4">
+              <Image
+                src="/assets/img/nothing.svg"
+                alt="No products"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <h3 className="text-base font-bold text-gray-800">There isn&apos;t anything added yet</h3>
+            <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto">
+              You haven&apos;t posted any classified advertisements yet.
+            </p>
+            <div className="mt-5">
+              <Link
+                href="/dashboard/customer-products/create"
+                className="inline-flex items-center gap-1.5 rounded bg-[#d43533] px-5 py-2 text-xs font-bold text-white hover:bg-[#9d1b1a] transition-colors shadow-2xs"
+              >
+                Post an Advertisement
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-gray-200 bg-gray-50/60 text-gray-500 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-gray-400">
-                    You have not posted any classified advertisements yet.
-                  </td>
+                  <th className="py-3 px-4">#</th>
+                  <th className="py-3 px-4">Product</th>
+                  <th className="py-3 px-4">Price</th>
+                  <th className="py-3 px-4">Available Status</th>
+                  <th className="py-3 px-4">Admin Status</th>
+                  <th className="py-3 px-4 text-right">Options</th>
                 </tr>
-              ) : (
-                products.map((p, idx) => (
-                  <tr key={p.id} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="py-3 px-4 font-mono text-gray-400 font-semibold">
-                      {String(idx + 1).padStart(2, "0")}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 relative shrink-0 border border-gray-200">
-                          <Image src={p.thumbnailImg} alt={p.name} fill className="object-cover" />
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-gray-700">
+                {products.map((item, idx) => {
+                  const isActive = item.status === "1" || item.status === "approved"
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50/70 transition-colors">
+                      <td className="py-3.5 px-4 font-mono text-gray-400 align-middle">
+                        {String(idx + 1).padStart(2, "0")}
+                      </td>
+                      <td className="py-3.5 px-4 align-middle">
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-14 w-14 rounded border border-gray-200 overflow-hidden bg-gray-50 shrink-0">
+                            <Image
+                              src={item.thumbnailImg || "/assets/img/placeholder.jpg"}
+                              alt={item.name}
+                              fill
+                              className="object-cover"
+                              onError={(e) => {
+                                const target = e.currentTarget
+                                if (!target.src.includes("placeholder.jpg")) {
+                                  target.src = "/assets/img/placeholder.jpg"
+                                }
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <Link
+                              href={`/customer-product/${item.slug}`}
+                              className="font-semibold text-gray-900 hover:text-[#d43533] line-clamp-1 transition-colors text-xs sm:text-sm"
+                            >
+                              {item.name}
+                            </Link>
+                            <span className="text-[11px] text-gray-500 block mt-0.5">
+                              {item.category} • {item.condition}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-bold text-gray-900 line-clamp-1">{p.name}</div>
-                          <div className="text-[11px] text-gray-400">{p.location}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">{p.category}</td>
-                    <td className="py-3 px-4">
-                      <span className="inline-block px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-medium text-[11px]">
-                        {p.condition}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-gray-900">
-                      {formatPrice(p.unitPrice)}
-                    </td>
-                    <td className="py-3 px-4">
-                      {p.published ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Published
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
-                          <Clock className="w-3.5 h-3.5" />
-                          Pending Review
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <Link
-                          href="/customer-products"
-                          className="p-1 text-gray-500 hover:text-gray-900"
-                          title="View on marketplace"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-gray-900 align-middle whitespace-nowrap">
+                        {formatPrice(item.unitPrice)}
+                      </td>
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        {/* Live Toggle Switch Matching Laravel aiz-switch 1:1 */}
                         <button
                           type="button"
-                          onClick={() => handleDeleteClick(p.id)}
-                          disabled={isDeleting && productToDelete === p.id}
-                          className="p-1 text-red-500 hover:text-red-700 disabled:opacity-50"
-                          title="Delete advertisement"
+                          role="switch"
+                          aria-checked={isActive}
+                          disabled={togglingId === item.id}
+                          onClick={() => handleToggleStatus(item)}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            isActive ? "bg-emerald-500" : "bg-gray-300"
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              isActive ? "translate-x-4" : "translate-x-0"
+                            }`}
+                          />
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        {item.published ? (
+                          <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 border border-emerald-200">
+                            Published
+                          </span>
+                        ) : (
+                          <span className="inline-block rounded-full bg-sky-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-700 border border-sky-200">
+                            Pending
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right align-middle whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <Link
+                            href={`/dashboard/customer-products/${item.id}/edit`}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-colors shadow-2xs"
+                            title="Edit Product"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setProductToDelete(item)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-50 text-[#d43533] hover:bg-[#d43533] hover:text-white transition-colors shadow-2xs"
+                            title="Delete Product"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      <DeleteConfirmationModal
-        isOpen={deleteModalOpen}
-        onClose={() => {
-          if (!isDeleting) {
-            setDeleteModalOpen(false)
-            setProductToDelete(null)
-          }
-        }}
-        onConfirm={handleConfirmDelete}
-        isLoading={isDeleting}
-        title="Delete Advertisement"
-        description="Are you sure you want to delete this classified advertisement? This will immediately remove it from the marketplace."
-      />
+      {/* Delete Confirmation Modal */}
+      {productToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
+          <div className="relative w-full max-w-sm rounded bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-sm font-bold text-gray-900">Delete Confirmation</h3>
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                className="rounded p-1 text-gray-400 hover:text-gray-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-600">
+              Are you sure you want to delete <strong className="text-gray-900">&quot;{productToDelete.name}&quot;</strong>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setProductToDelete(null)}
+                disabled={isDeleting}
+                className="rounded border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="rounded bg-[#d43533] px-4 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition-colors"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

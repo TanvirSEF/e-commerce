@@ -19,13 +19,14 @@ export interface FollowedSellerItem {
 
 export interface DigitalPurchaseItem {
   id: string
+  productId: number
   productName: string
   productSlug: string
   thumbnailImg: string
   orderCode: string
   purchaseDate: string
-  fileSize: string
-  fileFormat: string
+  fileSize?: string
+  fileFormat?: string
   downloadUrl: string
   licenseKey?: string
 }
@@ -58,6 +59,7 @@ const FALLBACK_FOLLOWED_SELLERS: FollowedSellerItem[] = [
 const FALLBACK_DIGITAL_PURCHASES: DigitalPurchaseItem[] = [
   {
     id: "dp-1",
+    productId: 16,
     productName: "Windows 11 Pro Retail License Key (Lifetime Activation)",
     productSlug: "windows-11-pro-license",
     thumbnailImg: "/assets/img/products/1.jpg",
@@ -72,8 +74,9 @@ const FALLBACK_DIGITAL_PURCHASES: DigitalPurchaseItem[] = [
 
 export async function getFollowedSellers(userId?: string): Promise<FollowedSellerItem[]> {
   try {
-    const whereCond = userId ? eq(shopFollowers.userId, userId) : undefined
-    const baseQuery = db
+    if (!userId) return []
+
+    const rows = await db
       .select({
         id: shopFollowers.id,
         shopId: shops.id,
@@ -86,10 +89,8 @@ export async function getFollowedSellers(userId?: string): Promise<FollowedSelle
       })
       .from(shopFollowers)
       .innerJoin(shops, eq(shopFollowers.shopId, shops.id))
-
-    const rows = await (whereCond ? baseQuery.where(whereCond) : baseQuery).orderBy(
-      desc(shopFollowers.createdAt)
-    )
+      .where(eq(shopFollowers.userId, userId))
+      .orderBy(desc(shopFollowers.createdAt))
 
     if (rows && rows.length > 0) {
       return rows.map((r) => ({
@@ -99,15 +100,17 @@ export async function getFollowedSellers(userId?: string): Promise<FollowedSelle
         shopSlug: r.shopSlug,
         logo: r.logo || "/assets/img/placeholder.jpg",
         rating: Number(r.rating) || 5.0,
-        totalProducts: 24,
+        totalProducts: 14,
         verified: !!r.verified,
         followedDate: r.followedDate ? new Date(r.followedDate).toISOString().slice(0, 10) : "2026-03-01",
       }))
     }
+
+    return []
   } catch (err) {
     console.warn("getFollowedSellers DB query fallback:", err)
+    return []
   }
-  return FALLBACK_FOLLOWED_SELLERS
 }
 
 export async function followShop(userId: string, shopId: number): Promise<boolean> {
@@ -138,13 +141,18 @@ export async function unfollowShop(userId: string, shopId: number): Promise<bool
 
 export async function getDigitalPurchases(userId?: string): Promise<DigitalPurchaseItem[]> {
   try {
-    const whereCond = userId
-      ? and(eq(products.isDigital, true), eq(orders.userId, userId))
-      : eq(products.isDigital, true)
+    if (!userId) return []
+
+    const whereCond = and(
+      eq(orders.userId, userId),
+      eq(products.isDigital, true),
+      eq(orders.paymentStatus, "paid")
+    )
 
     const rows = await db
       .select({
         itemId: orderItems.id,
+        productId: products.id,
         productName: products.name,
         productSlug: products.slug,
         thumbnailImg: products.thumbnailImg,
@@ -161,21 +169,26 @@ export async function getDigitalPurchases(userId?: string): Promise<DigitalPurch
     if (rows && rows.length > 0) {
       return rows.map((r) => ({
         id: `dp-${r.itemId}`,
+        productId: r.productId,
         productName: r.productName,
         productSlug: r.productSlug,
         thumbnailImg: r.thumbnailImg || "/assets/img/placeholder.jpg",
         orderCode: r.orderCode,
-        purchaseDate: r.purchaseDate ? new Date(r.purchaseDate).toISOString().slice(0, 10) : "2026-03-20",
+        purchaseDate: r.purchaseDate
+          ? new Date(r.purchaseDate).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10),
         fileSize: "Digital Asset",
         fileFormat: r.digitalFile ? r.digitalFile.split(".").pop()?.toUpperCase() || "ZIP" : "ZIP",
-        downloadUrl: r.digitalFile || "#download",
-        licenseKey: `LIC-${r.itemId}-${Date.now().toString().slice(-6)}`,
+        downloadUrl: `/api/digital-products/download/${r.productId}`,
+        licenseKey: `LIC-${r.itemId}-${r.orderCode.slice(-6)}`,
       }))
     }
+
+    return []
   } catch (err) {
-    console.warn("getDigitalPurchases DB query fallback:", err)
+    console.warn("getDigitalPurchases DB query failed:", err)
+    return []
   }
-  return FALLBACK_DIGITAL_PURCHASES
 }
 
 export interface WishlistProductItem {

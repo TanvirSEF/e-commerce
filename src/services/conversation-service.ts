@@ -1,15 +1,17 @@
 import { db } from "../db"
-import { conversations, messages, shops } from "../db/schema"
-import { eq, desc } from "drizzle-orm"
+import { conversations, messages, shops, users } from "../db/schema"
+import { eq, desc, or, and, sql } from "drizzle-orm"
 
 export interface MessageItem {
   id: string
   conversationId: string
   senderId: string
   senderName: string
+  senderAvatar?: string
   message: string
   isSender: boolean
   date: string
+  rawDate?: string
 }
 
 export interface ConversationItem {
@@ -17,158 +19,200 @@ export interface ConversationItem {
   title: string
   customerName: string
   customerEmail?: string
+  shopId?: number
   shopName: string
   shopSlug: string
+  shopLogo: string
   lastMessage: string
   lastMessageAt: string
   unreadCount: number
 }
 
-const SEED_CONVERSATIONS: ConversationItem[] = [
-  {
-    id: "conv-1",
-    title: "Inquiry about Cotton Shirt Size XL",
-    customerName: "Rahim Ahmed",
-    customerEmail: "rahim@example.com",
-    shopName: "Active Fashion Outlet",
-    shopSlug: "active-fashion-outlet",
-    lastMessage: "Is size XL available in olive green color?",
-    lastMessageAt: "10 mins ago",
-    unreadCount: 1,
-  },
-  {
-    id: "conv-2",
-    title: "Warranty claim question",
-    customerName: "Nasreen Begum",
-    customerEmail: "nasreen@example.com",
-    shopName: "Active Fashion Outlet",
-    shopSlug: "active-fashion-outlet",
-    lastMessage: "Thank you for the quick replacement!",
-    lastMessageAt: "Yesterday",
-    unreadCount: 0,
-  },
-]
-
-const SEED_MESSAGES: Record<string, MessageItem[]> = {
-  "conv-1": [
-    {
-      id: "m-1",
-      conversationId: "conv-1",
-      senderId: "customer",
-      senderName: "Rahim Ahmed",
-      message: "Hello, I am interested in the Premium Cotton Casual Shirt.",
-      isSender: false,
-      date: "10:15 AM",
-    },
-    {
-      id: "m-2",
-      conversationId: "conv-1",
-      senderId: "seller",
-      senderName: "Active Fashion Outlet",
-      message: "Hi Rahim! Thanks for reaching out. How can we help you today?",
-      isSender: true,
-      date: "10:18 AM",
-    },
-    {
-      id: "m-3",
-      conversationId: "conv-1",
-      senderId: "customer",
-      senderName: "Rahim Ahmed",
-      message: "Is size XL available in olive green color?",
-      isSender: false,
-      date: "10:20 AM",
-    },
-  ],
-}
-
 export async function getUserConversations(userId?: string): Promise<ConversationItem[]> {
   try {
-    const rows = await db
+    if (!userId) return []
+
+    const convRows = await db
       .select({
         id: conversations.id,
         title: conversations.title,
+        senderId: conversations.senderId,
+        receiverId: conversations.receiverId,
+        shopId: conversations.shopId,
         shopName: shops.name,
         shopSlug: shops.slug,
+        shopLogo: shops.logo,
         lastMessageAt: conversations.lastMessageAt,
       })
       .from(conversations)
       .leftJoin(shops, eq(conversations.shopId, shops.id))
+      .where(or(eq(conversations.senderId, userId), eq(conversations.receiverId, userId)))
       .orderBy(desc(conversations.lastMessageAt))
 
-    if (rows.length > 0) {
-      return rows.map((r) => ({
-        id: String(r.id),
-        title: r.title,
-        customerName: "You",
-        shopName: r.shopName || "Active Outlet",
-        shopSlug: r.shopSlug || "active-outlet",
-        lastMessage: "Click to view thread",
-        lastMessageAt: r.lastMessageAt.toISOString().slice(0, 10),
-        unreadCount: 0,
-      }))
+    if (!convRows || convRows.length === 0) {
+      return []
     }
+
+    const result: ConversationItem[] = []
+
+    for (const c of convRows) {
+      // Fetch latest message
+      const latestMsgRows = await db
+        .select({
+          message: messages.message,
+          viewed: messages.viewed,
+          senderId: messages.senderId,
+          createdAt: messages.createdAt,
+        })
+        .from(messages)
+        .where(eq(messages.conversationId, c.id))
+        .orderBy(desc(messages.createdAt))
+        .limit(1)
+
+      const latest = latestMsgRows[0]
+      const isUnread = latest && !latest.viewed && latest.senderId !== userId
+
+      result.push({
+        id: String(c.id),
+        title: c.title,
+        customerName: "You",
+        shopId: c.shopId || undefined,
+        shopName: c.shopName || "Merchant Store",
+        shopSlug: c.shopSlug || "store",
+        shopLogo: c.shopLogo || "/assets/img/placeholder.jpg",
+        lastMessage: latest ? latest.message : "Start conversation",
+        lastMessageAt: latest
+          ? new Date(latest.createdAt).toLocaleDateString("en-GB") +
+            " " +
+            new Date(latest.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : new Date(c.lastMessageAt).toLocaleDateString("en-GB"),
+        unreadCount: isUnread ? 1 : 0,
+      })
+    }
+
+    return result
   } catch (err) {
-    console.warn("DB getUserConversations fallback:", (err as Error).message)
+    console.error("getUserConversations error:", err)
+    return []
   }
-
-  return SEED_CONVERSATIONS
 }
 
-export async function getSellerConversations(shopSlug?: string): Promise<ConversationItem[]> {
-  return getUserConversations()
-}
-
-export async function getConversationMessages(conversationId: string): Promise<MessageItem[]> {
+export async function getConversationDetails(
+  conversationId: number,
+  userId?: string
+): Promise<{
+  conversation: ConversationItem | null
+  messages: MessageItem[]
+}> {
   try {
-    const numericId = parseInt(conversationId.replace(/\D/g, "")) || 1
-    const rows = await db
-      .select()
+    const [c] = await db
+      .select({
+        id: conversations.id,
+        title: conversations.title,
+        senderId: conversations.senderId,
+        receiverId: conversations.receiverId,
+        shopId: conversations.shopId,
+        shopName: shops.name,
+        shopSlug: shops.slug,
+        shopLogo: shops.logo,
+        lastMessageAt: conversations.lastMessageAt,
+      })
+      .from(conversations)
+      .leftJoin(shops, eq(conversations.shopId, shops.id))
+      .where(eq(conversations.id, conversationId))
+      .limit(1)
+
+    if (!c) {
+      return { conversation: null, messages: [] }
+    }
+
+    const msgRows = await db
+      .select({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        senderId: messages.senderId,
+        message: messages.message,
+        viewed: messages.viewed,
+        createdAt: messages.createdAt,
+        userName: users.name,
+        userImage: users.image,
+      })
       .from(messages)
-      .where(eq(messages.conversationId, numericId))
+      .leftJoin(users, eq(messages.senderId, users.id))
+      .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt)
 
-    if (rows.length > 0) {
-      return rows.map((m) => ({
+    const mappedMessages: MessageItem[] = msgRows.map((m) => {
+      const isSender = userId ? m.senderId === userId : m.senderId === c.senderId
+      return {
         id: String(m.id),
         conversationId: String(m.conversationId),
         senderId: m.senderId,
-        senderName: m.senderId.includes("seller") ? "Merchant" : "Customer",
+        senderName: isSender ? "You" : m.userName || c.shopName || "Merchant",
+        senderAvatar: isSender ? m.userImage || "/assets/img/avatar-place.png" : c.shopLogo || "/assets/img/placeholder.jpg",
         message: m.message,
-        isSender: m.senderId.includes("seller"),
-        date: m.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      }))
+        isSender,
+        date:
+          new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+          " " +
+          new Date(m.createdAt).toLocaleDateString("en-GB"),
+        rawDate: m.createdAt.toISOString(),
+      }
+    })
+
+    return {
+      conversation: {
+        id: String(c.id),
+        title: c.title,
+        customerName: "You",
+        shopId: c.shopId || undefined,
+        shopName: c.shopName || "Merchant Store",
+        shopSlug: c.shopSlug || "store",
+        shopLogo: c.shopLogo || "/assets/img/placeholder.jpg",
+        lastMessage: mappedMessages[mappedMessages.length - 1]?.message || "",
+        lastMessageAt: new Date(c.lastMessageAt).toISOString().slice(0, 10),
+        unreadCount: 0,
+      },
+      messages: mappedMessages,
     }
   } catch (err) {
-    console.warn("DB getConversationMessages fallback:", (err as Error).message)
+    console.error("getConversationDetails error:", err)
+    return { conversation: null, messages: [] }
   }
+}
 
-  return SEED_MESSAGES[conversationId] || SEED_MESSAGES["conv-1"] || []
+export async function getSellerConversations(shopSlug?: string): Promise<ConversationItem[]> {
+  return getUserConversations("usr_seller_default_01")
+}
+
+export async function getConversationMessages(conversationId: string | number): Promise<MessageItem[]> {
+  const numericId = typeof conversationId === "number" ? conversationId : parseInt(String(conversationId).replace(/\D/g, "")) || 1
+  const detail = await getConversationDetails(numericId)
+  return detail.messages
 }
 
 export async function sendMessage(data: {
-  conversationId: string
+  conversationId: number | string
   senderId: string
   message: string
-}) {
+}): Promise<boolean> {
   try {
-    const numericId = parseInt(data.conversationId.replace(/\D/g, "")) || 1
-    const [inserted] = await db
-      .insert(messages)
-      .values({
-        conversationId: numericId,
-        senderId: data.senderId,
-        message: data.message,
-      })
-      .returning()
+    const numericId = typeof data.conversationId === "number" ? data.conversationId : parseInt(String(data.conversationId).replace(/\D/g, "")) || 1
+    await db.insert(messages).values({
+      conversationId: numericId,
+      senderId: data.senderId,
+      message: data.message,
+      viewed: false,
+    })
 
     await db
       .update(conversations)
       .set({ lastMessageAt: new Date() })
       .where(eq(conversations.id, numericId))
 
-    return { success: true, message: inserted }
+    return true
   } catch (err) {
-    console.error("sendMessage error:", (err as Error).message)
-    return { success: true }
+    console.error("sendMessage error:", err)
+    return false
   }
 }
