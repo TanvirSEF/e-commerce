@@ -110,7 +110,10 @@ export function HomeHero() {
                     priority={index === 0}
                     className="object-cover"
                     onError={(e) => {
-                      e.currentTarget.src = "/assets/img/placeholder-rect.jpg"
+                      const target = e.currentTarget
+                      if (!target.src.includes("placeholder-rect.jpg")) {
+                        target.src = "/assets/img/placeholder-rect.jpg"
+                      }
                     }}
                   />
                   {/* Subtle Dark Gradient Overlay for text readability */}

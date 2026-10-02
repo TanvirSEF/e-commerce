@@ -24,7 +24,10 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
           sizes="(max-width: 1024px) 100vw, 50vw"
           className="object-contain p-4 transition-all duration-300"
           onError={(e) => {
-            e.currentTarget.src = "/assets/img/placeholder.jpg"
+            const target = e.currentTarget
+            if (!target.src.includes("placeholder.jpg")) {
+              target.src = "/assets/img/placeholder.jpg"
+            }
           }}
         />
       </div>
@@ -49,7 +52,10 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
                 fill
                 className="object-contain"
                 onError={(e) => {
-                  e.currentTarget.src = "/assets/img/placeholder.jpg"
+                  const target = e.currentTarget
+                  if (!target.src.includes("placeholder.jpg")) {
+                    target.src = "/assets/img/placeholder.jpg"
+                  }
                 }}
               />
             </button>

@@ -127,7 +127,10 @@ export function WishlistView({ initialItems }: WishlistViewProps) {
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-200"
                     onError={(e) => {
-                      e.currentTarget.src = "/assets/img/placeholder.jpg"
+                      const target = e.currentTarget
+                      if (!target.src.includes("placeholder.jpg")) {
+                        target.src = "/assets/img/placeholder.jpg"
+                      }
                     }}
                   />
                 </Link>

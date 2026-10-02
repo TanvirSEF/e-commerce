@@ -95,7 +95,10 @@ export function ProductCard({
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             onError={(e) => {
-              e.currentTarget.src = "/assets/img/placeholder.jpg"
+              const target = e.currentTarget
+              if (!target.src.includes("placeholder.jpg")) {
+                target.src = "/assets/img/placeholder.jpg"
+              }
             }}
           />
 

@@ -21,7 +21,7 @@ const SAMPLE_ALERTS: SaleAlertItem[] = [
     id: 1,
     productName: "Apple iPhone 15 Pro (128GB)",
     slug: "apple-iphone-15-pro",
-    thumbnail: "/assets/img/products/1.jpg",
+    thumbnail: "/assets/img/placeholder.jpg",
     price: "৳1,35,000",
     location: "Gulshan, Dhaka",
     timeAgo: "2 minutes ago",
@@ -30,7 +30,7 @@ const SAMPLE_ALERTS: SaleAlertItem[] = [
     id: 2,
     productName: "Sony WH-1000XM5 Wireless Headphones",
     slug: "sony-wh-1000xm5",
-    thumbnail: "/assets/img/products/2.jpg",
+    thumbnail: "/assets/img/placeholder.jpg",
     price: "৳38,500",
     location: "GEC, Chattogram",
     timeAgo: "4 minutes ago",
@@ -39,7 +39,7 @@ const SAMPLE_ALERTS: SaleAlertItem[] = [
     id: 3,
     productName: "Samsung Galaxy S24 Ultra Titanium",
     slug: "samsung-galaxy-s24-ultra",
-    thumbnail: "/assets/img/products/3.jpg",
+    thumbnail: "/assets/img/placeholder.jpg",
     price: "৳1,42,000",
     location: "Zindabazar, Sylhet",
     timeAgo: "7 minutes ago",
@@ -48,7 +48,7 @@ const SAMPLE_ALERTS: SaleAlertItem[] = [
     id: 4,
     productName: "Men's Premium Casual Slim Fit Shirt",
     slug: "mens-premium-casual-shirt",
-    thumbnail: "/assets/img/products/4.jpg",
+    thumbnail: "/assets/img/placeholder.jpg",
     price: "৳1,850",
     location: "Uttara, Dhaka",
     timeAgo: "11 minutes ago",
@@ -119,7 +119,10 @@ export function StorefrontSaleAlert() {
             height={50}
             className="object-cover w-full h-full rounded"
             onError={(e) => {
-              ;(e.target as any).src = "/assets/img/placeholder.jpg"
+              const target = e.currentTarget
+              if (!target.src.includes("placeholder.jpg")) {
+                target.src = "/assets/img/placeholder.jpg"
+              }
             }}
           />
         </Link>
