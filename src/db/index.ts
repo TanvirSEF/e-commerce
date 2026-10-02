@@ -6,10 +6,16 @@ const { Pool } = pg
 
 declare global {
   var __pgPool: pg.Pool | undefined
+  var __pgConnectionString: string | undefined
 }
 
 const connectionString =
   process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/ecommerce"
+
+if (global.__pgPool && global.__pgConnectionString !== connectionString) {
+  global.__pgPool.end().catch(() => {})
+  global.__pgPool = undefined
+}
 
 export const pool =
   global.__pgPool ||
@@ -22,6 +28,7 @@ export const pool =
 
 if (process.env.NODE_ENV !== "production") {
   global.__pgPool = pool
+  global.__pgConnectionString = connectionString
 }
 
 export const db = drizzle(pool, { schema })
