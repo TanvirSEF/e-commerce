@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { headers } from "next/headers"
-import { auth } from "@/lib/auth/auth"
+import { getServerSession } from "@/lib/auth/session-helper"
 
 import {
   getUserNotifications,
@@ -11,16 +10,23 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() })
+    const session = await getServerSession()
     const variant = req.nextUrl.searchParams.get("variant") || "storefront"
+
+    if (!session?.user?.id) {
+      return NextResponse.json({
+        success: true,
+        notifications: [],
+        unreadCount: 0,
+        authenticated: false,
+      })
+    }
 
     let notifications
     if (variant === "admin") {
-      const adminId = session?.user?.id || "usr_admin_default_01"
-      notifications = await getAdminNotifications(adminId)
+      notifications = await getAdminNotifications(session.user.id)
     } else {
-      const userId = session?.user?.id || "usr_customer_default_01"
-      notifications = await getUserNotifications(userId)
+      notifications = await getUserNotifications(session.user.id)
     }
 
     const unreadCount = notifications.filter((n) => !n.isRead).length
@@ -29,7 +35,7 @@ export async function GET(req: NextRequest) {
       success: true,
       notifications,
       unreadCount,
-      authenticated: !!session?.user,
+      authenticated: true,
     })
   } catch (err: any) {
     return NextResponse.json(
@@ -41,9 +47,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() })
+    const session = await getServerSession()
     const variant = req.nextUrl.searchParams.get("variant") || "storefront"
-    const userId = session?.user?.id || (variant === "admin" ? "usr_admin_default_01" : "usr_customer_default_01")
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+    const userId = session.user.id
     const body = await req.json()
 
     const fetchCurrent = () => (variant === "admin" ? getAdminNotifications(userId) : getUserNotifications(userId))

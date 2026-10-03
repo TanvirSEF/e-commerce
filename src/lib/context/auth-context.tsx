@@ -62,10 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storedUser = localStorage.getItem("active_ecom_user")
       if (storedUser) {
         setUser(JSON.parse(storedUser))
-      }
-      const storedWishlist = localStorage.getItem("active_ecom_wishlist")
-      if (storedWishlist) {
-        setWishlist(JSON.parse(storedWishlist))
+        const storedWishlist = localStorage.getItem("active_ecom_wishlist")
+        if (storedWishlist) {
+          setWishlist(JSON.parse(storedWishlist))
+        }
+      } else {
+        setUser(null)
+        setWishlist([])
+        localStorage.removeItem("active_ecom_wishlist")
       }
     } catch {
       // ignore
@@ -76,10 +80,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sync wishlist with PostgreSQL database
   useEffect(() => {
     async function syncWishlistWithDb() {
+      if (!user?.id) {
+        setWishlist([])
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("active_ecom_wishlist")
+        }
+        return
+      }
       try {
         const { getWishlistProductIdsAction } = await import("@/app/actions/wishlist-actions")
         const ids = await getWishlistProductIdsAction()
-        if (Array.isArray(ids) && ids.length > 0) {
+        if (Array.isArray(ids)) {
           setWishlist(ids)
           localStorage.setItem("active_ecom_wishlist", JSON.stringify(ids))
         }
@@ -177,10 +188,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null)
+    setWishlist([])
     if (typeof window !== "undefined") {
       localStorage.removeItem("active_ecom_user")
+      localStorage.removeItem("active_ecom_wishlist")
+    }
+    try {
+      const { logoutAction } = await import("@/app/actions/ecommerce-actions")
+      await logoutAction()
+    } catch {
+      // ignore
     }
   }
 
@@ -189,6 +208,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const toggleWishlist = (productId: string) => {
+    if (!user) {
+      if (typeof window !== "undefined") {
+        window.location.href = "/login"
+      }
+      return
+    }
     const isAdding = !wishlist.includes(productId)
     setWishlist((prev) =>
       prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
@@ -207,6 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const removeFromWishlist = (productId: string, wishlistId?: number) => {
+    if (!user) return
     setWishlist((prev) => prev.filter((id) => id !== productId))
 
     import("@/app/actions/wishlist-actions")
@@ -218,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
   }
 
-  const isInWishlist = (productId: string) => wishlist.includes(productId)
+  const isInWishlist = (productId: string) => (user ? wishlist.includes(productId) : false)
 
   return (
     <AuthContext.Provider

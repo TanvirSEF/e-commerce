@@ -5,13 +5,21 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Grid, ShoppingBag, Bell, User } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
+import { useAuth } from "@/lib/context/auth-context"
 
 export function MobileBottomNav() {
   const pathname = usePathname()
   const { totalCount, toggleCart } = useCart()
+  const { user, isLoggedIn } = useAuth()
   const [unreadNotifCount, setUnreadNotifCount] = useState(0)
 
+  const isCustomer = isLoggedIn && user?.role === "customer"
+
   useEffect(() => {
+    if (!isCustomer) {
+      setUnreadNotifCount(0)
+      return
+    }
     const fetchUnread = () => {
       fetch("/api/notifications")
         .then((r) => r.json())
@@ -23,7 +31,7 @@ export function MobileBottomNav() {
     fetchUnread()
     const timer = setInterval(fetchUnread, 30000)
     return () => clearInterval(timer)
-  }, [])
+  }, [isCustomer])
 
 
   if (pathname.startsWith("/admin")) {
@@ -41,13 +49,13 @@ export function MobileBottomNav() {
     { label: "Home", href: "/", icon: Home },
     { label: "Categories", href: "/categories", icon: Grid },
     { label: "Cart", isCart: true, icon: ShoppingBag },
-    { label: "Alerts", href: "/dashboard/notifications", icon: Bell },
-    { label: "Account", href: "/dashboard", icon: User },
+    ...(isCustomer ? [{ label: "Alerts", href: "/dashboard/notifications", icon: Bell }] : []),
+    { label: "Account", href: isLoggedIn ? "/dashboard" : "/login", icon: User },
   ]
 
   return (
     <div className="fixed right-0 bottom-0 left-0 z-40 border-t border-gray-200 bg-white py-1 shadow-lg lg:hidden">
-      <div className="grid grid-cols-5 items-center">
+      <div className={`grid ${isCustomer ? "grid-cols-5" : "grid-cols-4"} items-center`}>
         {NAV_ITEMS.map((item) => {
           if (item.isCart) {
             return (

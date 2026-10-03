@@ -1,8 +1,8 @@
 import { Metadata } from "next"
-import { headers } from "next/headers"
+import { redirect } from "next/navigation"
 import { getUserWishlistProducts } from "@/services/customer-extra-service"
 import { WishlistView } from "./_components/wishlist-view"
-import { auth } from "@/lib/auth/auth"
+import { getServerSession } from "@/lib/auth/session-helper"
 
 export const metadata: Metadata = {
   title: "My Wishlist | Active eCommerce",
@@ -10,18 +10,13 @@ export const metadata: Metadata = {
 }
 
 export default async function WishlistPage() {
-  let currentUserId = "usr_customer_default_01"
-  try {
-    const h = await headers()
-    const session = await auth.api.getSession({ headers: h })
-    if (session?.user?.id) {
-      currentUserId = session.user.id
-    }
-  } catch {
-    // fallback
+  const session = await getServerSession()
+
+  if (!session?.user?.id) {
+    redirect("/login")
   }
 
-  const initialWishlistItems = await getUserWishlistProducts(currentUserId)
+  const initialWishlistItems = await getUserWishlistProducts(session.user.id)
 
   return <WishlistView initialItems={initialWishlistItems} />
 }

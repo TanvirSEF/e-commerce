@@ -25,8 +25,7 @@ export function LoginView() {
     try {
       const res = await login(email, password)
       if (res.success) {
-        router.push(res.redirectTo || "/dashboard")
-        router.refresh()
+        window.location.href = res.redirectTo || "/dashboard"
       } else {
         setErrorMessage(res.error || "Invalid email or password.")
       }

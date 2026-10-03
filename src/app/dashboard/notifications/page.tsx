@@ -1,6 +1,6 @@
 import { Metadata } from "next"
-import { headers } from "next/headers"
-import { auth } from "@/lib/auth/auth"
+import { redirect } from "next/navigation"
+import { getServerSession } from "@/lib/auth/session-helper"
 
 import { getUserNotifications } from "@/services/notification-service"
 import { CustomerNotificationsView } from "./_components/customer-notifications-view"
@@ -11,17 +11,13 @@ export const metadata: Metadata = {
 }
 
 export default async function CustomerNotificationsPage() {
-  let userId = "usr_customer_default_01"
-  try {
-    const session = await auth.api.getSession({ headers: await headers() })
-    if (session?.user?.id) {
-      userId = session.user.id
-    }
-  } catch (e) {
-    console.warn("Session fetch fallback on notifications page:", e)
+  const session = await getServerSession()
+
+  if (!session?.user?.id) {
+    redirect("/login")
   }
 
-  const notifications = await getUserNotifications(userId)
+  const notifications = await getUserNotifications(session.user.id)
 
   return <CustomerNotificationsView initialNotifications={notifications} />
 }

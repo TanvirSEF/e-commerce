@@ -129,66 +129,94 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
             {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
           </button>
 
-          {/* Compare (Desktop) */}
-          <Link
-            href="/compare"
-            className="group relative hidden items-center gap-1.5 text-[#292933] transition-colors hover:text-[#d43533] lg:flex"
-            title="Compare Products"
-          >
-            <div className="relative">
-              <RefreshCw className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
-              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d43533] px-1 text-[10px] font-bold text-white">
-                {compareCount}
-              </span>
-            </div>
-            <span className="hidden text-xs font-medium xl:inline">Compare</span>
-          </Link>
+          {/* Customer Authenticated Actions: Compare, Wishlist, Notification (100% Laravel header1.blade.php Parity) */}
+          {isLoggedIn && user?.role === "customer" && (
+            <>
+              {/* Compare (Desktop) */}
+              <Link
+                href="/compare"
+                className="group relative hidden items-center gap-1.5 text-[#292933] transition-colors hover:text-[#d43533] lg:flex"
+                title="Compare Products"
+              >
+                <div className="relative">
+                  <RefreshCw className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
+                  {compareCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d43533] px-1 text-[10px] font-bold text-white">
+                      {compareCount}
+                    </span>
+                  )}
+                </div>
+                <span className="hidden text-xs font-medium xl:inline">Compare</span>
+              </Link>
 
-          {/* Wishlist (Desktop) */}
-          <Link
-            href="/dashboard/wishlist"
-            className="group relative hidden items-center gap-1.5 text-[#292933] transition-colors hover:text-[#d43533] sm:flex"
-            title="My Wishlist"
-          >
-            <div className="relative">
-              <Heart className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
-              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d43533] px-1 text-[10px] font-bold text-white">
-                {wishlist?.length || 0}
-              </span>
-            </div>
-            <span className="hidden text-xs font-medium xl:inline">Wishlist</span>
-          </Link>
+              {/* Wishlist (Desktop) */}
+              <Link
+                href="/dashboard/wishlist"
+                className="group relative hidden items-center gap-1.5 text-[#292933] transition-colors hover:text-[#d43533] sm:flex"
+                title="My Wishlist"
+              >
+                <div className="relative">
+                  <Heart className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
+                  {wishlist && wishlist.length > 0 && (
+                    <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d43533] px-1 text-[10px] font-bold text-white">
+                      {wishlist.length}
+                    </span>
+                  )}
+                </div>
+                <span className="hidden text-xs font-medium xl:inline">Wishlist</span>
+              </Link>
 
-
-          {/* Notifications (100% Real-time Dropdown + Polling) */}
-          <div className="hidden items-center md:flex">
-            <NotificationBell variant="storefront" align="right" />
-          </div>
+              {/* Notifications (100% Real-time Dropdown + Polling) */}
+              <div className="hidden items-center md:flex">
+                <NotificationBell variant="storefront" align="right" />
+              </div>
+            </>
+          )}
 
 
           {/* User Account / Auth (100% Laravel Active eCommerce logic) */}
           <div className="relative">
-            <button
-              type="button"
-              onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 text-left"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-600 transition-colors hover:border-[#d43533] hover:text-[#d43533] overflow-hidden">
-                {user?.avatar && user.avatar !== "/assets/img/avatar-place.png" ? (
-                  <img src={user.avatar} alt={user.name} className="h-full w-full object-cover rounded-full" />
-                ) : (
+            {isLoggedIn && user ? (
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 text-left"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-600 transition-colors hover:border-[#d43533] hover:text-[#d43533] overflow-hidden">
+                  {user?.avatar && user.avatar !== "/assets/img/avatar-place.png" ? (
+                    <img src={user.avatar} alt={user.name} className="h-full w-full object-cover rounded-full" />
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
+                </div>
+                <div className="hidden text-left xl:block">
+                  <div className="text-[11px] text-gray-400">Hello,</div>
+                  <div className="text-xs font-semibold text-gray-800">{user.name.split(" ")[0]}</div>
+                </div>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-600 transition-colors hover:border-[#d43533] hover:text-[#d43533]"
+                  title="Login / Register"
+                >
                   <User className="h-4 w-4" />
-                )}
-              </div>
-              <div className="hidden text-left xl:block">
-                <div className="text-[11px] text-gray-400">
-                  {isLoggedIn && user ? `Hello,` : `Welcome,`}
+                </Link>
+                <div className="hidden text-left xl:block">
+                  <div className="text-[11px] text-gray-400">Welcome,</div>
+                  <div className="flex items-center gap-1 text-xs font-semibold text-gray-800">
+                    <Link href="/login" className="hover:text-[#d43533] transition-colors">
+                      Login
+                    </Link>
+                    <span className="text-gray-400">/</span>
+                    <Link href="/register" className="hover:text-[#d43533] transition-colors">
+                      Register
+                    </Link>
+                  </div>
                 </div>
-                <div className="text-xs font-semibold text-gray-800">
-                  {isLoggedIn && user ? user.name.split(" ")[0] : `Login / Register`}
-                </div>
               </div>
-            </button>
+            )}
 
             {userMenuOpen && (
               <div className="absolute top-full right-0 z-50 mt-2 w-52 rounded-md border border-gray-100 bg-white py-2 shadow-xl">
@@ -275,8 +303,8 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
                     <div className="my-1 border-t border-gray-100" />
                     <button
                       type="button"
-                      onClick={() => {
-                        logout()
+                      onClick={async () => {
+                        await logout()
                         setUserMenuOpen(false)
                         router.push("/login")
                         router.refresh()

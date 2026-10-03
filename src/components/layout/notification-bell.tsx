@@ -44,6 +44,11 @@ export function NotificationBell({
       })
       if (!res.ok) return
       const data = await res.json()
+      if (data.authenticated === false) {
+        setNotifications([])
+        setUnreadCount(0)
+        return
+      }
       if (data.success && Array.isArray(data.notifications)) {
         setNotifications(data.notifications)
         setUnreadCount(data.unreadCount ?? 0)

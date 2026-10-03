@@ -2006,6 +2006,7 @@ export async function loginAction(data: {
 
     // 4. Create / Refresh Better Auth Session & Cookies
     let sessionToken = ""
+    let signedCookieValue = ""
     try {
       const h = await headers()
       const signInRes = await auth.api.signInEmail({
@@ -2014,9 +2015,15 @@ export async function loginAction(data: {
           password: data.password,
         },
         headers: h,
+        asResponse: true,
       })
-      if (signInRes && signInRes.token) {
-        sessionToken = signInRes.token
+      const setCookieHeader = signInRes.headers.get("set-cookie")
+      if (setCookieHeader) {
+        const match = setCookieHeader.match(/better-auth\.session_token=([^;]+)/)
+        if (match && match[1]) {
+          signedCookieValue = match[1]
+          sessionToken = decodeURIComponent(match[1]).split(".")[0]
+        }
       }
     } catch {
       // Fallback: If signInEmail fails due to proxy header checks in Server Action context
@@ -2025,6 +2032,7 @@ export async function loginAction(data: {
     if (!sessionToken) {
       const crypto = await import("crypto")
       sessionToken = crypto.randomBytes(32).toString("hex")
+      signedCookieValue = sessionToken
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
       await db.insert(sessions).values({
         id: sessionToken,
@@ -2036,10 +2044,10 @@ export async function loginAction(data: {
       })
     }
 
-    // Set Better Auth session cookie
+    // Set Better Auth signed session cookie
     try {
       const cookieStore = await cookies()
-      cookieStore.set("better-auth.session_token", sessionToken, {
+      cookieStore.set("better-auth.session_token", signedCookieValue, {
         httpOnly: true,
         secure:
           process.env.NODE_ENV === "production" &&
@@ -2181,6 +2189,43 @@ export async function registerAction(data: {
   } catch (err: any) {
     const message = err.body?.message || err.message || "Registration failed. Please try again."
     return { success: false, error: message }
+  }
+}
+
+export async function logoutAction(): Promise<{ success: boolean }> {
+  try {
+    const { cookies, headers } = await import("next/headers")
+    const { auth } = await import("@/lib/auth/auth")
+    const { db } = await import("@/db")
+    const { sessions } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get("better-auth.session_token")?.value
+
+    if (sessionCookie) {
+      const rawToken = decodeURIComponent(sessionCookie).split(".")[0]
+      try {
+        await db.delete(sessions).where(eq(sessions.token, rawToken))
+      } catch {}
+    }
+
+    try {
+      const h = await headers()
+      await auth.api.signOut({ headers: h })
+    } catch {}
+
+    cookieStore.delete("better-auth.session_token")
+
+    revalidatePath("/")
+    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/wishlist")
+    revalidatePath("/dashboard/notifications")
+    revalidatePath("/login")
+
+    return { success: true }
+  } catch {
+    return { success: false }
   }
 }
 
