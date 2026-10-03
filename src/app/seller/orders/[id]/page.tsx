@@ -1,6 +1,13 @@
 import React from "react"
 import { Metadata } from "next"
-import { SellerOrderDetailsView, SellerOrderDetailsData } from "./_components/seller-order-details-view"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { getServerSession } from "@/lib/auth/session-helper"
+import { getSellerFullDashboardData } from "@/services/seller-service"
+import { getSellerOrderById } from "@/services/order-service"
+import { SellerOrderDetailsView } from "./_components/seller-order-details-view"
+
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Order Details | Seller Portal",
@@ -12,47 +19,31 @@ interface SellerOrderPageProps {
 
 export default async function SellerOrderDetailsPage({ params }: SellerOrderPageProps) {
   const { id } = await params
+  const session = await getServerSession()
+  const sellerData = await getSellerFullDashboardData({
+    userId: session?.user?.id,
+  })
 
-  // Sample order detail matching Active eCommerce structure
-  const order: SellerOrderDetailsData = {
-    id,
-    code: id.startsWith("2026") ? id : `20260923-${id}`,
-    date: "23 Sep 2026, 14:32",
-    customerName: "Mohammad Tanvir",
-    customerEmail: "tanvir.client@example.com",
-    customerPhone: "+880 1712 345678",
-    shippingAddress: "House 42, Road 11, Banani, Dhaka-1213, Bangladesh",
-    paymentType: "Cash on Delivery",
-    paymentStatus: "paid",
-    deliveryStatus: "on_the_way",
-    trackingCode: "TRK-84920194",
-    subtotal: 4200,
-    shippingCost: 120,
-    tax: 210,
-    couponDiscount: 200,
-    total: 4330,
-    items: [
-      {
-        id: "item-1",
-        name: "Classic Men's Casual Shirt - Slim Fit Cotton",
-        thumbnail: "/assets/img/placeholder.jpg",
-        slug: "classic-mens-casual-shirt",
-        variation: "Navy Blue / XL",
-        price: 1250,
-        quantity: 2,
-        total: 2500,
-      },
-      {
-        id: "item-2",
-        name: "Wireless Mechanical Gaming Keyboard RGB",
-        thumbnail: "/assets/img/placeholder.jpg",
-        slug: "wireless-mechanical-gaming-keyboard-rgb",
-        price: 1700,
-        quantity: 1,
-        total: 1700,
-      },
-    ],
+  const order = await getSellerOrderById(id, sellerData.shop.id)
+
+  if (!order) {
+    return (
+      <div className="p-8 text-center bg-white rounded border border-gray-200 m-6">
+        <h2 className="text-lg font-bold text-gray-800">Order Not Found</h2>
+        <p className="text-xs text-gray-500 mt-1">The requested order #{id} does not exist or has been removed.</p>
+        <Link
+          href="/seller/orders"
+          className="inline-block mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#d43533] rounded hover:bg-[#b82a28]"
+        >
+          Back to Orders
+        </Link>
+      </div>
+    )
   }
 
-  return <SellerOrderDetailsView order={order} />
+  return (
+    <div className="p-4 md:p-6">
+      <SellerOrderDetailsView order={order} />
+    </div>
+  )
 }

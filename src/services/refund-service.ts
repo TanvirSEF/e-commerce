@@ -49,6 +49,7 @@ export async function getRefundsAdminWithPagination(params?: {
   status?: string
   page?: number
   limit?: number
+  shopId?: number
 }): Promise<RefundListResult> {
   const page = Math.max(1, params?.page || 1)
   const limit = Math.max(1, Math.min(100, params?.limit || 15))
@@ -58,6 +59,10 @@ export async function getRefundsAdminWithPagination(params?: {
 
   try {
     const conditions = []
+
+    if (params?.shopId) {
+      conditions.push(eq(refundRequests.shopId, params.shopId))
+    }
 
     if (status && status !== "all") {
       conditions.push(eq(refundRequests.status, status))
@@ -112,7 +117,8 @@ export async function getRefundsAdminWithPagination(params?: {
     const total = Number(countRow?.count || 0)
     const totalPages = Math.ceil(total / limit) || 1
 
-    // 3. Summary stats across ALL requests
+    // 3. Summary stats across ALL requests (scoped to shop if provided)
+    const statsClause = params?.shopId ? eq(refundRequests.shopId, params.shopId) : undefined
     const [statsRow] = await db
       .select({
         total: count(),
@@ -122,6 +128,7 @@ export async function getRefundsAdminWithPagination(params?: {
         totalAmount: sql<number>`coalesce(sum(case when ${refundRequests.status} = 'approved' then ${refundRequests.amount}::numeric else 0 end), 0)`,
       })
       .from(refundRequests)
+      .where(statsClause)
 
     const items: RefundRequestItem[] = rows.map((r) => ({
       id: String(r.id),

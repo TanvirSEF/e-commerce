@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { orders, orderItems, products, reviews } from "../db/schema"
-import { eq, or, desc, and } from "drizzle-orm"
+import { eq, or, desc, and, sql, inArray } from "drizzle-orm"
 
 export interface CreateOrderInput {
   userId?: string
@@ -706,3 +706,199 @@ export async function updateOrderStatusAdmin(data: {
     return { success: true }
   }
 }
+
+export interface SellerOrderRow {
+  id: string
+  code: string
+  trackingCode?: string
+  customerName: string
+  customerEmail: string
+  itemCount: number
+  total: number
+  deliveryStatus: string
+  paymentType: string
+  paymentStatus: string
+  date: string
+  viewed: boolean
+  shippingMethod?: string
+}
+
+export async function getSellerOrders(params: {
+  shopId?: number
+  userId?: string
+  search?: string
+  deliveryStatus?: string
+  paymentStatus?: string
+  limit?: number
+} = {}): Promise<{ orders: SellerOrderRow[] }> {
+  const shopId = params.shopId || 1
+  const sellerUserId = params.userId || "usr_seller_default_01"
+  const limit = params.limit || 50
+
+  try {
+    // 1. Find all distinct order IDs that have items belonging to this seller/shop
+    const sellerOrderIdsQuery = await db
+      .selectDistinct({ orderId: orderItems.orderId })
+      .from(orderItems)
+      .innerJoin(products, eq(orderItems.productId, products.id))
+      .where(or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)))
+
+    const orderIds = sellerOrderIdsQuery.map((r) => r.orderId).filter(Boolean)
+    if (orderIds.length === 0) {
+      return { orders: [] }
+    }
+
+    // 2. Fetch the orders
+    const whereConditions = [inArray(orders.id, orderIds)]
+    if (params.deliveryStatus && params.deliveryStatus !== "all") {
+      whereConditions.push(eq(orders.deliveryStatus, params.deliveryStatus))
+    }
+    if (params.paymentStatus && params.paymentStatus !== "all") {
+      whereConditions.push(eq(orders.paymentStatus, params.paymentStatus))
+    }
+
+    const orderRows = await db
+      .select()
+      .from(orders)
+      .where(and(...whereConditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(limit)
+
+    const mapped: SellerOrderRow[] = await Promise.all(
+      orderRows.map(async (o) => {
+        // Count items specifically for this seller's products in this order
+        const items = await db
+          .select()
+          .from(orderItems)
+          .innerJoin(products, eq(orderItems.productId, products.id))
+          .where(
+            and(
+              eq(orderItems.orderId, o.id),
+              or(eq(products.shopId, shopId), eq(products.userId, sellerUserId))
+            )
+          )
+
+        // Calculate seller portion total
+        const sellerTotal = items.reduce(
+          (sum, it) => sum + Number(it.order_items.price) * (it.order_items.quantity || 1),
+          0
+        )
+
+        const addr = (o.shippingAddress as any) || {}
+        return {
+          id: String(o.id),
+          code: o.code,
+          trackingCode: o.trackingCode || undefined,
+          customerName: addr.name || "Customer",
+          customerEmail: addr.email || "customer@example.com",
+          itemCount: items.length,
+          total: sellerTotal > 0 ? sellerTotal : Number(o.grandTotal),
+          deliveryStatus: o.deliveryStatus,
+          paymentType: o.paymentType || "Cash On Delivery",
+          paymentStatus: o.paymentStatus,
+          date: o.createdAt.toISOString().slice(0, 10),
+          viewed: !!o.viewed,
+          shippingMethod: o.shippingMethod || "standard",
+        }
+      })
+    )
+
+    if (params.search && params.search.trim()) {
+      const q = params.search.toLowerCase()
+      return {
+        orders: mapped.filter(
+          (o) => o.code.toLowerCase().includes(q) || o.customerName.toLowerCase().includes(q)
+        ),
+      }
+    }
+
+    return { orders: mapped }
+  } catch (err) {
+    console.warn("getSellerOrders DB query error:", err)
+    return { orders: [] }
+  }
+}
+
+export async function getSellerOrderById(idOrCode: string | number, shopId?: number) {
+  try {
+    const isNum = !isNaN(Number(idOrCode))
+    let foundOrder: any = null
+
+    if (isNum) {
+      const [o] = await db.select().from(orders).where(eq(orders.id, Number(idOrCode))).limit(1)
+      foundOrder = o
+    }
+    if (!foundOrder) {
+      const [o] = await db.select().from(orders).where(eq(orders.code, String(idOrCode))).limit(1)
+      foundOrder = o
+    }
+
+    if (!foundOrder) return null
+
+    // Get order items joined with products
+    const itemsRows = await db
+      .select({
+        itemId: orderItems.id,
+        productId: orderItems.productId,
+        variation: orderItems.variation,
+        price: orderItems.price,
+        quantity: orderItems.quantity,
+        productName: products.name,
+        thumbnail: products.thumbnailImg,
+        slug: products.slug,
+        shopId: products.shopId,
+      })
+      .from(orderItems)
+      .leftJoin(products, eq(orderItems.productId, products.id))
+      .where(eq(orderItems.orderId, foundOrder.id))
+
+    const addr = (foundOrder.shippingAddress as any) || {}
+
+    const mappedItems = itemsRows.map((it) => ({
+      id: String(it.itemId),
+      name: it.productName || "Product",
+      thumbnail: it.thumbnail || "/assets/img/placeholder.jpg",
+      slug: it.slug || "#",
+      variation: it.variation || undefined,
+      price: Number(it.price),
+      quantity: it.quantity || 1,
+      total: Number(it.price) * (it.quantity || 1),
+    }))
+
+    const subtotal = mappedItems.reduce((acc, it) => acc + it.total, 0)
+    const shippingCost = Number(foundOrder.shippingCost || 0)
+    const tax = Number(foundOrder.couponDiscount || 0)
+    const couponDiscount = Number(foundOrder.couponDiscount || 0)
+    const total = subtotal + shippingCost
+
+    return {
+      id: String(foundOrder.id),
+      code: foundOrder.code,
+      date: new Date(foundOrder.createdAt).toLocaleString("en-US", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      customerName: addr.name || "Customer",
+      customerEmail: addr.email || "customer@example.com",
+      customerPhone: addr.phone || "+880 1712 000000",
+      shippingAddress: [addr.address, addr.city, addr.country].filter(Boolean).join(", ") || "Dhaka, Bangladesh",
+      paymentType: (foundOrder.paymentType || "Cash on Delivery").replace(/_/g, " "),
+      paymentStatus: foundOrder.paymentStatus as "paid" | "unpaid",
+      deliveryStatus: foundOrder.deliveryStatus as any,
+      trackingCode: foundOrder.trackingCode || undefined,
+      subtotal,
+      shippingCost,
+      tax,
+      couponDiscount,
+      total: Number(foundOrder.grandTotal) || total,
+      items: mappedItems,
+    }
+  } catch (err) {
+    console.warn("getSellerOrderById error:", err)
+    return null
+  }
+}
+

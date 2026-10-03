@@ -2671,3 +2671,102 @@ export async function deleteRefundReasonAction(id: number) {
   return ok
 }
 
+// -------------------------------------------------------------
+// SELLER NOTES ACTIONS
+// -------------------------------------------------------------
+export async function createSellerNoteAction(data: {
+  title: string
+  content: string
+  type?: string
+}) {
+  try {
+    const { createOrderNote } = await import("@/services/order-rules-service")
+    const created = await createOrderNote(data)
+    revalidatePath("/seller/notes")
+    revalidatePath("/seller/order-notes")
+    return { success: !!created, note: created }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to create note" }
+  }
+}
+
+export async function updateSellerNoteAction(data: {
+  id: number
+  title?: string
+  content?: string
+  type?: string
+}) {
+  try {
+    const { updateOrderNote } = await import("@/services/order-rules-service")
+    const ok = await updateOrderNote(data.id, data)
+    revalidatePath("/seller/notes")
+    revalidatePath("/seller/order-notes")
+    return { success: ok }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to update note" }
+  }
+}
+
+export async function deleteSellerNoteAction(id: number) {
+  try {
+    const { deleteOrderNote } = await import("@/services/order-rules-service")
+    const ok = await deleteOrderNote(id)
+    revalidatePath("/seller/notes")
+    revalidatePath("/seller/order-notes")
+    return { success: ok }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to delete note" }
+  }
+}
+
+// -------------------------------------------------------------
+// SELLER ORDER STATUS ACTIONS
+// -------------------------------------------------------------
+export async function updateSellerOrderStatusAction(data: {
+  orderId: number
+  deliveryStatus?: string
+  paymentStatus?: string
+  trackingCode?: string
+}) {
+  try {
+    const { db } = await import("@/db")
+    const { orders } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+
+    const updateFields: Record<string, any> = { updatedAt: new Date() }
+    if (data.deliveryStatus) updateFields.deliveryStatus = data.deliveryStatus
+    if (data.paymentStatus) updateFields.paymentStatus = data.paymentStatus
+    if (data.trackingCode) updateFields.trackingCode = data.trackingCode
+
+    await db.update(orders).set(updateFields).where(eq(orders.id, data.orderId))
+
+    revalidatePath("/seller/orders")
+    revalidatePath(`/seller/orders/${data.orderId}`)
+    revalidatePath("/admin/orders")
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to update order status" }
+  }
+}
+
+// -------------------------------------------------------------
+// SELLER REFUND ACTIONS
+// -------------------------------------------------------------
+export async function sellerUpdateRefundRequestStatusAction(data: {
+  requestId: number | string
+  status: "approved" | "rejected"
+  adminNote?: string
+}) {
+  try {
+    const { processRefundAdmin } = await import("@/services/refund-service")
+    const res = await processRefundAdmin(data)
+    revalidatePath("/seller/refund-requests")
+    revalidatePath("/seller/refund-request")
+    revalidatePath("/admin/refund-requests")
+    return res
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to update refund request" }
+  }
+}
+
+

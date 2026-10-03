@@ -2,7 +2,7 @@ import { db } from "../db"
 import { orderNotes, type OrderNote } from "../db/schema"
 import { getSetting } from "./settings-service"
 import { businessSettings } from "../db/schema"
-import { eq, desc } from "drizzle-orm"
+import { eq, desc, ilike, or } from "drizzle-orm"
 
 export interface OrderRulesSettings {
   minOrderCheck: boolean
@@ -109,6 +109,42 @@ export async function createOrderNote(data: {
   } catch (err) {
     console.error("createOrderNote error:", err)
     return null
+  }
+}
+
+export async function getSellerOrderNotes(params?: { search?: string }): Promise<OrderNote[]> {
+  try {
+    let query = db.select().from(orderNotes)
+    if (params?.search && params.search.trim()) {
+      const q = `%${params.search.trim()}%`
+      query = query.where(or(ilike(orderNotes.title, q), ilike(orderNotes.content, q), ilike(orderNotes.type, q))) as any
+    }
+    const list = await query.orderBy(desc(orderNotes.createdAt))
+    return list || []
+  } catch (err) {
+    console.warn("DB getSellerOrderNotes fallback:", err)
+    return []
+  }
+}
+
+export async function updateOrderNote(
+  id: number,
+  data: { title?: string; content?: string; type?: string }
+): Promise<boolean> {
+  try {
+    await db
+      .update(orderNotes)
+      .set({
+        ...(data.title ? { title: data.title } : {}),
+        ...(data.content ? { content: data.content } : {}),
+        ...(data.type ? { type: data.type } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(orderNotes.id, id))
+    return true
+  } catch (err) {
+    console.error("updateOrderNote error:", err)
+    return false
   }
 }
 

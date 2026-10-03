@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useTransition } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -15,6 +15,7 @@ import {
   Save,
 } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
+import { updateSellerOrderStatusAction } from "@/app/actions/ecommerce-actions"
 
 export interface SellerOrderDetailsData {
   id: string
@@ -54,11 +55,30 @@ export function SellerOrderDetailsView({ order: initialOrder }: SellerOrderDetai
   const [paymentStatus, setPaymentStatus] = useState(initialOrder.paymentStatus)
   const [trackingCode, setTrackingCode] = useState(initialOrder.trackingCode || "")
   const [isSaved, setIsSaved] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [feedback, setFeedback] = useState<string | null>(null)
 
   const handleSaveStatus = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSaved(true)
-    setTimeout(() => setIsSaved(false), 2500)
+    startTransition(async () => {
+      const res = await updateSellerOrderStatusAction({
+        orderId: Number(initialOrder.id),
+        deliveryStatus,
+        paymentStatus,
+        trackingCode,
+      })
+      if (res.success) {
+        setIsSaved(true)
+        setFeedback("Order status updated successfully!")
+        setTimeout(() => {
+          setIsSaved(false)
+          setFeedback(null)
+        }, 3000)
+      } else {
+        setFeedback("Failed to update status")
+        setTimeout(() => setFeedback(null), 3000)
+      }
+    })
   }
 
   return (
@@ -89,6 +109,12 @@ export function SellerOrderDetailsView({ order: initialOrder }: SellerOrderDetai
           Print Invoice
         </Link>
       </div>
+
+      {feedback && (
+        <div className="p-3 text-xs font-medium rounded border bg-emerald-50 border-emerald-200 text-emerald-800">
+          {feedback}
+        </div>
+      )}
 
       {/* Status Controls */}
       <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -141,10 +167,11 @@ export function SellerOrderDetailsView({ order: initialOrder }: SellerOrderDetai
           <div>
             <button
               type="submit"
-              className="w-full inline-flex items-center justify-center gap-2 rounded bg-[#d43533] py-2 px-4 text-xs font-bold text-white shadow-sm hover:bg-[#b82a28] transition-colors"
+              disabled={isPending}
+              className="w-full inline-flex items-center justify-center gap-2 rounded bg-[#d43533] py-2 px-4 text-xs font-bold text-white shadow-sm hover:bg-[#b82a28] transition-colors disabled:opacity-50"
             >
               <Save className="h-4 w-4" />
-              {isSaved ? "Saved Successfully!" : "Update Status"}
+              {isPending ? "Updating..." : isSaved ? "Saved Successfully!" : "Update Status"}
             </button>
           </div>
         </form>

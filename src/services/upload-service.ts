@@ -6,9 +6,14 @@ export async function getAllUploads(params?: {
   search?: string
   type?: string
   sort?: string
+  userId?: string
 }): Promise<Upload[]> {
   try {
     const conditions = []
+
+    if (params?.userId) {
+      conditions.push(eq(uploads.userId, params.userId))
+    }
 
     if (params?.search && params.search.trim()) {
       const q = `%${params.search.trim()}%`
