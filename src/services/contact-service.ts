@@ -1,6 +1,74 @@
 import { db } from "../db"
-import { contacts } from "../db/schema"
-import { desc, eq } from "drizzle-orm"
+import { contacts, pages } from "../db/schema"
+import { desc, eq, or } from "drizzle-orm"
+
+export interface ContactPageData {
+  title: string
+  description: string
+  address: string
+  phone: string
+  email: string
+  metaTitle: string
+  metaDescription: string
+}
+
+export async function getContactPageContent(): Promise<ContactPageData> {
+  const fallback: ContactPageData = {
+    title: "Contact Us",
+    description:
+      "Have questions regarding orders, courier deliveries, seller onboarding, or product specifications? Reach out through any channel below.",
+    address: "House 42, Road 11, Block D, Banani, Dhaka 1213, Bangladesh",
+    phone: "+880 1700-112233",
+    email: "support@huipper.com",
+    metaTitle: "Contact Us | Active eCommerce",
+    metaDescription:
+      "Get in touch with customer support and sales team for order inquiries and assistance.",
+  }
+
+  try {
+    const [pageRow] = await db
+      .select()
+      .from(pages)
+      .where(or(eq(pages.type, "contact_us_page"), eq(pages.slug, "contact")))
+      .limit(1)
+
+    if (pageRow) {
+      let desc = fallback.description
+      let addr = fallback.address
+      let ph = fallback.phone
+      let em = fallback.email
+
+      if (pageRow.content) {
+        try {
+          const parsed = JSON.parse(pageRow.content)
+          if (parsed && typeof parsed === "object") {
+            if (parsed.description) desc = parsed.description
+            if (parsed.address) addr = parsed.address
+            if (parsed.phone) ph = parsed.phone
+            if (parsed.email) em = parsed.email
+          }
+        } catch {
+          desc = pageRow.content
+        }
+      }
+
+      return {
+        title: pageRow.title || fallback.title,
+        description: desc,
+        address: addr,
+        phone: ph,
+        email: em,
+        metaTitle: pageRow.metaTitle || fallback.metaTitle,
+        metaDescription: pageRow.metaDescription || fallback.metaDescription,
+      }
+    }
+  } catch (err) {
+    console.warn("getContactPageContent fallback:", (err as Error).message)
+  }
+
+  return fallback
+}
+
 
 export interface ContactInquiryItem {
   id: number

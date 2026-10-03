@@ -178,19 +178,43 @@ export async function getClassifiedProductsAdminPaginated(params: {
 }
 
 
+export interface CustomerProductsResponse {
+  products: ClassifiedProductItem[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
 export async function getPublishedCustomerProducts(filters?: {
   category?: string
+  brand?: string
   condition?: string
   search?: string
   sort?: string
-}): Promise<ClassifiedProductItem[]> {
+  page?: number
+  limit?: number
+}): Promise<CustomerProductsResponse> {
+  const page = filters?.page || 1
+  const limit = filters?.limit || 12
+
   try {
     const all = await getAllClassifiedProductsAdmin()
     let filtered = all.filter((p) => p.published)
 
     if (filters?.category && filters.category !== "all") {
+      const catQ = filters.category.toLowerCase().replace(/[^a-z0-9]+/g, "-")
       filtered = filtered.filter(
-        (p) => p.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") === filters.category
+        (p) =>
+          p.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") === catQ ||
+          p.category.toLowerCase().includes(filters.category!.toLowerCase())
+      )
+    }
+
+    if (filters?.brand && filters.brand !== "all") {
+      const bQ = filters.brand.toLowerCase()
+      filtered = filtered.filter(
+        (p) => p.name.toLowerCase().includes(bQ) || p.slug.toLowerCase().includes(bQ)
       )
     }
 
@@ -207,20 +231,47 @@ export async function getPublishedCustomerProducts(filters?: {
       )
     }
 
-    if (filters?.sort === "price_asc") {
+    const sortKey = filters?.sort || "1"
+    if (sortKey === "1" || sortKey === "newest") {
+      filtered.sort((a, b) => b.id - a.id)
+    } else if (sortKey === "2" || sortKey === "oldest") {
+      filtered.sort((a, b) => a.id - b.id)
+    } else if (sortKey === "3" || sortKey === "price_asc") {
       filtered.sort((a, b) => a.unitPrice - b.unitPrice)
-    } else if (filters?.sort === "price_desc") {
+    } else if (sortKey === "4" || sortKey === "price_desc") {
       filtered.sort((a, b) => b.unitPrice - a.unitPrice)
+    } else if (sortKey === "5") {
+      filtered = filtered.filter((p) => p.condition.toLowerCase().includes("new"))
+    } else if (sortKey === "6") {
+      filtered = filtered.filter((p) => p.condition.toLowerCase().includes("used"))
     } else {
       filtered.sort((a, b) => b.id - a.id)
     }
 
-    return filtered
+    const total = filtered.length
+    const totalPages = Math.ceil(total / limit) || 1
+    const offset = (page - 1) * limit
+    const paginatedProducts = filtered.slice(offset, offset + limit)
+
+    return {
+      products: paginatedProducts,
+      total,
+      page,
+      limit,
+      totalPages,
+    }
   } catch (err) {
     console.warn("getPublishedCustomerProducts fallback:", (err as Error).message)
-    return SEED_CLASSIFIED
+    return {
+      products: SEED_CLASSIFIED,
+      total: SEED_CLASSIFIED.length,
+      page: 1,
+      limit,
+      totalPages: 1,
+    }
   }
 }
+
 
 export async function getCustomerProductsByUser(
   userId?: string

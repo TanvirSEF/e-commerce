@@ -34,6 +34,62 @@ export async function getCategoryBySlug(slug: string): Promise<SeedCategory | nu
   return all.find((c) => c.slug === slug) || null
 }
 
+export interface CategoryHierarchyItem {
+  id: number
+  name: string
+  slug: string
+  icon: string
+  banner: string
+  children: {
+    id: number
+    name: string
+    slug: string
+    children: {
+      id: number
+      name: string
+      slug: string
+    }[]
+  }[]
+}
+
+export async function getAllCategoriesHierarchy(): Promise<CategoryHierarchyItem[]> {
+  try {
+    const all = await db
+      .select()
+      .from(categories)
+      .orderBy(desc(categories.orderLevel), categories.name)
+
+    const level0 = all.filter((c) => !c.parentId || c.parentId === 0)
+    return level0.map((parent) => {
+      const level1 = all.filter((c) => c.parentId === parent.id)
+      return {
+        id: parent.id,
+        name: parent.name,
+        slug: parent.slug,
+        icon: parent.icon || "/assets/img/placeholder.jpg",
+        banner: parent.banner || "/assets/img/placeholder-rect.jpg",
+        children: level1.map((child) => {
+          const level2 = all.filter((c) => c.parentId === child.id)
+          return {
+            id: child.id,
+            name: child.name,
+            slug: child.slug,
+            children: level2.map((subChild) => ({
+              id: subChild.id,
+              name: subChild.name,
+              slug: subChild.slug,
+            })),
+          }
+        }),
+      }
+    })
+  } catch (err) {
+    console.warn("getAllCategoriesHierarchy fallback:", (err as Error).message)
+    return []
+  }
+}
+
+
 export async function createCategory(data: {
   name: string
   slug?: string
@@ -187,3 +243,51 @@ export async function updateCategory(
   }
   return null
 }
+
+export interface CustomerProductCategoryTree {
+  level0: { id: number; name: string; slug: string }[]
+  selected?: { id: number; name: string; slug: string; parentId: number | null }
+  parent?: { id: number; name: string; slug: string }
+  children: { id: number; name: string; slug: string }[]
+}
+
+export async function getCustomerProductsCategoryTree(categorySlug?: string): Promise<CustomerProductCategoryTree> {
+  try {
+    const all = await db.select().from(categories).orderBy(categories.name)
+    const level0 = all
+      .filter((c) => !c.parentId || c.parentId === 0)
+      .map((c) => ({ id: c.id, name: c.name, slug: c.slug }))
+
+    if (!categorySlug) {
+      return { level0, children: [] }
+    }
+
+    const selected = all.find((c) => c.slug === categorySlug)
+    if (!selected) {
+      return { level0, children: [] }
+    }
+
+    let parent: { id: number; name: string; slug: string } | undefined = undefined
+    if (selected.parentId) {
+      const parentRow = all.find((c) => c.id === selected.parentId)
+      if (parentRow) {
+        parent = { id: parentRow.id, name: parentRow.name, slug: parentRow.slug }
+      }
+    }
+
+    const children = all
+      .filter((c) => c.parentId === selected.id)
+      .map((c) => ({ id: c.id, name: c.name, slug: c.slug }))
+
+    return {
+      level0,
+      selected: { id: selected.id, name: selected.name, slug: selected.slug, parentId: selected.parentId },
+      parent,
+      children,
+    }
+  } catch (err) {
+    console.warn("getCustomerProductsCategoryTree fallback:", (err as Error).message)
+    return { level0: [], children: [] }
+  }
+}
+

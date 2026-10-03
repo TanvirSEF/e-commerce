@@ -1,12 +1,20 @@
 import React from "react"
-import { Metadata } from "next"
+import type { Metadata } from "next"
+import { getContactPageContent } from "@/services/contact-service"
 import { ContactUsView } from "./_components/contact-us-view"
 
-export const metadata: Metadata = {
-  title: "Contact Us | Active eCommerce CMS",
-  description: "Get in touch with customer service, headquarters address, phone numbers, and support inquiries.",
+export const dynamic = "force-dynamic"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const data = await getContactPageContent()
+  return {
+    title: data.metaTitle,
+    description: data.metaDescription,
+  }
 }
 
-export default function ContactUsPage() {
-  return <ContactUsView />
+export default async function ContactUsPage() {
+  const contactData = await getContactPageContent()
+
+  return <ContactUsView contactData={contactData} />
 }
