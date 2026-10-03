@@ -11,6 +11,12 @@ import {
   deleteSellerAddress,
   setDefaultSellerAddress,
   getSellerProductReviewDetails,
+  replySellerProductQuery,
+  createSellerTicket,
+  replySellerTicket,
+  getSellerTicketDetails,
+  getSellerConversationThread,
+  sendSellerConversationMessage,
 } from "@/services/seller-panel-service"
 import { submitSellerVerification } from "@/services/seller-service"
 
@@ -139,6 +145,95 @@ export async function fetchSellerProductReviewDetailsAction(productId: number) {
     const data = await getSellerProductReviewDetails(productId)
     revalidatePath("/seller/product-reviews")
     return { success: true, data }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+/* -------------------------- Product Queries Actions --------------------- */
+
+export async function replySellerProductQueryAction(id: number, replyText: string) {
+  const seller = await getCurrentSeller()
+  if (!seller) return { success: false, error: "Unauthorized" }
+  try {
+    await replySellerProductQuery(id, replyText, seller.shopName || "Merchant Seller")
+    revalidatePath("/seller/product-queries")
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+/* -------------------------- Support Ticket Actions ---------------------- */
+
+export async function createSellerTicketAction(data: {
+  subject: string
+  details: string
+  files?: string[]
+}) {
+  const seller = await getCurrentSeller()
+  if (!seller?.userId) return { success: false, error: "Unauthorized" }
+  try {
+    const created = await createSellerTicket(seller.userId, data)
+    revalidatePath("/seller/support")
+    return { success: true, data: created }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+export async function replySellerTicketAction(
+  ticketId: number,
+  replyText: string,
+  files?: string[]
+) {
+  const seller = await getCurrentSeller()
+  if (!seller?.userId) return { success: false, error: "Unauthorized" }
+  try {
+    const rep = await replySellerTicket(ticketId, seller.userId, replyText, files)
+    revalidatePath("/seller/support")
+    return { success: true, data: rep }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+export async function fetchSellerTicketDetailsAction(ticketId: number) {
+  const seller = await getCurrentSeller()
+  if (!seller?.userId) return { success: false, error: "Unauthorized", data: null }
+  try {
+    const data = await getSellerTicketDetails(ticketId, seller.userId)
+    revalidatePath("/seller/support")
+    return { success: true, data }
+  } catch (err) {
+    return { success: false, error: (err as Error).message, data: null }
+  }
+}
+
+/* -------------------------- Conversations Actions ----------------------- */
+
+export async function fetchSellerConversationThreadAction(conversationId: number) {
+  const seller = await getCurrentSeller()
+  if (!seller) return { success: false, error: "Unauthorized", data: null }
+  try {
+    const data = await getSellerConversationThread(conversationId, seller)
+    revalidatePath("/seller/conversations")
+    return { success: true, data }
+  } catch (err) {
+    return { success: false, error: (err as Error).message, data: null }
+  }
+}
+
+export async function sendSellerConversationMessageAction(
+  conversationId: number,
+  messageText: string
+) {
+  const seller = await getCurrentSeller()
+  if (!seller?.userId) return { success: false, error: "Unauthorized" }
+  try {
+    const msg = await sendSellerConversationMessage(conversationId, seller.userId, messageText)
+    revalidatePath("/seller/conversations")
+    return { success: true, data: msg }
   } catch (err) {
     return { success: false, error: (err as Error).message }
   }

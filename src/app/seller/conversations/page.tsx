@@ -1,20 +1,27 @@
 import React from "react"
-import { getSellerConversations, getConversationMessages } from "@/services/conversation-service"
+import { Metadata } from "next"
+import { redirect } from "next/navigation"
+import { getCurrentSeller, getSellerConversationsList } from "@/services/seller-panel-service"
 import { SellerConversationsView } from "./_components/seller-conversations-view"
 
-export const metadata = {
+export const dynamic = "force-dynamic"
+
+export const metadata: Metadata = {
   title: "Conversations | Seller Dashboard",
+  description: "Chat with prospective buyers and storefront customers",
 }
 
 export default async function SellerConversationsPage() {
-  const conversations = await getSellerConversations("active-fashion-outlet")
-  const initialMessages =
-    conversations.length > 0 ? await getConversationMessages(conversations[0].id) : []
+  const seller = await getCurrentSeller()
+  if (!seller) {
+    redirect("/seller/login")
+  }
+
+  const conversations = await getSellerConversationsList(seller)
 
   return (
-    <SellerConversationsView
-      initialConversations={conversations}
-      initialMessages={initialMessages}
-    />
+    <div className="aiz-user-panel p-4 md:p-6 space-y-4">
+      <SellerConversationsView initialConversations={conversations} />
+    </div>
   )
 }

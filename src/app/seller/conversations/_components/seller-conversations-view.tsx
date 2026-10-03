@@ -1,194 +1,166 @@
 "use client"
 
 import React, { useState } from "react"
-import {
-  MessageSquare,
-  Send,
-  User,
-  Search,
-} from "lucide-react"
-import { sendMessageAction } from "@/app/actions/ecommerce-actions"
-import type { ConversationItem, MessageItem } from "@/services/conversation-service"
+import Image from "next/image"
+import { MessageSquare, Loader2 } from "lucide-react"
+import { fetchSellerConversationThreadAction } from "@/app/actions/seller-actions"
+import type { SellerConversationRow, SellerConversationMessageItem } from "@/services/seller-panel-service"
+import { SellerConversationThread } from "./seller-conversation-thread"
 
 interface SellerConversationsViewProps {
-  initialConversations: ConversationItem[]
-  initialMessages: MessageItem[]
+  initialConversations: SellerConversationRow[]
 }
 
 export function SellerConversationsView({
   initialConversations,
-  initialMessages,
 }: SellerConversationsViewProps) {
-  const [conversations] = useState<ConversationItem[]>(initialConversations)
-  const [activeConvId, setActiveConvId] = useState<string>(
-    initialConversations[0]?.id || ""
-  )
-  const [messages, setMessages] = useState<MessageItem[]>(initialMessages)
-  const [text, setText] = useState("")
-  const [isSending, setIsSending] = useState(false)
-  const [search, setSearch] = useState("")
+  const [conversations, setConversations] = useState<SellerConversationRow[]>(initialConversations)
+  const [activeConvId, setActiveConvId] = useState<number | null>(null)
+  const [activeThreadData, setActiveThreadData] = useState<{
+    conversation: { id: number; title: string; partnerName: string; partnerAvatar: string | null }
+    messages: SellerConversationMessageItem[]
+  } | null>(null)
+  const [loadingThreadId, setLoadingThreadId] = useState<number | null>(null)
 
-  const activeConv = conversations.find((c) => c.id === activeConvId)
+  const handleOpenConversation = async (conv: SellerConversationRow) => {
+    setActiveConvId(conv.id)
+    setLoadingThreadId(conv.id)
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!text.trim() || !activeConvId) return
+    const res = await fetchSellerConversationThreadAction(conv.id)
+    setLoadingThreadId(null)
 
-    const newMsg: MessageItem = {
-      id: `msg-${Date.now()}`,
-      conversationId: activeConvId,
-      senderId: "seller",
-      senderName: "You (Seller)",
-      message: text.trim(),
-      isSender: true,
-      date: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    }
-
-    setMessages((prev) => [...prev, newMsg])
-    setText("")
-    setIsSending(true)
-
-    try {
-      await sendMessageAction({
-        conversationId: activeConvId,
-        senderId: "seller_01",
-        message: newMsg.message,
+    if (res.success && res.data?.conversation) {
+      setActiveThreadData({
+        conversation: res.data.conversation,
+        messages: res.data.messages,
       })
-    } finally {
-      setIsSending(false)
+      // Mark as read in state
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conv.id ? { ...c, isUnread: false } : c))
+      )
     }
   }
 
-  const filteredConversations = conversations.filter(
-    (c) =>
-      c.title.toLowerCase().includes(search.toLowerCase()) ||
-      c.customerName.toLowerCase().includes(search.toLowerCase())
-  )
+  const handleMessageSent = (lastMsg: string) => {
+    if (!activeConvId) return
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === activeConvId
+          ? { ...c, lastMessage: lastMsg, lastMessageAt: new Date().toISOString() }
+          : c
+      )
+    )
+  }
 
+  const formatDateTime = (iso: string) => {
+    try {
+      const d = new Date(iso)
+      const hours = String(d.getHours()).padStart(2, "0")
+      const minutes = String(d.getMinutes()).padStart(2, "0")
+      const day = String(d.getDate()).padStart(2, "0")
+      const month = String(d.getMonth() + 1).padStart(2, "0")
+      const year = d.getFullYear()
+      return `${hours}:${minutes} ${day}-${month}-${year}`
+    } catch {
+      return iso
+    }
+  }
+
+  // Active chat thread view matching conversations/show.blade.php
+  if (activeThreadData && activeConvId) {
+    return (
+      <SellerConversationThread
+        conversationId={activeThreadData.conversation.id}
+        title={activeThreadData.conversation.title}
+        partnerName={activeThreadData.conversation.partnerName}
+        partnerAvatar={activeThreadData.conversation.partnerAvatar}
+        initialMessages={activeThreadData.messages}
+        onBack={() => {
+          setActiveConvId(null)
+          setActiveThreadData(null)
+        }}
+        onMessageSent={handleMessageSent}
+      />
+    )
+  }
+
+  // Conversations index list matching resources/views/seller/conversations/index.blade.php
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-slate-800">Customer Inquiries & Messages</h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Communicate directly with buyers who have questions about your products
-        </p>
+      {/* Titlebar matching aiz-titlebar */}
+      <div className="mt-2 mb-4">
+        <h4 className="text-xl font-bold text-gray-800">Conversations</h4>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden flex flex-col md:flex-row min-h-[580px]">
-        {/* Left: Customer conversations list */}
-        <div className="w-full md:w-80 border-r border-slate-200 flex flex-col shrink-0">
-          <div className="p-3.5 border-b border-slate-100 bg-slate-50/50">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search inquiries..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-[#d43533]"
-              />
+      <div className="card bg-white border border-gray-200 rounded-sm shadow-xs overflow-hidden">
+        <div className="p-4 md:p-6">
+          {conversations.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <MessageSquare className="w-10 h-10 mx-auto text-gray-300 mb-2" />
+              <p className="text-sm font-medium">No conversations found</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Messages from customers regarding your shop products will appear here.
+              </p>
             </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-            {filteredConversations.map((c) => {
-              const isActive = c.id === activeConvId
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setActiveConvId(c.id)}
-                  className={`w-full text-left p-3.5 transition-colors flex items-start gap-3 ${
-                    isActive ? "bg-red-50/60 border-l-4 border-[#d43533]" : "hover:bg-slate-50"
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
-                    <User className="w-4 h-4 text-slate-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1 mb-0.5">
-                      <span className="font-bold text-xs text-slate-900 truncate">
-                        {c.customerName}
-                      </span>
-                      <span className="text-[10px] text-slate-400 shrink-0">{c.lastMessageAt}</span>
-                    </div>
-                    <div className="text-[11px] text-slate-700 font-medium truncate">{c.title}</div>
-                    <div className="text-[11px] text-slate-400 truncate mt-0.5">{c.lastMessage}</div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Right: Message Thread */}
-        <div className="flex-1 flex flex-col bg-[#fcfcfd]">
-          {activeConv ? (
-            <>
-              {/* Header */}
-              <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800">{activeConv.title}</h3>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
-                    <span>Customer:</span>
-                    <span className="font-semibold text-slate-800">{activeConv.customerName}</span>
-                    {activeConv.customerEmail && <span>({activeConv.customerEmail})</span>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Thread Messages */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-3">
-                {messages.map((m) => {
-                  const isMe = m.senderId === "seller" || m.isSender
-                  return (
-                    <div
-                      key={m.id}
-                      className={`flex flex-col max-w-[80%] ${
-                        isMe ? "ml-auto items-end" : "mr-auto items-start"
-                      }`}
-                    >
-                      <div className="text-[10px] text-slate-400 mb-0.5 px-1">
-                        {m.senderName} • {m.date}
-                      </div>
-                      <div
-                        className={`p-3 rounded-lg text-xs leading-relaxed ${
-                          isMe
-                            ? "bg-[#d43533] text-white rounded-br-xs"
-                            : "bg-white border border-slate-200 text-slate-800 rounded-bl-xs shadow-xs"
-                        }`}
-                      >
-                        {m.message}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Reply Form */}
-              <form onSubmit={handleSend} className="p-3 bg-white border-t border-slate-200 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Reply to customer inquiry..."
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-slate-300 rounded text-xs focus:outline-none focus:border-[#d43533]"
-                />
-                <button
-                  type="submit"
-                  disabled={isSending || !text.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded shadow-sm disabled:opacity-50 transition-colors"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  Reply
-                </button>
-              </form>
-            </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 text-xs">
-              <MessageSquare className="w-10 h-10 mb-2 stroke-1 text-slate-300" />
-              <p className="font-semibold text-slate-600">Select an inquiry</p>
-              <p className="mt-1">Customer questions about your shop products will appear here.</p>
-            </div>
+            <ul className="divide-y divide-gray-100">
+              {conversations.map((c) => {
+                const isLoading = loadingThreadId === c.id
+                return (
+                  <li
+                    key={c.id}
+                    onClick={() => handleOpenConversation(c)}
+                    className="py-4 first:pt-0 last:pb-0 hover:bg-gray-50/70 transition-colors px-2 -mx-2 rounded cursor-pointer group"
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      {/* Avatar */}
+                      <div className="shrink-0">
+                        <div className="w-10 h-10 relative rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+                          <Image
+                            src={c.partnerAvatar || "/assets/img/avatar-placeholder.png"}
+                            alt={c.partnerName}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Partner Name & Date */}
+                      <div className="sm:w-52 shrink-0">
+                        <p className="text-xs">
+                          <span className="font-semibold text-gray-900 block">
+                            {c.partnerName}
+                          </span>
+                          <span className="text-[11px] text-gray-400 block mt-0.5 font-mono">
+                            {formatDateTime(c.lastMessageAt)}
+                          </span>
+                        </p>
+                      </div>
+
+                      {/* Title & Preview */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-900 group-hover:text-[#d43533] transition-colors truncate">
+                            {c.title}
+                          </span>
+                          {c.isUnread && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#d43533] text-white shrink-0">
+                              New
+                            </span>
+                          )}
+                          {isLoading && (
+                            <Loader2 className="w-3 h-3 animate-spin text-[#d43533]" />
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 truncate">
+                          {c.lastMessage}
+                        </p>
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </div>
       </div>

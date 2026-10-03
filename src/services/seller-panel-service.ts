@@ -12,8 +12,13 @@ import {
   customerAddresses,
   reviews,
   users,
+  productQueries,
+  tickets,
+  ticketReplies,
+  conversations,
+  messages,
 } from "@/db/schema"
-import { and, desc, eq, or, sql, ilike } from "drizzle-orm"
+import { and, desc, asc, eq, or, sql, ilike } from "drizzle-orm"
 import { getServerSession } from "@/lib/auth/session-helper"
 import { getSellerCommissionSettings } from "@/services/settings-service"
 
@@ -585,4 +590,451 @@ export async function getSellerProductReviewDetails(
     })),
   }
 }
+
+/* -------------------------- Product Queries ---------------------------- */
+
+export interface SellerProductQueryRow {
+  id: number
+  productId: number | null
+  productName: string
+  productSlug: string
+  userId: string | null
+  userName: string
+  userAvatar: string | null
+  question: string
+  reply: string | null
+  repliedBy: string | null
+  status: string
+  createdAt: string
+}
+
+export async function getSellerProductQueries(seller: CurrentSeller): Promise<SellerProductQueryRow[]> {
+  const sellerProducts = await db
+    .select({ id: products.id, name: products.name, slug: products.slug })
+    .from(products)
+    .where(
+      seller.userId
+        ? or(eq(products.shopId, seller.shopId), eq(products.userId, seller.userId))
+        : eq(products.shopId, seller.shopId)
+    )
+
+  const productIds = sellerProducts.map((p) => p.id)
+  const productNames = sellerProducts.map((p) => p.name)
+
+  let rows: (typeof productQueries.$inferSelect)[] = []
+  if (productIds.length > 0) {
+    rows = await db
+      .select()
+      .from(productQueries)
+      .where(
+        or(
+          sql`${productQueries.productId} IN ${productIds}`,
+          sql`${productQueries.productName} IN ${productNames}`
+        )
+      )
+      .orderBy(desc(productQueries.createdAt))
+  }
+
+  if (rows.length === 0) {
+    rows = await db
+      .select()
+      .from(productQueries)
+      .orderBy(desc(productQueries.createdAt))
+      .limit(20)
+  }
+
+  return rows.map((r) => ({
+    id: r.id,
+    productId: r.productId,
+    productName: r.productName,
+    productSlug: r.productSlug,
+    userId: r.userId,
+    userName: r.userName || "Customer",
+    userAvatar: "/assets/img/avatar-placeholder.png",
+    question: r.question,
+    reply: r.reply,
+    repliedBy: r.repliedBy,
+    status: r.status,
+    createdAt: r.createdAt.toISOString(),
+  }))
+}
+
+export async function replySellerProductQuery(id: number, replyText: string, repliedBy: string) {
+  await db
+    .update(productQueries)
+    .set({
+      reply: replyText.trim(),
+      repliedBy,
+      status: "approved",
+      updatedAt: new Date(),
+    })
+    .where(eq(productQueries.id, id))
+  return { success: true }
+}
+
+/* -------------------------- Support Tickets ---------------------------- */
+
+export interface SellerSupportTicketRow {
+  id: number
+  code: string
+  subject: string
+  details: string
+  files: string[]
+  status: "pending" | "open" | "solved"
+  createdAt: string
+  replyCount: number
+}
+
+export async function getSellerSupportTickets(userId: string): Promise<SellerSupportTicketRow[]> {
+  const rows = await db
+    .select({
+      id: tickets.id,
+      code: tickets.code,
+      subject: tickets.subject,
+      details: tickets.details,
+      files: tickets.files,
+      status: tickets.status,
+      createdAt: tickets.createdAt,
+      replyCount: sql<number>`count(${ticketReplies.id})::int`,
+    })
+    .from(tickets)
+    .leftJoin(ticketReplies, eq(ticketReplies.ticketId, tickets.id))
+    .where(eq(tickets.userId, userId))
+    .groupBy(tickets.id)
+    .orderBy(desc(tickets.createdAt))
+
+  return rows.map((r) => ({
+    id: r.id,
+    code: r.code,
+    subject: r.subject,
+    details: r.details,
+    files: r.files || [],
+    status: (r.status as "pending" | "open" | "solved") || "pending",
+    createdAt: r.createdAt.toISOString(),
+    replyCount: r.replyCount || 0,
+  }))
+}
+
+export interface SellerTicketReplyItem {
+  id: number
+  userId: string
+  userName: string
+  userAvatar: string | null
+  reply: string
+  files: string[]
+  createdAt: string
+}
+
+export interface SellerTicketDetailData {
+  ticket: {
+    id: number
+    code: string
+    userId: string
+    userName: string
+    userAvatar: string | null
+    subject: string
+    details: string
+    files: string[]
+    status: "pending" | "open" | "solved"
+    createdAt: string
+  } | null
+  replies: SellerTicketReplyItem[]
+}
+
+export async function getSellerTicketDetails(ticketId: number, userId: string): Promise<SellerTicketDetailData> {
+  const [t] = await db
+    .select({
+      id: tickets.id,
+      code: tickets.code,
+      userId: tickets.userId,
+      userName: users.name,
+      userAvatar: users.image,
+      subject: tickets.subject,
+      details: tickets.details,
+      files: tickets.files,
+      status: tickets.status,
+      createdAt: tickets.createdAt,
+    })
+    .from(tickets)
+    .leftJoin(users, eq(tickets.userId, users.id))
+    .where(and(eq(tickets.id, ticketId), eq(tickets.userId, userId)))
+    .limit(1)
+
+  if (!t) return { ticket: null, replies: [] }
+
+  await db.update(tickets).set({ clientViewed: true }).where(eq(tickets.id, ticketId))
+
+  const repRows = await db
+    .select({
+      id: ticketReplies.id,
+      userId: ticketReplies.userId,
+      userName: users.name,
+      userAvatar: users.image,
+      reply: ticketReplies.reply,
+      files: ticketReplies.files,
+      createdAt: ticketReplies.createdAt,
+    })
+    .from(ticketReplies)
+    .leftJoin(users, eq(ticketReplies.userId, users.id))
+    .where(eq(ticketReplies.ticketId, ticketId))
+    .orderBy(asc(ticketReplies.createdAt))
+
+  return {
+    ticket: {
+      ...t,
+      status: (t.status as "pending" | "open" | "solved") || "pending",
+      files: t.files || [],
+      createdAt: t.createdAt.toISOString(),
+      userName: t.userName || "Seller",
+    },
+    replies: repRows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      userName: r.userName || "Support Staff",
+      userAvatar: r.userAvatar,
+      reply: r.reply,
+      files: r.files || [],
+      createdAt: r.createdAt.toISOString(),
+    })),
+  }
+}
+
+export async function createSellerTicket(
+  userId: string,
+  data: { subject: string; details: string; files?: string[] }
+) {
+  const code = String(Math.floor(100000 + Math.random() * 900000))
+  const [inserted] = await db
+    .insert(tickets)
+    .values({
+      code,
+      userId,
+      subject: data.subject.trim(),
+      details: data.details.trim(),
+      files: data.files || [],
+      status: "pending",
+      viewed: false,
+      clientViewed: true,
+    })
+    .returning()
+  return inserted
+}
+
+export async function replySellerTicket(
+  ticketId: number,
+  userId: string,
+  replyText: string,
+  files?: string[]
+) {
+  const [rep] = await db
+    .insert(ticketReplies)
+    .values({
+      ticketId,
+      userId,
+      reply: replyText.trim(),
+      files: files || [],
+    })
+    .returning()
+
+  await db
+    .update(tickets)
+    .set({
+      status: "pending",
+      viewed: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(tickets.id, ticketId))
+
+  return rep
+}
+
+/* ---------------------------- Conversations ---------------------------- */
+
+export interface SellerConversationRow {
+  id: number
+  title: string
+  partnerId: string | null
+  partnerName: string
+  partnerAvatar: string | null
+  lastMessage: string
+  lastMessageAt: string
+  isUnread: boolean
+}
+
+export async function getSellerConversationsList(seller: CurrentSeller): Promise<SellerConversationRow[]> {
+  const ownership = seller.userId
+    ? or(
+        eq(conversations.shopId, seller.shopId),
+        eq(conversations.receiverId, seller.userId),
+        eq(conversations.senderId, seller.userId)
+      )
+    : eq(conversations.shopId, seller.shopId)
+
+  const convRows = await db
+    .select({
+      id: conversations.id,
+      title: conversations.title,
+      senderId: conversations.senderId,
+      receiverId: conversations.receiverId,
+      shopId: conversations.shopId,
+      lastMessageAt: conversations.lastMessageAt,
+      createdAt: conversations.createdAt,
+    })
+    .from(conversations)
+    .where(ownership)
+    .orderBy(desc(conversations.lastMessageAt))
+
+  const results: SellerConversationRow[] = []
+
+  for (const c of convRows) {
+    const isSellerSender = seller.userId && c.senderId === seller.userId
+    const partnerId = isSellerSender ? c.receiverId : c.senderId
+
+    let partnerName = "Customer"
+    let partnerAvatar: string | null = null
+    if (partnerId) {
+      const [u] = await db
+        .select({ name: users.name, image: users.image })
+        .from(users)
+        .where(eq(users.id, partnerId))
+        .limit(1)
+      if (u) {
+        partnerName = u.name
+        partnerAvatar = u.image
+      }
+    }
+
+    const latestMsgs = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, c.id))
+      .orderBy(desc(messages.createdAt))
+      .limit(1)
+
+    const latest = latestMsgs[0]
+    const isUnread = latest
+      ? !latest.viewed && seller.userId !== null && latest.senderId !== seller.userId
+      : false
+
+    results.push({
+      id: c.id,
+      title: c.title,
+      partnerId,
+      partnerName,
+      partnerAvatar,
+      lastMessage: latest ? latest.message : "Inquiry",
+      lastMessageAt: (latest ? latest.createdAt : c.lastMessageAt).toISOString(),
+      isUnread,
+    })
+  }
+
+  return results
+}
+
+export interface SellerConversationMessageItem {
+  id: number
+  conversationId: number
+  senderId: string
+  senderName: string
+  senderAvatar: string | null
+  message: string
+  isSelf: boolean
+  createdAt: string
+}
+
+export async function getSellerConversationThread(
+  conversationId: number,
+  seller: CurrentSeller
+): Promise<{
+  conversation: { id: number; title: string; partnerName: string; partnerAvatar: string | null } | null
+  messages: SellerConversationMessageItem[]
+}> {
+  const [c] = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1)
+  if (!c) return { conversation: null, messages: [] }
+
+  const isSellerSender = seller.userId && c.senderId === seller.userId
+  const partnerId = isSellerSender ? c.receiverId : c.senderId
+
+  let partnerName = "Customer"
+  let partnerAvatar: string | null = null
+  if (partnerId) {
+    const [u] = await db
+      .select({ name: users.name, image: users.image })
+      .from(users)
+      .where(eq(users.id, partnerId))
+      .limit(1)
+    if (u) {
+      partnerName = u.name
+      partnerAvatar = u.image
+    }
+  }
+
+  if (seller.userId) {
+    await db
+      .update(messages)
+      .set({ viewed: true })
+      .where(and(eq(messages.conversationId, conversationId), sql`${messages.senderId} != ${seller.userId}`))
+  }
+
+  const msgRows = await db
+    .select({
+      id: messages.id,
+      conversationId: messages.conversationId,
+      senderId: messages.senderId,
+      message: messages.message,
+      createdAt: messages.createdAt,
+      senderName: users.name,
+      senderAvatar: users.image,
+    })
+    .from(messages)
+    .leftJoin(users, eq(messages.senderId, users.id))
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(asc(messages.createdAt))
+
+  return {
+    conversation: {
+      id: c.id,
+      title: c.title,
+      partnerName,
+      partnerAvatar,
+    },
+    messages: msgRows.map((m) => {
+      const isSelf = seller.userId ? m.senderId === seller.userId : false
+      return {
+        id: m.id,
+        conversationId: m.conversationId,
+        senderId: m.senderId,
+        senderName: isSelf ? (seller.shopName || "You") : (m.senderName || partnerName),
+        senderAvatar: isSelf ? null : (m.senderAvatar || partnerAvatar),
+        message: m.message,
+        isSelf,
+        createdAt: m.createdAt.toISOString(),
+      }
+    }),
+  }
+}
+
+export async function sendSellerConversationMessage(
+  conversationId: number,
+  senderId: string,
+  messageText: string
+) {
+  const [inserted] = await db
+    .insert(messages)
+    .values({
+      conversationId,
+      senderId,
+      message: messageText.trim(),
+      viewed: false,
+    })
+    .returning()
+
+  await db
+    .update(conversations)
+    .set({ lastMessageAt: new Date() })
+    .where(eq(conversations.id, conversationId))
+
+  return inserted
+}
+
 
