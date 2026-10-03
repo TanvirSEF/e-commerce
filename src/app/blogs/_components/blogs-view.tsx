@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import Link from "next/link"
-import { Search, Calendar, User, ArrowRight, BookOpen } from "lucide-react"
-import { SeedBlog, SeedBlogCategory } from "@/db/seed/data"
+import Image from "next/image"
+import { Search, ChevronRight, ArrowRight } from "lucide-react"
+import type { SeedBlog, SeedBlogCategory } from "@/db/seed/data"
 
 interface BlogsViewProps {
   initialBlogs: SeedBlog[]
@@ -11,101 +12,115 @@ interface BlogsViewProps {
   recentBlogs: SeedBlog[]
 }
 
-export function BlogsView({ initialBlogs, categories, recentBlogs }: BlogsViewProps) {
+export function BlogsView({ initialBlogs = [], categories = [], recentBlogs = [] }: BlogsViewProps) {
   const [search, setSearch] = useState("")
-  const [selectedCat, setSelectedCat] = useState<string | null>(null)
+  const [selectedCats, setSelectedCats] = useState<string[]>([])
+
+  const handleToggleCategory = (catSlug: string) => {
+    setSelectedCats((prev) =>
+      prev.includes(catSlug) ? prev.filter((s) => s !== catSlug) : [...prev, catSlug]
+    )
+  }
 
   const filteredBlogs = initialBlogs.filter((b) => {
-    if (selectedCat && b.categorySlug !== selectedCat) return false
+    if (selectedCats.length > 0 && !selectedCats.includes(b.categorySlug)) {
+      return false
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
-      return b.title.toLowerCase().includes(q) || b.shortDescription.toLowerCase().includes(q)
+      return (
+        b.title.toLowerCase().includes(q) ||
+        b.shortDescription.toLowerCase().includes(q) ||
+        (b.categoryName && b.categoryName.toLowerCase().includes(q))
+      )
     }
     return true
   })
 
   return (
-    <div className="bg-[#f2f3f8] min-h-screen py-6">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <section className="min-h-screen bg-gray-50 py-8">
+      <div className="mx-auto max-w-[1240px] px-4">
+        {/* Breadcrumb Header Bar (1:1 with listing.blade.php) */}
+        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Our Blogs</h1>
-            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
-              <Link href="/" className="hover:text-primary transition-colors">
-                Home
-              </Link>
-              <span>/</span>
-              <span className="text-gray-800 font-semibold">&ldquo;Blog&rdquo;</span>
-            </div>
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+              Blogs
+            </h1>
           </div>
+          <nav className="flex items-center gap-1.5 text-xs text-gray-500">
+            <Link href="/" className="transition-colors hover:text-[#d43533]">
+              Home
+            </Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="font-semibold text-gray-800">&quot;Blog&quot;</span>
+          </nav>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Articles Stream */}
-          <div className="lg:col-span-3 space-y-6">
+        {/* 2-Column Layout: Main Content (col-xl-9) + Sidebar (col-xl-3) */}
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* Main Blogs Stream */}
+          <div className="flex-1">
             {filteredBlogs.length === 0 ? (
-              <div className="bg-white rounded border border-gray-200 p-12 text-center">
-                <BookOpen className="size-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm">No blog posts found matching your query.</p>
+              <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-xs">
+                <h3 className="text-base font-bold text-gray-700">No Blog Posts Found</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Try adjusting your search keywords or category filters.
+                </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 {filteredBlogs.map((blog) => (
                   <article
                     key={blog.id}
-                    className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group"
+                    className="group flex flex-col overflow-hidden border border-gray-200 bg-white p-3.5 shadow-none transition-all duration-300 hover:shadow-md"
                   >
-                    {/* Banner Thumbnail */}
+                    {/* Banner Image */}
                     <Link
                       href={`/blog/${blog.slug}`}
-                      className="block h-48 overflow-hidden bg-gray-100 relative"
+                      className="relative block h-[180px] w-full overflow-hidden bg-gray-100"
                     >
-                      <img
-                        src={blog.banner}
+                      <Image
+                        src={blog.banner || "/assets/img/placeholder-rect.jpg"}
                         alt={blog.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
                       />
-                      <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded text-[11px] font-bold bg-primary text-white shadow-xs">
-                        {blog.categoryName}
-                      </span>
                     </Link>
 
-                    {/* Content */}
-                    <div className="p-5 flex-1 flex flex-col justify-between">
+                    {/* Blog Content */}
+                    <div className="flex flex-1 flex-col justify-between pt-3 pb-1">
                       <div>
-                        {/* Meta */}
-                        <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-2">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="size-3" />
-                            {blog.date}
-                          </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <User className="size-3" />
-                            {blog.author}
-                          </span>
-                        </div>
-
                         {/* Title */}
-                        <h2 className="font-bold text-sm sm:text-base text-gray-900 group-hover:text-primary transition-colors line-clamp-2 mb-2">
+                        <h2 className="mb-2 h-[42px] line-clamp-2 text-sm font-bold text-gray-900 transition-colors group-hover:text-[#d43533] sm:text-base">
                           <Link href={`/blog/${blog.slug}`}>{blog.title}</Link>
                         </h2>
 
                         {/* Excerpt */}
-                        <p className="text-xs text-gray-500 line-clamp-3 leading-relaxed mb-4">
+                        <p className="mb-3 h-[58px] line-clamp-3 text-xs leading-relaxed text-gray-500">
                           {blog.shortDescription}
                         </p>
+
+                        {/* Meta */}
+                        <div className="mb-1 text-[11px] text-gray-400">
+                          {blog.date}
+                        </div>
+                        {blog.categoryName && (
+                          <div className="mb-3 text-[11px] font-semibold text-[#3490f3]">
+                            {blog.categoryName}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Read Link */}
-                      <Link
-                        href={`/blog/${blog.slug}`}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline mt-auto pt-3 border-t border-gray-100"
-                      >
-                        <span>Read Full Blog</span>
-                        <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
-                      </Link>
+                      {/* Read Full Blog Action Link */}
+                      <div className="mt-3 border-t border-gray-100 pt-3">
+                        <Link
+                          href={`/blog/${blog.slug}`}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#d43533] transition-colors hover:text-[#9d1b1a]"
+                        >
+                          <span>Read Full Blog</span>
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </Link>
+                      </div>
                     </div>
                   </article>
                 ))}
@@ -113,79 +128,82 @@ export function BlogsView({ initialBlogs, categories, recentBlogs }: BlogsViewPr
             )}
           </div>
 
-          {/* Right Sidebar */}
-          <div className="space-y-6">
+          {/* Right Sidebar (col-xl-3) */}
+          <div className="w-full shrink-0 space-y-5 lg:w-[280px]">
             {/* Search Box */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">
-                Search Articles
-              </h3>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+            <div className="border border-gray-200 bg-white p-3.5">
+              <div className="relative flex">
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Keywords..."
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded focus:border-primary focus:outline-none"
+                  placeholder="Search..."
+                  className="w-full border border-gray-200 py-2.5 pr-9 pl-3 text-xs focus:border-[#d43533] focus:outline-none"
                 />
+                <button
+                  type="button"
+                  className="absolute top-1/2 right-2.5 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label="Search blogs"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            {/* Categories */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">
-                Blog Categories
-              </h3>
-              <div className="space-y-1 text-xs">
-                <button
-                  onClick={() => setSelectedCat(null)}
-                  className={`w-full text-left px-2.5 py-1.5 rounded transition-colors ${
-                    selectedCat === null
-                      ? "bg-primary text-white font-bold"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  All Categories
-                </button>
-                {categories.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedCat(c.slug)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded transition-colors ${
-                      selectedCat === c.slug
-                        ? "bg-primary text-white font-bold"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
+            {/* Categories Checkbox Filter Box */}
+            <div className="border border-gray-200 bg-white">
+              <div className="border-b border-gray-100 p-3.5">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                  Categories
+                </h3>
+              </div>
+              <div className="space-y-2 p-3.5 text-xs">
+                {categories.map((cat) => (
+                  <label
+                    key={cat.id}
+                    className="flex cursor-pointer items-center gap-2 text-gray-700 transition-colors hover:text-[#d43533]"
                   >
-                    {c.name}
-                  </button>
+                    <input
+                      type="checkbox"
+                      checked={selectedCats.includes(cat.slug)}
+                      onChange={() => handleToggleCategory(cat.slug)}
+                      className="h-3.5 w-3.5 rounded border-gray-300 text-[#d43533] focus:ring-[#d43533]"
+                    />
+                    <span className="truncate">{cat.name}</span>
+                  </label>
                 ))}
               </div>
             </div>
 
-            {/* Recent Posts */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3">
-                Recent Posts
-              </h3>
+            {/* Recent Posts Box */}
+            <div className="border border-gray-200 bg-white p-3.5">
+              <div className="mb-3 border-b border-gray-100 pb-2">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                  Recent Posts
+                </h3>
+              </div>
               <div className="space-y-3">
                 {recentBlogs.map((rb) => (
                   <Link
                     key={rb.id}
                     href={`/blog/${rb.slug}`}
-                    className="flex items-center gap-3 group"
+                    className="group flex items-start gap-2.5"
                   >
-                    <img
-                      src={rb.banner}
-                      alt={rb.title}
-                      className="size-14 rounded object-cover border border-gray-100 shrink-0"
-                    />
-                    <div>
-                      <h4 className="text-xs font-semibold text-gray-800 group-hover:text-primary transition-colors line-clamp-2">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden bg-gray-100">
+                      <Image
+                        src={rb.banner || "/assets/img/placeholder-rect.jpg"}
+                        alt={rb.title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="line-clamp-2 text-xs font-semibold text-gray-800 transition-colors group-hover:text-[#d43533]">
                         {rb.title}
                       </h4>
-                      <span className="text-[10px] text-gray-400 mt-0.5 block">{rb.date}</span>
+                      <span className="mt-1 block text-[10px] text-gray-400">
+                        {rb.date}
+                      </span>
                     </div>
                   </Link>
                 ))}
@@ -194,6 +212,8 @@ export function BlogsView({ initialBlogs, categories, recentBlogs }: BlogsViewPr
           </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
+
+export default BlogsView

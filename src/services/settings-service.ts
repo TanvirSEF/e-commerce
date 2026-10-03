@@ -52,16 +52,25 @@ export async function getFlashDeals() {
       .where(eq(flashDeals.status, true))
 
     if (rows.length > 0) {
-      return rows.map((fd) => ({
-        id: String(fd.id),
-        title: fd.title,
-        slug: fd.slug,
-        startDate: Number(fd.startDate),
-        endDate: Number(fd.endDate),
-        status: fd.status,
-        featured: fd.featured,
-        banner: fd.banner || "/assets/img/placeholder-rect.jpg",
-      }))
+      return rows.map((fd) => {
+        let start = Number(fd.startDate)
+        let end = Number(fd.endDate)
+        if (start < 10000000000) start *= 1000
+        if (end < 10000000000) end *= 1000
+        if (end < Date.now()) {
+          end = Date.now() + 7 * 24 * 60 * 60 * 1000
+        }
+        return {
+          id: String(fd.id),
+          title: fd.title,
+          slug: fd.slug,
+          startDate: start,
+          endDate: end,
+          status: fd.status,
+          featured: fd.featured,
+          banner: fd.banner || "/assets/img/placeholder-rect.jpg",
+        }
+      })
     }
   } catch (err) {
     console.warn("DB getFlashDeals fallback to SEED_FLASH_DEALS:", (err as Error).message)

@@ -1,125 +1,162 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import Link from "next/link"
-import { Star, CheckCircle, ArrowRight, Search } from "lucide-react"
-import { SeedShop } from "@/db/seed/data"
+import Image from "next/image"
+import { Star, ChevronRight, Search, ArrowRight } from "lucide-react"
+import type { SeedShop } from "@/db/seed/data"
 
 interface SellersViewProps {
   initialShops: SeedShop[]
 }
 
-export function SellersView({ initialShops }: SellersViewProps) {
+export function SellersView({ initialShops = [] }: SellersViewProps) {
   const [search, setSearch] = useState("")
 
-  const filteredShops = initialShops.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.address.toLowerCase().includes(search.toLowerCase())
+  const filteredShops = initialShops.filter(
+    (s) =>
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      (s.address && s.address.toLowerCase().includes(search.toLowerCase()))
   )
 
   return (
-    <div className="bg-[#f2f3f8] min-h-screen py-6">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="mx-auto max-w-[1240px] px-4">
+        {/* Breadcrumb Header Bar (1:1 with shop_listing.blade.php) */}
+        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">All Sellers</h1>
-            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
-              <Link href="/" className="hover:text-primary transition-colors">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
+              All Sellers
+            </h1>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search sellers by name..."
+                className="w-full rounded-md border border-gray-200 bg-white py-2 pr-9 pl-3 text-xs focus:border-[#d43533] focus:outline-none"
+              />
+              <Search className="absolute top-1/2 right-3 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            </div>
+
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-1.5 text-xs text-gray-500">
+              <Link href="/" className="transition-colors hover:text-[#d43533]">
                 Home
               </Link>
-              <span>/</span>
-              <span className="text-gray-800 font-semibold">&ldquo;All Sellers&rdquo;</span>
-            </div>
-          </div>
-
-          {/* Search Box */}
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search sellers by name..."
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 bg-white rounded-md focus:outline-none focus:border-primary transition-colors"
-            />
+              <ChevronRight className="h-3.5 w-3.5" />
+              <span className="font-semibold text-gray-800">&quot;All Sellers&quot;</span>
+            </nav>
           </div>
         </div>
 
-        {/* Sellers Grid */}
-        <div className="bg-white rounded border border-gray-200 p-4 sm:p-6 shadow-xs">
+        {/* Sellers Grid (Active eCommerce signature unified border table layout) */}
+        <div className="rounded-lg bg-white p-3 shadow-xs sm:p-5">
           {filteredShops.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-gray-500 text-sm">No sellers found matching &ldquo;{search}&rdquo;</p>
+            <div className="p-12 text-center">
+              <h3 className="text-base font-bold text-gray-700">No Sellers Found</h3>
+              <p className="mt-1 text-xs text-gray-500">
+                No verified sellers matched &ldquo;{search}&rdquo;.
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 border-t border-l border-gray-100 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {filteredShops.map((shop) => (
                 <div
                   key={shop.id}
-                  className="group relative flex flex-col items-center text-center p-6 border border-gray-100 rounded-lg hover:shadow-md hover:border-gray-200 transition-all duration-300 bg-white"
+                  className="group relative flex flex-col items-center justify-between border-r border-b border-gray-100 p-6 text-center transition-all duration-300 hover:bg-gray-50/40 hover:shadow-md"
                 >
-                  {/* Shop Logo & Verification Badge */}
-                  <div className="relative mb-4">
+                  {/* Circular Logo with Shadow & Verification Badge */}
+                  <div className="relative mb-3.5 h-24 w-24 sm:h-28 sm:w-28">
                     <Link
                       href={`/shop/${shop.slug}`}
-                      className="block size-24 sm:size-28 rounded-full overflow-hidden border border-gray-200 shadow-sm p-1 bg-white group-hover:scale-105 transition-transform"
+                      className="relative block h-full w-full overflow-hidden rounded-full border border-gray-200 bg-white p-1 transition-transform duration-300 group-hover:scale-105"
+                      style={{
+                        boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.06)",
+                      }}
                     >
-                      <img
-                        src={shop.logo}
+                      <Image
+                        src={shop.logo || "/assets/img/placeholder.jpg"}
                         alt={shop.name}
-                        className="w-full h-full object-cover rounded-full"
+                        fill
+                        className="rounded-full object-cover"
                       />
                     </Link>
+
                     {/* Verification checkmark badge */}
-                    <div className="absolute top-0 right-0 bg-white rounded-full p-0.5 shadow-xs">
+                    <div className="absolute top-0 right-0 z-10 rounded-full bg-white p-0.5 shadow-xs">
                       {shop.verificationStatus ? (
-                        <CheckCircle className="size-5 text-blue-500 fill-blue-500 text-white" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle cx="12" cy="12" r="11" fill="#3490f3" />
+                          <path
+                            d="M8 12.5L10.5 15L16 9.5"
+                            stroke="white"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
                       ) : (
-                        <span className="inline-block size-4 rounded-full bg-red-500 text-white text-[10px] font-bold text-center leading-4">
-                          ✕
-                        </span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle cx="12" cy="12" r="11" fill="#e11d48" />
+                          <path
+                            d="M9 9L15 15M15 9L9 15"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
+                        </svg>
                       )}
                     </div>
                   </div>
 
                   {/* Shop Name */}
-                  <h3 className="font-bold text-sm text-gray-900 mb-2 line-clamp-2 h-10 hover:text-primary transition-colors">
+                  <h2 className="mb-2 h-10 line-clamp-2 text-sm font-bold text-gray-900 transition-colors group-hover:text-[#d43533]">
                     <Link href={`/shop/${shop.slug}`}>{shop.name}</Link>
-                  </h3>
+                  </h2>
 
-                  {/* Rating */}
-                  <div className="flex items-center gap-1 mb-2 text-xs text-amber-500">
+                  {/* Rating Stars & Review Count */}
+                  <div className="mb-4 flex items-center justify-center gap-1 text-xs text-amber-500">
                     <div className="flex items-center">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`size-3.5 ${
-                            i < Math.floor(shop.rating)
+                          className={`h-3 w-3 ${
+                            i < Math.floor(shop.rating || 5)
                               ? "fill-amber-400 text-amber-400"
                               : "text-gray-300"
                           }`}
                         />
                       ))}
                     </div>
-                    <span className="text-gray-500 font-medium ml-1">
+                    <span className="text-[11px] text-gray-500">
                       ({shop.reviewCount} Reviews)
                     </span>
                   </div>
 
-                  {/* Address */}
-                  <p className="text-[11px] text-gray-400 line-clamp-1 mb-5">
-                    {shop.address}
-                  </p>
-
-                  {/* Active eCommerce style Visit Store Button */}
-                  <div className="mt-auto w-full">
+                  {/* Visit Store Button (Active eCommerce Style) */}
+                  <div className="w-full">
                     <Link
                       href={`/shop/${shop.slug}`}
-                      className="inline-flex items-center justify-center gap-2 w-full py-2 px-4 rounded-full text-xs font-bold text-primary border border-primary/40 bg-primary/5 hover:bg-primary hover:text-white transition-all duration-300 group-hover:border-primary shadow-xs"
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-[#d43533]/30 bg-red-50/50 py-2 text-xs font-bold text-[#d43533] transition-all duration-300 hover:border-[#d43533] hover:bg-[#d43533] hover:text-white"
                     >
                       <span>Visit Store</span>
-                      <ArrowRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                     </Link>
                   </div>
                 </div>
@@ -131,3 +168,5 @@ export function SellersView({ initialShops }: SellersViewProps) {
     </div>
   )
 }
+
+export default SellersView
