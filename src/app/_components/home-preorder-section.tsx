@@ -49,16 +49,10 @@ export function HomePreorderSection({ preorders = [] }: HomePreorderSectionProps
               <div>
                 <div className="relative mb-3 h-40 w-full overflow-hidden rounded-lg bg-gray-50">
                   <Image
-                    src={item.thumbnail}
+                    src={item.thumbnail || "/assets/img/placeholder.jpg"}
                     alt={item.name}
                     fill
                     className="object-contain p-2 transition-transform duration-300 group-hover:scale-105"
-                    onError={(e) => {
-                      const target = e.currentTarget
-                      if (!target.src.includes("placeholder.jpg")) {
-                        target.src = "/assets/img/placeholder.jpg"
-                      }
-                    }}
                   />
                   <div className="absolute top-2 left-2 rounded bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase shadow-xs">
                     Pre-order

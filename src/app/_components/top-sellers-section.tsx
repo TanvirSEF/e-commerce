@@ -44,16 +44,10 @@ export function TopSellersSection({ sellers = [] }: TopSellersSectionProps) {
               {/* Circular Logo & Verification */}
               <div className="relative mb-3 h-20 w-20 overflow-hidden rounded-full border-2 border-gray-100 p-1 shadow-sm transition-transform duration-300 group-hover:scale-105">
                 <Image
-                  src={seller.logo}
+                  src={seller.logo || "/assets/img/placeholder.jpg"}
                   alt={seller.name}
                   fill
                   className="rounded-full object-cover"
-                  onError={(e) => {
-                    const target = e.currentTarget
-                    if (!target.src.includes("placeholder.jpg")) {
-                      target.src = "/assets/img/placeholder.jpg"
-                    }
-                  }}
                 />
                 {seller.isVerified && (
                   <div className="absolute right-0 bottom-0 rounded-full bg-white p-0.5 shadow-sm">

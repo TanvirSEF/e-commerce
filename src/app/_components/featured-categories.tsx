@@ -54,12 +54,6 @@ export function FeaturedCategories({ categories = [] }: FeaturedCategoriesProps)
                   alt={cat.name}
                   fill
                   className="object-contain p-2"
-                  onError={(e) => {
-                    const target = e.currentTarget
-                    if (!target.src.includes("placeholder.jpg")) {
-                      target.src = "/assets/img/placeholder.jpg"
-                    }
-                  }}
                 />
               </div>
               <span className="text-xs font-semibold text-gray-700 transition-colors group-hover:text-[#d43533] line-clamp-1">

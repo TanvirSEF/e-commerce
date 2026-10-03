@@ -44,16 +44,10 @@ export function TopBrandsSection({ brands = [] }: TopBrandsSectionProps) {
             >
               <div className="relative mb-2 h-14 w-24 overflow-hidden transition-transform duration-200 group-hover:scale-105">
                 <Image
-                  src={brand.logo}
+                  src={brand.logo || "/assets/img/placeholder.jpg"}
                   alt={brand.name}
                   fill
                   className="object-contain"
-                  onError={(e) => {
-                    const target = e.currentTarget
-                    if (!target.src.includes("placeholder.jpg")) {
-                      target.src = "/assets/img/placeholder.jpg"
-                    }
-                  }}
                 />
               </div>
               <span className="text-xs font-semibold text-gray-700 transition-colors group-hover:text-[#d43533] line-clamp-1">
