@@ -1,17 +1,23 @@
 import React from "react"
-import { getSellerDashboardStats } from "@/services/seller-service"
-import { getProducts } from "@/services/product-service"
+import { Metadata } from "next"
+import { getServerSession } from "@/lib/auth/session-helper"
+import { getSellerFullDashboardData } from "@/services/seller-service"
 import { SellerDashboardView } from "./_components/seller-dashboard-view"
 
-export const metadata = {
+export const dynamic = "force-dynamic"
+
+export const metadata: Metadata = {
   title: "Seller Dashboard | Active eCommerce",
+  description: "Monitor store sales, products, orders, and withdraw requests in real-time.",
 }
 
 export default async function SellerDashboardPage() {
-  const [stats, { data: recentProducts }] = await Promise.all([
-    getSellerDashboardStats("active-fashion-outlet"),
-    getProducts({ limit: 5 }),
-  ])
+  const session = await getServerSession()
+  const sellerUserId = session?.user?.id
 
-  return <SellerDashboardView stats={stats} recentProducts={recentProducts} />
+  const data = await getSellerFullDashboardData({
+    userId: sellerUserId,
+  })
+
+  return <SellerDashboardView data={data} />
 }
