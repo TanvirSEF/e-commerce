@@ -1,322 +1,320 @@
 "use client"
 
 import React, { useState } from "react"
-import { MapPin, Plus, MoreVertical, Edit2, Trash2, Check, X } from "lucide-react"
+import { Plus, MoreVertical, Edit2, Trash2, Check, X, Loader2 } from "lucide-react"
+import {
+  createSellerAddressAction,
+  updateSellerAddressAction,
+  deleteSellerAddressAction,
+  setDefaultSellerAddressAction,
+} from "@/app/actions/seller-actions"
+import type { customerAddresses } from "@/db/schema"
 
-export interface SellerAddress {
-  id: string
-  address: string
-  postalCode: string
-  area?: string
-  city: string
-  state?: string
-  country: string
-  phone: string
-  isDefault?: boolean
+type CustomerAddressRow = typeof customerAddresses.$inferSelect
+
+interface SellerAddressBookProps {
+  initialAddresses: CustomerAddressRow[]
 }
 
-const INITIAL_ADDRESSES: SellerAddress[] = [
-  {
-    id: "addr-seller-1",
-    address: "Plot 12, Road 4, Sector 7, Uttara",
-    postalCode: "1230",
-    area: "Uttara",
-    city: "Dhaka",
-    state: "Dhaka Division",
-    country: "Bangladesh",
-    phone: "+880 1711 000111",
-    isDefault: true,
-  },
-  {
-    id: "addr-seller-2",
-    address: "Holding 45, GEC Circle, Agrabad Commercial Area",
-    postalCode: "4000",
-    area: "Agrabad",
-    city: "Chittagong",
-    state: "Chittagong Division",
-    country: "Bangladesh",
-    phone: "+880 1819 223344",
-    isDefault: false,
-  },
-]
-
-export function SellerAddressBook() {
-  const [addresses, setAddresses] = useState<SellerAddress[]>(INITIAL_ADDRESSES)
+export function SellerAddressBook({ initialAddresses }: SellerAddressBookProps) {
+  const [addresses, setAddresses] = useState<CustomerAddressRow[]>(initialAddresses)
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [formData, setFormData] = useState<Omit<SellerAddress, "id">>({
+  const [form, setForm] = useState({
     address: "",
     postalCode: "",
-    area: "",
     city: "Dhaka",
     state: "Dhaka Division",
     country: "Bangladesh",
     phone: "",
-    isDefault: false,
+    setDefault: false,
   })
 
   const openAddModal = () => {
     setEditingId(null)
-    setFormData({
+    setForm({
       address: "",
       postalCode: "",
-      area: "",
       city: "Dhaka",
       state: "Dhaka Division",
       country: "Bangladesh",
       phone: "+880 1711 000111",
-      isDefault: addresses.length === 0,
+      setDefault: addresses.length === 0,
     })
     setModalOpen(true)
   }
 
-  const openEditModal = (addr: SellerAddress) => {
+  const openEditModal = (addr: CustomerAddressRow) => {
     setEditingId(addr.id)
-    setFormData({
+    setForm({
       address: addr.address,
-      postalCode: addr.postalCode,
-      area: addr.area || "",
-      city: addr.city,
+      postalCode: addr.postalCode || "",
+      city: addr.city || "Dhaka",
       state: addr.state || "",
-      country: addr.country,
-      phone: addr.phone,
-      isDefault: !!addr.isDefault,
+      country: addr.country || "Bangladesh",
+      phone: addr.phone || "",
+      setDefault: !!addr.setDefault,
     })
     setActiveMenuId(null)
     setModalOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    setAddresses((prev) => prev.filter((a) => a.id !== id))
+  const handleDelete = async (id: number) => {
     setActiveMenuId(null)
+    setAddresses((prev) => prev.filter((a) => a.id !== id))
+    await deleteSellerAddressAction(id)
   }
 
-  const handleMakeDefault = (id: string) => {
+  const handleMakeDefault = async (id: number) => {
+    setActiveMenuId(null)
     setAddresses((prev) =>
       prev.map((a) => ({
         ...a,
-        isDefault: a.id === id,
+        setDefault: a.id === id,
       }))
     )
-    setActiveMenuId(null)
+    await setDefaultSellerAddressAction(id)
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
     if (editingId) {
-      setAddresses((prev) =>
-        prev.map((a) => (a.id === editingId ? { ...formData, id: editingId } : a))
-      )
-    } else {
-      const newAddr: SellerAddress = {
-        ...formData,
-        id: `addr-seller-${Date.now()}`,
+      const res = await updateSellerAddressAction(editingId, form)
+      if (res.success && res.data) {
+        setAddresses((prev) =>
+          prev.map((a) => (a.id === editingId ? (res.data as CustomerAddressRow) : form.setDefault ? { ...a, setDefault: false } : a))
+        )
       }
-      setAddresses((prev) => [...prev, newAddr])
+    } else {
+      const res = await createSellerAddressAction(form)
+      if (res.success && res.data) {
+        setAddresses((prev) => [
+          res.data as CustomerAddressRow,
+          ...(form.setDefault ? prev.map((a) => ({ ...a, setDefault: false })) : prev),
+        ])
+      }
     }
+    setIsSubmitting(false)
     setModalOpen(false)
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
-      <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-5">
-        <MapPin className="h-5 w-5 text-[#d43533]" />
-        <div>
-          <h2 className="text-base font-bold text-slate-800">Address</h2>
-          <p className="text-xs text-slate-500">Manage your warehouse, pickup, and billing addresses</p>
-        </div>
+    <div className="card bg-white border border-gray-200 rounded-sm shadow-xs overflow-hidden">
+      <div className="card-header px-4 py-3 border-b border-gray-200 bg-white">
+        <h5 className="mb-0 text-sm font-semibold text-gray-800">Address</h5>
       </div>
+      <div className="card-body p-4 md:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {addresses.map((address) => (
+            <div
+              key={address.id}
+              className="border border-gray-200 rounded p-4 relative text-xs text-gray-700 bg-white"
+            >
+              <div className="space-y-1 pr-6">
+                <div>
+                  <span className="font-semibold text-gray-900 inline-block w-24">Address:</span>
+                  <span>{address.address}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 inline-block w-24">Postal Code:</span>
+                  <span>{address.postalCode || "-"}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 inline-block w-24">City:</span>
+                  <span>{address.city || "-"}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 inline-block w-24">State:</span>
+                  <span>{address.state || "-"}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 inline-block w-24">Country:</span>
+                  <span>{address.country || "Bangladesh"}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-900 inline-block w-24">Phone:</span>
+                  <span>{address.phone || "-"}</span>
+                </div>
+              </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {addresses.map((addr) => (
-          <div
-            key={addr.id}
-            className="border border-slate-200 rounded-lg p-4 relative bg-white hover:border-slate-300 transition-colors text-xs text-slate-700 space-y-1.5"
-          >
-            <div className="flex justify-between items-start">
-              <span className="font-semibold text-slate-900 line-clamp-1">{addr.address}</span>
-              {/* Menu */}
-              <div className="relative">
+              {address.setDefault && (
+                <div className="mt-3">
+                  <span className="inline-block px-2 py-0.5 text-[10px] font-semibold text-white bg-[#d43533] rounded">
+                    default
+                  </span>
+                </div>
+              )}
+
+              {/* Action Dropdown */}
+              <div className="absolute top-2 right-2">
                 <button
                   type="button"
-                  onClick={() => setActiveMenuId(activeMenuId === addr.id ? null : addr.id)}
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                  onClick={() =>
+                    setActiveMenuId(activeMenuId === address.id ? null : address.id)
+                  }
+                  className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100"
                 >
                   <MoreVertical className="w-4 h-4" />
                 </button>
-                {activeMenuId === addr.id && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setActiveMenuId(null)} />
-                    <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded shadow-md z-40 py-1">
+                {activeMenuId === address.id && (
+                  <div className="absolute right-0 top-7 w-36 bg-white border border-gray-200 rounded shadow-md z-10 py-1 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(address)}
+                      className="w-full text-left px-3 py-1.5 hover:bg-gray-50 flex items-center gap-1.5 text-gray-700"
+                    >
+                      <Edit2 className="w-3 h-3" /> Edit
+                    </button>
+                    {!address.setDefault && (
                       <button
                         type="button"
-                        onClick={() => openEditModal(addr)}
-                        className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                        onClick={() => handleMakeDefault(address.id)}
+                        className="w-full text-left px-3 py-1.5 hover:bg-gray-50 flex items-center gap-1.5 text-gray-700"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        Edit
+                        <Check className="w-3 h-3" /> Make Default
                       </button>
-                      {!addr.isDefault && (
-                        <button
-                          type="button"
-                          onClick={() => handleMakeDefault(addr.id)}
-                          className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          Make Default
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(addr.id)}
-                        className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete
-                      </button>
-                    </div>
-                  </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(address.id)}
+                      className="w-full text-left px-3 py-1.5 hover:bg-gray-50 flex items-center gap-1.5 text-red-600"
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
+          ))}
 
-            <div><span className="text-slate-400">Postal Code:</span> <span className="font-medium text-slate-800">{addr.postalCode}</span></div>
-            {addr.area && <div><span className="text-slate-400">Area:</span> <span className="font-medium text-slate-800">{addr.area}</span></div>}
-            <div><span className="text-slate-400">City:</span> <span className="font-medium text-slate-800">{addr.city}</span></div>
-            {addr.state && <div><span className="text-slate-400">State:</span> <span className="font-medium text-slate-800">{addr.state}</span></div>}
-            <div><span className="text-slate-400">Country:</span> <span className="font-medium text-slate-800">{addr.country}</span></div>
-            <div><span className="text-slate-400">Phone:</span> <span className="font-medium text-slate-800">{addr.phone}</span></div>
-
-            {addr.isDefault && (
-              <div className="pt-2">
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] uppercase">
-                  Default
-                </span>
-              </div>
-            )}
+          {/* Add New Address Card */}
+          <div
+            onClick={openAddModal}
+            className="border-2 border-dashed border-gray-300 rounded p-6 text-center cursor-pointer hover:border-[#d43533] hover:bg-red-50/20 transition-all flex flex-col items-center justify-center min-h-[160px]"
+          >
+            <Plus className="w-7 h-7 text-gray-400 mb-1" />
+            <div className="text-xs font-semibold text-gray-600">Add New Address</div>
           </div>
-        ))}
-
-        {/* Add New Address Card */}
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="border-2 border-dashed border-slate-200 hover:border-[#d43533] hover:bg-red-50/20 rounded-lg p-6 flex flex-col items-center justify-center text-center transition-all group min-h-[160px]"
-        >
-          <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-[#d43533] text-slate-500 group-hover:text-white flex items-center justify-center transition-colors mb-2">
-            <Plus className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-slate-700 group-hover:text-[#d43533]">
-            Add New Address
-          </span>
-        </button>
+        </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal for Add / Edit Address */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-800">
+          <div className="bg-white rounded-sm border border-gray-200 shadow-xl w-full max-w-md p-5 space-y-4">
+            <div className="flex items-center justify-between border-b pb-2">
+              <h5 className="text-sm font-semibold text-gray-900">
                 {editingId ? "Edit Address" : "Add New Address"}
-              </h3>
+              </h5>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-5 space-y-3.5 text-xs">
+            <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Your Address *</label>
-                <textarea
+                <label className="block text-gray-700 font-medium mb-1">
+                  Address <span className="text-[#d43533]">*</span>
+                </label>
+                <input
+                  type="text"
                   required
-                  rows={2}
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Street address, building, floor"
-                  className="w-full rounded border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#d43533] focus:outline-none"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="Street / House / Road"
+                  className="w-full px-3 py-2 border rounded focus:border-[#d43533] focus:outline-none"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Country *</label>
+                  <label className="block text-gray-700 font-medium mb-1">City</label>
                   <input
                     type="text"
-                    required
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#d43533] focus:outline-none"
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    placeholder="City"
+                    className="w-full px-3 py-2 border rounded focus:border-[#d43533] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">City *</label>
+                  <label className="block text-gray-700 font-medium mb-1">Postal Code</label>
                   <input
                     type="text"
-                    required
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#d43533] focus:outline-none"
+                    value={form.postalCode}
+                    onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                    placeholder="Postal Code"
+                    className="w-full px-3 py-2 border rounded focus:border-[#d43533] focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Postal Code *</label>
+                  <label className="block text-gray-700 font-medium mb-1">State / Division</label>
                   <input
                     type="text"
-                    required
-                    value={formData.postalCode}
-                    onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#d43533] focus:outline-none"
+                    value={form.state}
+                    onChange={(e) => setForm({ ...form, state: e.target.value })}
+                    placeholder="State"
+                    className="w-full px-3 py-2 border rounded focus:border-[#d43533] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Phone *</label>
+                  <label className="block text-gray-700 font-medium mb-1">Country</label>
                   <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+880 1711..."
-                    className="w-full rounded border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#d43533] focus:outline-none"
+                    type="text"
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                    className="w-full px-3 py-2 border rounded focus:border-[#d43533] focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div>
+                <label className="block text-gray-700 font-medium mb-1">Phone</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="+880 1..."
+                  className="w-full px-3 py-2 border rounded focus:border-[#d43533] focus:outline-none"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer pt-1">
                 <input
                   type="checkbox"
-                  id="default-address"
-                  checked={formData.isDefault}
-                  onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                  className="rounded text-[#d43533] focus:ring-[#d43533]"
+                  checked={form.setDefault}
+                  onChange={(e) => setForm({ ...form, setDefault: e.target.checked })}
+                  className="rounded border-gray-300 text-[#d43533] focus:ring-[#d43533]"
                 />
-                <label htmlFor="default-address" className="text-xs text-slate-700 cursor-pointer">
-                  Set as default address
-                </label>
-              </div>
+                <span className="text-gray-700">Set as default address</span>
+              </label>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-2 border-t">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 rounded text-slate-700 font-semibold hover:bg-slate-50 transition-colors"
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#d43533] hover:bg-[#b82927] text-white rounded font-bold transition-colors"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#d43533] text-white rounded hover:bg-[#b82a28]"
                 >
-                  Save Address
+                  {isSubmitting && <Loader2 className="w-3 h-3 animate-spin" />}
+                  Save
                 </button>
               </div>
             </form>

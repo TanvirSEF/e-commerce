@@ -2,85 +2,109 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { CreditCard, ArrowLeft, CheckCircle2 } from "lucide-react"
-
-interface PaymentItem {
-  id: number
-  packageName?: string
-  amount: string
-  paymentMethod: string
-  paymentDetails: string | null
-  approval: boolean
-  createdAt: Date
-}
+import { formatPrice } from "@/lib/utils"
+import type { SellerPackagePaymentRow } from "@/services/seller-panel-service"
 
 interface SellerPaymentListViewProps {
-  initialPayments: PaymentItem[]
+  initialPayments: SellerPackagePaymentRow[]
 }
 
 export function SellerPaymentListView({ initialPayments }: SellerPaymentListViewProps) {
-  const [payments] = useState<PaymentItem[]>(initialPayments)
+  const [payments] = useState<SellerPackagePaymentRow[]>(initialPayments)
+
+  const formatDate = (isoString: string) => {
+    try {
+      const d = new Date(isoString)
+      const day = String(d.getDate()).padStart(2, "0")
+      const month = String(d.getMonth() + 1).padStart(2, "0")
+      const year = d.getFullYear()
+      return `${day}-${month}-${year}`
+    } catch {
+      return isoString
+    }
+  }
+
+  const formatPaymentMethod = (p: SellerPackagePaymentRow) => {
+    const raw = (p.paymentMethod || "Online").replace(/_/g, " ")
+    const method = raw.charAt(0).toUpperCase() + raw.slice(1)
+    if (p.paymentDetails && p.paymentDetails.trim()) {
+      return `${method} (${p.paymentDetails})`
+    }
+    return method
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="card bg-white border border-gray-200 rounded-sm shadow-xs overflow-hidden">
+      <div className="card-header px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-white">
+        <h5 className="mb-0 text-sm font-semibold text-gray-800">Payment History</h5>
         <Link
           href="/seller/packages"
-          className="p-2 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-gray-900 transition-colors"
+          className="text-xs text-[#d43533] hover:underline font-medium"
         >
-          <ArrowLeft className="w-4 h-4" />
+          Browse Packages &rarr;
         </Link>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-[#d43533]" />
-            Purchase Payment Invoices
-          </h1>
-          <p className="text-xs text-gray-500">History of subscription fees and membership renewal receipts</p>
-        </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-xs">
-        <div className="border-b border-gray-200 px-5 py-3 bg-gray-50/50 flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-700">Receipts</span>
-          <span className="text-xs font-mono text-gray-400">{payments.length} items</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-gray-600">
-            <thead className="bg-gray-50 text-gray-700 uppercase font-semibold border-b border-gray-200">
-              <tr>
-                <th className="py-3 px-4 w-12">#</th>
-                <th className="py-3 px-4">Package</th>
-                <th className="py-3 px-4">Paid Amount</th>
-                <th className="py-3 px-4">Payment Method</th>
-                <th className="py-3 px-4">Transaction / Notes</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {payments.map((p, idx) => (
-                <tr key={p.id} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="py-3 px-4 font-mono text-gray-400">{idx + 1}</td>
-                  <td className="py-3 px-4 font-semibold text-gray-900">{p.packageName || "Package"}</td>
-                  <td className="py-3 px-4 font-bold text-gray-900">${p.amount}</td>
-                  <td className="py-3 px-4 font-medium text-gray-700">{p.paymentMethod}</td>
-                  <td className="py-3 px-4 text-gray-500 font-mono text-[11px]">
-                    {p.paymentDetails || "Approved Online"}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-                      <CheckCircle2 className="w-3 h-3" /> Confirmed
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-400">
-                    {new Date(p.createdAt).toLocaleDateString()}
-                  </td>
+      {payments.length > 0 ? (
+        <div className="card-body p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-gray-700">
+              <thead className="bg-[#f9fafb] text-gray-600 font-semibold border-b border-gray-200">
+                <tr>
+                  <th className="py-3 px-4 w-12 text-center">#</th>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Amount</th>
+                  <th className="py-3 px-4">Payment Method</th>
+                  <th className="py-3 px-4">Package</th>
+                  <th className="py-3 px-4 text-center">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {payments.map((payment, key) => (
+                  <tr key={payment.id} className="hover:bg-gray-50/70 transition-colors">
+                    <td className="py-3 px-4 text-center text-gray-400 font-medium">
+                      {key + 1}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-gray-600">
+                      {formatDate(payment.createdAt)}
+                    </td>
+                    <td className="py-3 px-4 font-bold text-gray-900">
+                      {formatPrice(Number(payment.amount))}
+                    </td>
+                    <td className="py-3 px-4 text-gray-700">
+                      {formatPaymentMethod(payment)}
+                    </td>
+                    <td className="py-3 px-4 font-medium text-gray-800">
+                      {payment.packageName}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {payment.approval ? (
+                        <span className="inline-block px-2 py-0.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 rounded border border-emerald-200">
+                          Approved
+                        </span>
+                      ) : (
+                        <span className="inline-block px-2 py-0.5 text-[11px] font-semibold text-amber-700 bg-amber-50 rounded border border-amber-200">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="p-8 text-center text-gray-500 text-xs">
+          <p className="text-gray-400 mb-2">No payment history found.</p>
+          <Link
+            href="/seller/packages"
+            className="inline-block px-3 py-1.5 bg-[#d43533] text-white rounded text-xs hover:bg-[#b82a28] transition-colors"
+          >
+            Upgrade Seller Package
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

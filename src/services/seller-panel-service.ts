@@ -9,8 +9,11 @@ import {
   sellerPackages,
   sellerPackagePayments,
   customLabels,
+  customerAddresses,
+  reviews,
+  users,
 } from "@/db/schema"
-import { and, desc, eq, or, sql } from "drizzle-orm"
+import { and, desc, eq, or, sql, ilike } from "drizzle-orm"
 import { getServerSession } from "@/lib/auth/session-helper"
 import { getSellerCommissionSettings } from "@/services/settings-service"
 
@@ -304,3 +307,282 @@ export async function getSellerVisibleLabels() {
     .where(and(eq(customLabels.status, true), or(eq(customLabels.sellerAccess, true), eq(customLabels.userType, "seller"))))
     .orderBy(desc(customLabels.createdAt))
 }
+
+/* ----------------------- Seller Package Payments ----------------------- */
+
+export interface SellerPackagePaymentRow {
+  id: number
+  amount: string
+  paymentMethod: string
+  paymentDetails: string | null
+  offlinePayment: boolean
+  approval: boolean
+  receipt: string | null
+  createdAt: string
+  packageName: string
+}
+
+export async function getSellerPackagePayments(shopId: number): Promise<SellerPackagePaymentRow[]> {
+  const rows = await db
+    .select({
+      id: sellerPackagePayments.id,
+      amount: sellerPackagePayments.amount,
+      paymentMethod: sellerPackagePayments.paymentMethod,
+      paymentDetails: sellerPackagePayments.paymentDetails,
+      offlinePayment: sellerPackagePayments.offlinePayment,
+      approval: sellerPackagePayments.approval,
+      receipt: sellerPackagePayments.receipt,
+      createdAt: sellerPackagePayments.createdAt,
+      packageName: sellerPackages.name,
+    })
+    .from(sellerPackagePayments)
+    .leftJoin(sellerPackages, eq(sellerPackagePayments.sellerPackageId, sellerPackages.id))
+    .where(eq(sellerPackagePayments.sellerId, shopId))
+    .orderBy(desc(sellerPackagePayments.createdAt))
+
+  return rows.map((r) => ({
+    ...r,
+    createdAt: r.createdAt.toISOString(),
+    packageName: r.packageName || "Membership Plan",
+  }))
+}
+
+/* ----------------------------- Seller Shop ----------------------------- */
+
+export async function getSellerShop(shopId: number) {
+  const [shop] = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1)
+  return shop ?? null
+}
+
+export async function updateSellerShop(
+  shopId: number,
+  data: {
+    name?: string
+    phone?: string
+    address?: string
+    logo?: string
+    topBanner?: string
+    facebook?: string
+    instagram?: string
+    twitter?: string
+    google?: string
+    youtube?: string
+    metaTitle?: string
+    metaDescription?: string
+  }
+) {
+  const updateData: Record<string, any> = { updatedAt: new Date() }
+  if (data.name !== undefined) updateData.name = data.name
+  if (data.phone !== undefined) updateData.phone = data.phone
+  if (data.address !== undefined) updateData.address = data.address
+  if (data.logo !== undefined) updateData.logo = data.logo
+  if (data.topBanner !== undefined) updateData.topBanner = data.topBanner
+  if (data.facebook !== undefined) updateData.facebook = data.facebook
+  if (data.instagram !== undefined) updateData.instagram = data.instagram
+  if (data.twitter !== undefined) updateData.twitter = data.twitter
+  if (data.google !== undefined) updateData.google = data.google
+  if (data.youtube !== undefined) updateData.youtube = data.youtube
+  if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle
+  if (data.metaDescription !== undefined) updateData.metaDescription = data.metaDescription
+
+  await db.update(shops).set(updateData).where(eq(shops.id, shopId))
+  return { success: true }
+}
+
+/* -------------------------- Seller Addresses --------------------------- */
+
+export async function getSellerAddresses(userId: string) {
+  return await db
+    .select()
+    .from(customerAddresses)
+    .where(eq(customerAddresses.userId, userId))
+    .orderBy(desc(customerAddresses.setDefault), desc(customerAddresses.createdAt))
+}
+
+export async function createSellerAddress(
+  userId: string,
+  data: {
+    address: string
+    country?: string
+    city?: string
+    state?: string
+    postalCode?: string
+    phone?: string
+    setDefault?: boolean
+  }
+) {
+  if (data.setDefault) {
+    await db.update(customerAddresses).set({ setDefault: false }).where(eq(customerAddresses.userId, userId))
+  }
+  const [inserted] = await db
+    .insert(customerAddresses)
+    .values({
+      userId,
+      address: data.address,
+      country: data.country || "Bangladesh",
+      city: data.city || null,
+      state: data.state || null,
+      postalCode: data.postalCode || null,
+      phone: data.phone || null,
+      setDefault: !!data.setDefault,
+    })
+    .returning()
+  return inserted
+}
+
+export async function updateSellerAddress(
+  userId: string,
+  id: number,
+  data: {
+    address: string
+    country?: string
+    city?: string
+    state?: string
+    postalCode?: string
+    phone?: string
+    setDefault?: boolean
+  }
+) {
+  if (data.setDefault) {
+    await db.update(customerAddresses).set({ setDefault: false }).where(eq(customerAddresses.userId, userId))
+  }
+  const [updated] = await db
+    .update(customerAddresses)
+    .set({
+      address: data.address,
+      country: data.country || "Bangladesh",
+      city: data.city || null,
+      state: data.state || null,
+      postalCode: data.postalCode || null,
+      phone: data.phone || null,
+      setDefault: !!data.setDefault,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(customerAddresses.id, id), eq(customerAddresses.userId, userId)))
+    .returning()
+  return updated
+}
+
+export async function deleteSellerAddress(userId: string, id: number) {
+  await db
+    .delete(customerAddresses)
+    .where(and(eq(customerAddresses.id, id), eq(customerAddresses.userId, userId)))
+  return { success: true }
+}
+
+export async function setDefaultSellerAddress(userId: string, id: number) {
+  await db.update(customerAddresses).set({ setDefault: false }).where(eq(customerAddresses.userId, userId))
+  await db
+    .update(customerAddresses)
+    .set({ setDefault: true })
+    .where(and(eq(customerAddresses.id, id), eq(customerAddresses.userId, userId)))
+  return { success: true }
+}
+
+/* --------------------------- Product Reviews --------------------------- */
+
+export interface SellerReviewedProductRow {
+  id: number
+  name: string
+  thumbnailImg: string | null
+  rating: number
+  reviewsCount: number
+  unviewedCount: number
+}
+
+export async function getSellerProductReviewsList(
+  seller: CurrentSeller,
+  filter?: { search?: string; ratingSort?: "asc" | "desc" }
+): Promise<SellerReviewedProductRow[]> {
+  const ownership = seller.userId
+    ? or(eq(products.shopId, seller.shopId), eq(products.userId, seller.userId))
+    : eq(products.shopId, seller.shopId)
+
+  const rows = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      thumbnailImg: products.thumbnailImg,
+      rating: products.rating,
+      reviewsCount: sql<number>`count(${reviews.id})::int`,
+      unviewedCount: sql<number>`count(case when ${reviews.viewed} = false then 1 end)::int`,
+    })
+    .from(products)
+    .innerJoin(reviews, eq(reviews.productId, products.id))
+    .where(ownership)
+    .groupBy(products.id, products.name, products.thumbnailImg, products.rating)
+    .orderBy(
+      filter?.ratingSort === "asc"
+        ? products.rating
+        : filter?.ratingSort === "desc"
+        ? desc(products.rating)
+        : desc(products.createdAt)
+    )
+
+  if (filter?.search) {
+    const q = filter.search.toLowerCase()
+    return rows.filter((r) => r.name.toLowerCase().includes(q)).map((r) => ({
+      ...r,
+      rating: Number(r.rating) || 0,
+    }))
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    rating: Number(r.rating) || 0,
+  }))
+}
+
+export interface SellerProductReviewDetail {
+  id: number
+  productId: number
+  customerName: string
+  customerAvatar: string | null
+  rating: number
+  comment: string
+  photos: string[] | null
+  status: boolean
+  viewed: boolean
+  createdAt: string
+}
+
+export async function getSellerProductReviewDetails(
+  productId: number
+): Promise<{ product: { id: number; name: string; thumbnailImg: string | null; rating: number } | null; reviews: SellerProductReviewDetail[] }> {
+  const [prod] = await db.select().from(products).where(eq(products.id, productId)).limit(1)
+  if (!prod) return { product: null, reviews: [] }
+
+  const revs = await db
+    .select({
+      id: reviews.id,
+      productId: reviews.productId,
+      customerName: reviews.userName,
+      customerAvatar: reviews.userAvatar,
+      rating: reviews.rating,
+      comment: reviews.comment,
+      photos: reviews.photos,
+      status: reviews.status,
+      viewed: reviews.viewed,
+      createdAt: reviews.createdAt,
+    })
+    .from(reviews)
+    .where(eq(reviews.productId, productId))
+    .orderBy(desc(reviews.createdAt))
+
+  // Mark reviews as viewed
+  await db.update(reviews).set({ viewed: true }).where(eq(reviews.productId, productId))
+
+  return {
+    product: {
+      id: prod.id,
+      name: prod.name,
+      thumbnailImg: prod.thumbnailImg,
+      rating: Number(prod.rating) || 0,
+    },
+    reviews: revs.map((r) => ({
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+    })),
+  }
+}
+
