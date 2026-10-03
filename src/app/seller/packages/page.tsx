@@ -1,7 +1,9 @@
 import React from "react"
 import { Metadata } from "next"
-import { getAllSellerPackages } from "@/services/package-service"
+import { getCurrentSeller, getSellerPackageOverview } from "@/services/seller-panel-service"
 import { SellerPackagesShopView } from "./_components/seller-packages-shop-view"
+
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Subscription Packages | Seller Central",
@@ -9,11 +11,12 @@ export const metadata: Metadata = {
 }
 
 export default async function SellerPackagesPage() {
-  const packages = await getAllSellerPackages()
+  const seller = await getCurrentSeller()
+  const overview = seller ? await getSellerPackageOverview(seller) : { plans: [], current: null }
 
   return (
     <div className="p-4 md:p-6">
-      <SellerPackagesShopView packages={packages.filter((p) => p.status)} />
+      <SellerPackagesShopView packages={overview.plans} current={overview.current} />
     </div>
   )
 }

@@ -74,10 +74,6 @@ export function SellerCommissionHistoryView({
             </p>
           </div>
         </div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-blue-200 font-bold text-blue-800 text-xs shadow-2xs shrink-0">
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          Verified Merchant
-        </div>
       </div>
 
       {/* KPI Cards */}
@@ -191,7 +187,7 @@ export function SellerCommissionHistoryView({
                       +৳{r.sellerEarning.toLocaleString("en-BD")}
                     </td>
                     <td className="px-4 py-3 text-gray-500">
-                      {r.createdAt}
+                      {new Date(r.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </td>
                   </tr>
                 ))

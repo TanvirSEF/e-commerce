@@ -1063,6 +1063,16 @@ async function runSetup() {
       console.log("[OK] Canonical Seller Packages seeded")
     }
 
+    const existingLabelsCount = await db.select({ val: count() }).from(schema.customLabels)
+    if (Number(existingLabelsCount[0]?.val || 0) === 0) {
+      await db.insert(schema.customLabels).values([
+        { text: "Hot Deal", backgroundColor: "#e62e04", textColor: "#ffffff", sellerAccess: true },
+        { text: "Super Saver", backgroundColor: "#10b981", textColor: "#ffffff", sellerAccess: true },
+        { text: "Trending 2026", backgroundColor: "#8b5cf6", textColor: "#ffffff", sellerAccess: false },
+      ])
+      console.log("[OK] Canonical Custom Labels seeded")
+    }
+
     const existingSellerPaymentsCount = await db.select({ val: count() }).from(schema.sellerPackagePayments)
     if (Number(existingSellerPaymentsCount[0]?.val || 0) === 0) {
       await db.insert(schema.sellerPackagePayments).values([

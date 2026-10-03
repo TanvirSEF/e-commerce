@@ -1,21 +1,27 @@
 import React from "react"
-import { getSellerWithdrawRequests, getSellerDashboardStats } from "@/services/seller-service"
+import {
+  getCurrentSeller,
+  getSellerPayoutRequests,
+  getSellerWalletSummary,
+} from "@/services/seller-panel-service"
 import { SellerPayoutsView } from "./_components/seller-payouts-view"
 
-export const metadata = {
-  title: "Payout Requests | Seller Dashboard",
-}
+export const dynamic = "force-dynamic"
+export const metadata = { title: "Payout Requests | Seller Dashboard" }
 
 export default async function SellerPayoutsPage() {
-  const [requests, stats] = await Promise.all([
-    getSellerWithdrawRequests("active-fashion-outlet"),
-    getSellerDashboardStats("active-fashion-outlet"),
-  ])
+  const seller = await getCurrentSeller()
+  const [requests, wallet] = seller
+    ? await Promise.all([getSellerPayoutRequests(seller.shopId), getSellerWalletSummary(seller)])
+    : [[], { balance: 0, minimumWithdrawal: 0 }]
 
   return (
-    <SellerPayoutsView
-      initialRequests={requests}
-      currentBalance={stats.currentBalance}
-    />
+    <div className="p-4 md:p-6">
+      <SellerPayoutsView
+        initialRequests={requests}
+        currentBalance={wallet.balance}
+        minimumWithdrawal={wallet.minimumWithdrawal}
+      />
+    </div>
   )
 }
