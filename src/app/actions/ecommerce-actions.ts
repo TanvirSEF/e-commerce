@@ -1546,6 +1546,14 @@ export async function updatePreorderSettingsAction(data: any) {
   return await updatePreorderSettings(data)
 }
 
+export async function deletePreorderProductAction(id: number) {
+  const { deletePreorderProduct } = await import("@/services/preorder-service")
+  const ok = await deletePreorderProduct(id)
+  revalidatePath("/seller/preorder/products")
+  revalidatePath("/admin/preorder/products")
+  return ok
+}
+
 // Auction Actions
 export async function createAuctionProductAction(data: {
   name: string
@@ -1561,7 +1569,51 @@ export async function createAuctionProductAction(data: {
   featured?: boolean
 }) {
   const { createAuctionProduct } = await import("@/services/auction-service")
-  return await createAuctionProduct(data)
+  const created = await createAuctionProduct(data)
+  revalidatePath("/seller/auction/products")
+  revalidatePath("/admin/auction/seller-products")
+  return created
+}
+
+export async function toggleAuctionPublishedAction(id: number, status: boolean) {
+  const { toggleAuctionPublished } = await import("@/services/auction-service")
+  const ok = await toggleAuctionPublished(id, status)
+  revalidatePath("/seller/auction/products")
+  revalidatePath("/admin/auction/seller-products")
+  return ok
+}
+
+export async function toggleAuctionFeaturedAction(id: number, featured: boolean) {
+  const { toggleAuctionFeatured } = await import("@/services/auction-service")
+  const ok = await toggleAuctionFeatured(id, featured)
+  revalidatePath("/seller/auction/products")
+  revalidatePath("/admin/auction/seller-products")
+  return ok
+}
+
+export async function deleteAuctionProductAction(id: number) {
+  const { deleteAuctionProduct } = await import("@/services/auction-service")
+  const ok = await deleteAuctionProduct(id)
+  revalidatePath("/seller/auction/products")
+  revalidatePath("/admin/auction/seller-products")
+  return ok
+}
+
+export async function deleteAuctionOrderAction(id: number) {
+  const { deleteAuctionOrder } = await import("@/services/auction-service")
+  const ok = await deleteAuctionOrder(id)
+  revalidatePath("/seller/auction/orders")
+  return ok
+}
+
+export async function updateAuctionOrderStatusAction(
+  id: number,
+  data: { paymentStatus?: string; deliveryStatus?: string }
+) {
+  const { updateAuctionOrderStatus } = await import("@/services/auction-service")
+  const ok = await updateAuctionOrderStatus(id, data)
+  revalidatePath("/seller/auction/orders")
+  return ok
 }
 
 export async function placeAuctionBidAction(

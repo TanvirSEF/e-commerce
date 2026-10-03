@@ -242,6 +242,35 @@ export async function getAllAuctionOrders(): Promise<AuctionOrder[]> {
   }
 }
 
+export async function getSellerAuctionOrders(sellerSlug?: string): Promise<AuctionOrder[]> {
+  try {
+    if (sellerSlug) {
+      const rows = await db
+        .select({
+          id: auctionOrders.id,
+          orderCode: auctionOrders.orderCode,
+          productId: auctionOrders.productId,
+          productName: auctionOrders.productName,
+          customerName: auctionOrders.customerName,
+          customerEmail: auctionOrders.customerEmail,
+          winningBid: auctionOrders.winningBid,
+          paymentStatus: auctionOrders.paymentStatus,
+          deliveryStatus: auctionOrders.deliveryStatus,
+          createdAt: auctionOrders.createdAt,
+        })
+        .from(auctionOrders)
+        .innerJoin(auctionProducts, eq(auctionOrders.productId, auctionProducts.id))
+        .where(eq(auctionProducts.sellerSlug, sellerSlug))
+        .orderBy(desc(auctionOrders.createdAt))
+      return rows
+    }
+    return await db.select().from(auctionOrders).orderBy(desc(auctionOrders.createdAt))
+  } catch (err) {
+    console.warn("getSellerAuctionOrders error:", err)
+    return await db.select().from(auctionOrders).orderBy(desc(auctionOrders.createdAt))
+  }
+}
+
 export async function getUserWonAuctions(userEmail: string): Promise<AuctionOrder[]> {
   try {
     return await db.select().from(auctionOrders).where(eq(auctionOrders.customerEmail, userEmail)).orderBy(desc(auctionOrders.createdAt))

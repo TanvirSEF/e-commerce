@@ -142,9 +142,13 @@ export interface PreorderProductListResult {
   }
 }
 
-export async function getAllPreorderProducts(): Promise<PreorderProduct[]> {
+export async function getAllPreorderProducts(sellerSlug?: string): Promise<PreorderProduct[]> {
   try {
-    return await db.select().from(preorderProducts).orderBy(desc(preorderProducts.createdAt))
+    let query = db.select().from(preorderProducts)
+    if (sellerSlug) {
+      query = query.where(eq(preorderProducts.sellerSlug, sellerSlug)) as any
+    }
+    return await query.orderBy(desc(preorderProducts.createdAt))
   } catch (err) {
     console.error("getAllPreorderProducts error:", err)
     return []
@@ -501,9 +505,13 @@ export async function getPreorderOrdersAdmin(params?: {
   }
 }
 
-export async function getAllPreorderOrders(tab?: string): Promise<PreorderOrder[]> {
+export async function getAllPreorderOrders(tab?: string, sellerName?: string): Promise<PreorderOrder[]> {
   try {
-    const rows = await db.select().from(preorderOrders).orderBy(desc(preorderOrders.createdAt))
+    let rows = await db.select().from(preorderOrders).orderBy(desc(preorderOrders.createdAt))
+    if (sellerName) {
+      const match = rows.filter((o) => o.sellerName?.toLowerCase() === sellerName.toLowerCase())
+      if (match.length > 0) rows = match
+    }
     if (tab && tab !== "all") {
       return rows.filter((o) => o.preorderStatus === tab)
     }
