@@ -37,9 +37,15 @@ const SAMPLE_DIGITAL_PRODUCTS: DigitalProductItem[] = [
   },
 ]
 
-export function SellerDigitalProductsView() {
+interface SellerDigitalProductsViewProps {
+  initialProducts?: DigitalProductItem[]
+}
+
+export function SellerDigitalProductsView({ initialProducts }: SellerDigitalProductsViewProps = {}) {
   const [search, setSearch] = useState("")
-  const [products, setProducts] = useState(SAMPLE_DIGITAL_PRODUCTS)
+  const [products, setProducts] = useState<DigitalProductItem[]>(
+    initialProducts && initialProducts.length > 0 ? initialProducts : SAMPLE_DIGITAL_PRODUCTS
+  )
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)

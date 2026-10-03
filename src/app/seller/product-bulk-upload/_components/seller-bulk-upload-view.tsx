@@ -15,9 +15,10 @@ import { bulkUploadProductsAction } from "@/app/actions/ecommerce-actions"
 interface SellerBulkUploadViewProps {
   categories: { id: string | number; name: string }[]
   brands: { id: string | number; name: string }[]
+  shopId?: number
 }
 
-export function SellerBulkUploadView({ categories, brands }: SellerBulkUploadViewProps) {
+export function SellerBulkUploadView({ categories, brands, shopId }: SellerBulkUploadViewProps) {
   const [parsedRows, setParsedRows] = useState<Array<{
     name: string
     categoryId: number
@@ -101,7 +102,7 @@ export function SellerBulkUploadView({ categories, brands }: SellerBulkUploadVie
     setMessage(null)
 
     try {
-      const result = await bulkUploadProductsAction(parsedRows)
+      const result = await bulkUploadProductsAction(parsedRows, shopId)
       if (result.success) {
         setMessage({
           type: "success",

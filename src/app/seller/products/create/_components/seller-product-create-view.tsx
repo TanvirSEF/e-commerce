@@ -15,6 +15,8 @@ interface SellerProductCreateViewProps {
   categories: SeedCategory[]
   brands: SeedBrand[]
   initialProduct?: ProductEditInitial | null
+  shopId?: number
+  sellerUserId?: string
 }
 
 interface ProductFormState {
@@ -39,6 +41,8 @@ export function SellerProductCreateView({
   categories,
   brands,
   initialProduct,
+  shopId,
+  sellerUserId,
 }: SellerProductCreateViewProps) {
   const router = useRouter()
   const [form, setForm] = useState<ProductFormState>({
@@ -98,6 +102,9 @@ export function SellerProductCreateView({
         sku: form.sku || `SKU-${Date.now().toString().slice(-6)}`,
         description: form.description,
         thumbnailImg: form.thumbnailImg || "/assets/img/placeholder.jpg",
+        shopId: shopId || 1,
+        userId: sellerUserId,
+        addedBy: "seller",
       }
 
       const res = initialProduct

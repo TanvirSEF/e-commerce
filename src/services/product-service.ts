@@ -19,13 +19,14 @@ export interface ProductFilters {
   todaysDeal?: boolean
   includeUnpublished?: boolean
   addedBy?: string
+  shopId?: number
 }
 
 export async function getProducts(filters: ProductFilters = {}): Promise<{ data: SeedProduct[]; total: number }> {
   const catSlug = filters.categorySlug || filters.category
   const bSlug = filters.brandSlug || filters.brand
   const searchTerm = filters.search || filters.q
-  const { minPrice, maxPrice, page = 1, limit = 12, featured, todaysDeal, includeUnpublished, addedBy } = filters
+  const { minPrice, maxPrice, page = 1, limit = 12, featured, todaysDeal, includeUnpublished, addedBy, shopId } = filters
   const sort = filters.sort || "newest"
 
   try {
@@ -33,6 +34,9 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
 
     if (!includeUnpublished) {
       conditions.push(eq(products.published, true))
+    }
+    if (shopId !== undefined) {
+      conditions.push(eq(products.shopId, shopId))
     }
     if (addedBy && addedBy !== "all") {
       conditions.push(eq(products.addedBy, addedBy))
@@ -503,6 +507,12 @@ export async function createProduct(data: {
   weight?: string | number
   frequentlyBoughtSelectionType?: "product" | "category"
   published?: boolean
+  shopId?: number
+  userId?: string
+  addedBy?: string
+  isDigital?: boolean
+  digitalFile?: string
+  wholesaleProduct?: boolean
 }): Promise<any> {
   try {
     const slug =
@@ -534,6 +544,12 @@ export async function createProduct(data: {
         published: data.published !== undefined ? data.published : true,
         featured: false,
         todaysDeal: false,
+        shopId: data.shopId || (data.addedBy === "seller" ? 1 : null),
+        userId: data.userId || null,
+        addedBy: data.addedBy || (data.shopId ? "seller" : "admin"),
+        isDigital: data.isDigital || false,
+        digitalFile: data.digitalFile || null,
+        wholesaleProduct: data.wholesaleProduct || false,
       })
       .returning()
     return inserted || null
@@ -762,5 +778,46 @@ export async function getProductForEdit(id: number | string): Promise<ProductEdi
     console.warn("DB getProductForEdit error:", error)
   }
   return null
+}
+
+export async function getSellerDigitalProducts(shopId?: number) {
+  try {
+    const conditions = [eq(products.isDigital, true)]
+    if (shopId) {
+      conditions.push(eq(products.shopId, shopId))
+    }
+    const rows = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        unitPrice: products.unitPrice,
+        currentStock: products.currentStock,
+        published: products.published,
+        digitalFile: products.digitalFile,
+        numOfSale: products.numOfSale,
+        categoryName: categories.name,
+        thumbnailImg: products.thumbnailImg,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(and(...conditions))
+      .orderBy(desc(products.id))
+
+    return rows.map((r) => ({
+      id: String(r.id),
+      name: r.name,
+      slug: r.slug,
+      category: r.categoryName || "Digital Assets",
+      price: parseFloat(r.unitPrice || "0"),
+      downloadsCount: r.numOfSale || 0,
+      published: r.published !== false,
+      fileType: r.digitalFile ? r.digitalFile.split(".").pop()?.toUpperCase() || "ZIP" : "DIGITAL",
+      thumbnail: r.thumbnailImg || "/assets/img/placeholder.jpg",
+    }))
+  } catch (err) {
+    console.warn("getSellerDigitalProducts error:", err)
+    return []
+  }
 }
 

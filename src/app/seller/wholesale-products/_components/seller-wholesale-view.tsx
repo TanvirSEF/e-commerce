@@ -17,9 +17,10 @@ interface ProductItem {
 
 interface SellerWholesaleViewProps {
   initialProducts: ProductItem[]
+  shopId?: number
 }
 
-export function SellerWholesaleView({ initialProducts }: SellerWholesaleViewProps) {
+export function SellerWholesaleView({ initialProducts, shopId }: SellerWholesaleViewProps) {
   const [products, setProducts] = useState<ProductItem[]>(initialProducts)
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null)
   const [minQty, setMinQty] = useState(5)

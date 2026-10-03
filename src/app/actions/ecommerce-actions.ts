@@ -1075,21 +1075,27 @@ export async function sendCustomNotificationAction(data: {
   return await sendCustomNotification(data)
 }
 
-export async function bulkUploadProductsAction(items: Array<{
-  name: string
-  categoryId?: number
-  brandId?: number
-  unitPrice: number
-  currentStock?: number
-  description?: string
-  unit?: string
-  sku?: string
-}>) {
+export async function bulkUploadProductsAction(
+  items: Array<{
+    name: string
+    categoryId?: number
+    brandId?: number
+    unitPrice: number
+    currentStock?: number
+    description?: string
+    unit?: string
+    sku?: string
+    shopId?: number
+    addedBy?: string
+  }>,
+  shopId?: number
+) {
   const { createProduct } = await import("@/services/product-service")
   const { revalidatePath } = await import("next/cache")
   let successCount = 0
   for (const item of items) {
     try {
+      const targetShopId = shopId || item.shopId
       await createProduct({
         name: item.name,
         categoryId: item.categoryId || 1,
@@ -1100,6 +1106,8 @@ export async function bulkUploadProductsAction(items: Array<{
         unit: item.unit || "pc",
         sku: item.sku || undefined,
         thumbnailImg: "/assets/img/placeholder.jpg",
+        shopId: targetShopId || undefined,
+        addedBy: targetShopId ? "seller" : (item.addedBy || "admin"),
       })
       successCount++
     } catch (e) {
@@ -1108,8 +1116,68 @@ export async function bulkUploadProductsAction(items: Array<{
   }
   try {
     revalidatePath("/admin/products")
+    revalidatePath("/seller/products")
   } catch {}
   return { success: true, count: successCount }
+}
+
+export async function setSellerCategoryDiscountAction(data: {
+  shopId: number
+  categoryId: number
+  discount: number
+  dateRange?: string
+}) {
+  const { db } = await import("@/db")
+  const { products, businessSettings } = await import("@/db/schema")
+  const { eq, and } = await import("drizzle-orm")
+  const { revalidatePath } = await import("next/cache")
+
+  try {
+    // 1. Update all products for this seller in this category in PostgreSQL
+    await db
+      .update(products)
+      .set({
+        discount: String(data.discount),
+        discountType: "percent",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(products.shopId, data.shopId), eq(products.categoryId, data.categoryId)))
+
+    // 2. Persist discount configuration record in business_settings
+    const settingKey = `cat_discount_shop_${data.shopId}_cat_${data.categoryId}`
+    const jsonVal = JSON.stringify({
+      discount: data.discount,
+      dateRange: data.dateRange || "",
+      updatedAt: new Date().toISOString(),
+    })
+
+    const [existing] = await db
+      .select()
+      .from(businessSettings)
+      .where(eq(businessSettings.type, settingKey))
+      .limit(1)
+
+    if (existing) {
+      await db
+        .update(businessSettings)
+        .set({ value: jsonVal, updatedAt: new Date() })
+        .where(eq(businessSettings.id, existing.id))
+    } else {
+      await db.insert(businessSettings).values({
+        type: settingKey,
+        value: jsonVal,
+      })
+    }
+
+    revalidatePath("/seller/category-discount")
+    revalidatePath("/seller/categories-wise-product-discount")
+    revalidatePath("/seller/products")
+    revalidatePath("/products")
+    return { success: true }
+  } catch (err) {
+    console.error("setSellerCategoryDiscountAction error:", err)
+    return { success: false, error: (err as Error).message }
+  }
 }
 
 export async function updateShippingLabelSettingsAction(data: any) {

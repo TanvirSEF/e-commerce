@@ -10,7 +10,7 @@ export interface WholesaleTier {
   price: number
 }
 
-export async function getAllWholesaleProducts(filter: "all" | "inhouse" | "seller" = "all") {
+export async function getAllWholesaleProducts(filter: "all" | "inhouse" | "seller" = "all", shopId?: number) {
   try {
     // 1. Fetch all wholesale price tiers from PostgreSQL
     const dbTiers = await db.select().from(wholesalePrices)
@@ -29,6 +29,7 @@ export async function getAllWholesaleProducts(filter: "all" | "inhouse" | "selle
         addedBy: products.addedBy,
         wholesaleProduct: products.wholesaleProduct,
         categoryId: products.categoryId,
+        shopId: products.shopId,
       })
       .from(products)
       .where(
@@ -38,9 +39,11 @@ export async function getAllWholesaleProducts(filter: "all" | "inhouse" | "selle
       )
       .orderBy(desc(products.id))
 
-    // 3. Filter by type (all, inhouse, seller)
+    // 3. Filter by type (all, inhouse, seller) and shopId
     let filtered = dbProducts
-    if (filter === "inhouse") {
+    if (shopId) {
+      filtered = filtered.filter((p) => p.shopId === shopId || p.addedBy === "seller")
+    } else if (filter === "inhouse") {
       filtered = filtered.filter((p) => p.addedBy === "admin" || !p.addedBy)
     } else if (filter === "seller") {
       filtered = filtered.filter((p) => p.addedBy === "seller")
