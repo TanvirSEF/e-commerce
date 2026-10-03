@@ -4,6 +4,7 @@ import { getServerSession } from "@/lib/auth/session-helper"
 import {
   getUserNotifications,
   getAdminNotifications,
+  getSellerNotifications,
   markNotificationsAsRead,
   deleteUserNotifications,
 } from "@/services/notification-service"
@@ -25,6 +26,8 @@ export async function GET(req: NextRequest) {
     let notifications
     if (variant === "admin") {
       notifications = await getAdminNotifications(session.user.id)
+    } else if (variant === "seller") {
+      notifications = await getSellerNotifications(session.user.id)
     } else {
       notifications = await getUserNotifications(session.user.id)
     }
@@ -59,7 +62,11 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id
     const body = await req.json()
 
-    const fetchCurrent = () => (variant === "admin" ? getAdminNotifications(userId) : getUserNotifications(userId))
+    const fetchCurrent = () => {
+      if (variant === "admin") return getAdminNotifications(userId)
+      if (variant === "seller") return getSellerNotifications(userId)
+      return getUserNotifications(userId)
+    }
 
     if (body.action === "mark_all_read") {
       const all = await fetchCurrent()

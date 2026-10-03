@@ -33,7 +33,7 @@ export function NotificationBell({
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState<number>(initialUnreadCount)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<"all" | "orders" | "system">("all")
+  const [activeTab, setActiveTab] = useState<string>(variant === "seller" ? "orders" : "all")
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const fetchNotifications = useCallback(async (isInitial = false) => {
@@ -102,6 +102,13 @@ export function NotificationBell({
   }
 
   const filteredNotifications = notifications.filter((n) => {
+    if (variant === "seller") {
+      if (activeTab === "orders") return n.type === "order"
+      if (activeTab === "preorders") return n.type === "preorder"
+      if (activeTab === "products") return n.type === "product"
+      if (activeTab === "payouts") return n.type === "payout"
+      return true
+    }
     if (activeTab === "orders") return n.type === "order"
     if (activeTab === "system") return n.type !== "order"
     return true
@@ -113,6 +120,23 @@ export function NotificationBell({
       : variant === "seller"
       ? "/seller/all-notification"
       : "/dashboard/notifications"
+
+  const renderFormatted = (msg: string) => {
+    const parts = msg.split(/(\[\[.*?\]\])/g)
+    return (
+      <>
+        {parts.map((part, i) =>
+          part.startsWith("[[") && part.endsWith("]]") ? (
+            <span key={i} className="font-semibold text-blue-600">
+              {part.slice(2, -2)}
+            </span>
+          ) : (
+            part
+          )
+        )}
+      </>
+    )
+  }
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
@@ -163,6 +187,56 @@ export function NotificationBell({
               </span>
             )}
           </div>
+
+          {/* Seller Tabs (Active eCommerce CMS seller_nav.blade.php 1:1) */}
+          {variant === "seller" && (
+            <div className="flex border-b border-gray-200 text-xs bg-gray-50/50">
+              <button
+                type="button"
+                onClick={() => setActiveTab("orders")}
+                className={`flex-1 py-2 text-center font-medium transition-colors border-b-2 ${
+                  activeTab === "orders"
+                    ? "border-[#d43533] text-[#d43533] font-bold bg-white"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Orders
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("preorders")}
+                className={`flex-1 py-2 text-center font-medium transition-colors border-b-2 ${
+                  activeTab === "preorders"
+                    ? "border-[#d43533] text-[#d43533] font-bold bg-white"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Preorders
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("products")}
+                className={`flex-1 py-2 text-center font-medium transition-colors border-b-2 ${
+                  activeTab === "products"
+                    ? "border-[#d43533] text-[#d43533] font-bold bg-white"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Products
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("payouts")}
+                className={`flex-1 py-2 text-center font-medium transition-colors border-b-2 ${
+                  activeTab === "payouts"
+                    ? "border-[#d43533] text-[#d43533] font-bold bg-white"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Payouts
+              </button>
+            </div>
+          )}
 
           {/* Admin Tabs (Active eCommerce CMS 1:1) */}
           {variant === "admin" && (
@@ -235,7 +309,7 @@ export function NotificationBell({
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-800 leading-relaxed line-clamp-2">
-                      {item.message || item.title}
+                      {renderFormatted(item.message || item.title)}
                     </p>
                     {item.date && (
                       <span className="text-[10px] text-gray-400 mt-1 block">

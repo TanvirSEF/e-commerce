@@ -238,3 +238,40 @@ export async function sendSellerConversationMessageAction(
     return { success: false, error: (err as Error).message }
   }
 }
+
+/* -------------------------- Notification Actions ----------------------- */
+
+export async function bulkDeleteSellerNotificationsAction(ids: string[]) {
+  const seller = await getCurrentSeller()
+  if (!seller?.userId) return { success: false, error: "Unauthorized" }
+  try {
+    const { deleteUserNotifications } = await import("@/services/notification-service")
+    await deleteUserNotifications(ids, seller.userId)
+    revalidatePath("/seller/notifications")
+    revalidatePath("/seller/all-notification")
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+
+export async function markAllSellerNotificationsReadAction() {
+  const seller = await getCurrentSeller()
+  if (!seller?.userId) return { success: false, error: "Unauthorized" }
+  try {
+    const { getSellerNotifications, markNotificationsAsRead } = await import(
+      "@/services/notification-service"
+    )
+    const all = await getSellerNotifications(seller.userId)
+    const unreadIds = all.filter((n) => !n.isRead).map((n) => n.id)
+    if (unreadIds.length > 0) {
+      await markNotificationsAsRead(unreadIds, seller.userId)
+    }
+    revalidatePath("/seller/notifications")
+    revalidatePath("/seller/all-notification")
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: (err as Error).message }
+  }
+}
+

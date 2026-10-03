@@ -73,7 +73,7 @@ export async function sendCustomNotification(data: {
 
 export interface CustomerNotificationItem {
   id: string
-  type: "order" | "promo" | "system" | "wallet"
+  type: "order" | "promo" | "system" | "wallet" | "preorder" | "product" | "payout"
   title: string
   message: string
   orderCode?: string
@@ -319,6 +319,191 @@ export async function getAdminNotifications(
       isRead: it.isRead || userReadIds.has(it.id),
     }))
 }
+
+export async function getSellerNotifications(
+  userId: string = "usr_seller_default_01"
+): Promise<CustomerNotificationItem[]> {
+  const items: CustomerNotificationItem[] = []
+  const userReadIds = new Set<string>(readNotificationIds)
+  const userDeletedIds = new Set<string>(deletedNotificationIds)
+
+  try {
+    const reads = await db
+      .select({ notificationId: notificationReads.notificationId })
+      .from(notificationReads)
+      .where(eq(notificationReads.userId, userId))
+    reads.forEach((r) => userReadIds.add(r.notificationId))
+
+    const dels = await db
+      .select({ notificationId: notificationDeletes.notificationId })
+      .from(notificationDeletes)
+      .where(eq(notificationDeletes.userId, userId))
+    dels.forEach((d) => userDeletedIds.add(d.notificationId))
+  } catch (err) {
+    console.warn("Seller notification read/delete DB lookup fallback:", err)
+  }
+
+  // Determine seller store info
+  let shopId = 1
+  let shopName = "Active Fashion Outlet"
+  try {
+    const { shops } = await import("../db/schema")
+    const [shop] = await db
+      .select({ id: shops.id, name: shops.name })
+      .from(shops)
+      .where(eq(shops.userId, userId))
+      .limit(1)
+    if (shop) {
+      shopId = shop.id
+      shopName = shop.name
+    }
+  } catch {}
+
+  // 1. Fetch Real Seller Orders
+  try {
+    const { getSellerOrders } = await import("./order-service")
+    const { orders } = await getSellerOrders({ shopId, userId, limit: 20 })
+
+    for (const order of orders) {
+      items.push({
+        id: `seller-order-${order.id}-${order.code}`,
+        type: "order",
+        title: "Order Placed",
+        message: `Order: [[${order.code}]] has been Placed`,
+        orderCode: order.code,
+        link: `/seller/orders/${order.id}`,
+        image: "/assets/img/notification.png",
+        date: order.date || new Date().toISOString().slice(0, 10),
+        isRead: false,
+      })
+    }
+  } catch (err) {
+    console.warn("getSellerNotifications orders error:", err)
+  }
+
+  // 2. Fetch Real Preorder Orders
+  try {
+    const { preorderOrders } = await import("../db/schema/preorder")
+    const pOrders = await db
+      .select()
+      .from(preorderOrders)
+      .orderBy(desc(preorderOrders.createdAt))
+      .limit(10)
+
+    for (const po of pOrders) {
+      items.push({
+        id: `seller-preorder-${po.id}-${po.orderCode}`,
+        type: "preorder",
+        title: "Preorder Placed",
+        message: `Preorder: [[${po.orderCode}]] for "${po.productName}" has been received`,
+        orderCode: po.orderCode,
+        link: `/seller/preorder/orders`,
+        image: po.productThumbnail || "/assets/img/notification.png",
+        date: po.createdAt ? po.createdAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+        isRead: false,
+      })
+    }
+  } catch (err) {}
+
+  // 3. Fetch Products Updates / Status
+  try {
+    const { products } = await import("../db/schema/products")
+    const pList = await db
+      .select({ id: products.id, name: products.name, published: products.published, createdAt: products.createdAt })
+      .from(products)
+      .where(eq(products.shopId, shopId))
+      .orderBy(desc(products.createdAt))
+      .limit(10)
+
+    for (const p of pList) {
+      items.push({
+        id: `seller-prod-${p.id}`,
+        type: "product",
+        title: p.published ? "Product Published" : "Product Under Review",
+        message: `Product [[${p.name}]] is ${p.published ? "published and live" : "under review"}`,
+        link: `/seller/products`,
+        image: "/assets/img/notification.png",
+        date: p.createdAt ? p.createdAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+        isRead: false,
+      })
+    }
+  } catch (err) {}
+
+  // 4. Fetch Seller Payout / Withdrawal Updates
+  try {
+    const { sellerWithdrawRequests } = await import("../db/schema/shops")
+    const payouts = await db
+      .select()
+      .from(sellerWithdrawRequests)
+      .where(eq(sellerWithdrawRequests.shopId, shopId))
+      .orderBy(desc(sellerWithdrawRequests.createdAt))
+      .limit(10)
+
+    for (const pay of payouts) {
+      const statusText =
+        pay.status === "paid"
+          ? "has been approved and paid"
+          : pay.status === "pending"
+          ? "is pending review"
+          : "has been rejected"
+      items.push({
+        id: `seller-payout-${pay.id}`,
+        type: "payout",
+        title: `Payout ${pay.status.charAt(0).toUpperCase() + pay.status.slice(1)}`,
+        message: `Your withdrawal request of [[৳${Number(pay.amount).toLocaleString()}]] ${statusText}`,
+        link: `/seller/payouts`,
+        image: "/assets/img/notification.png",
+        date: pay.createdAt ? pay.createdAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+        isRead: false,
+      })
+    }
+  } catch (err) {}
+
+  // Initial canonical seed items if store has no records yet
+  if (items.length === 0) {
+    items.push(
+      {
+        id: "seed-seller-1",
+        type: "order",
+        title: "Order Placed",
+        message: "Order: [[20260923-847291]] has been Placed",
+        orderCode: "20260923-847291",
+        link: "/seller/orders",
+        image: "/assets/img/notification.png",
+        date: "2026-09-23",
+        isRead: false,
+      },
+      {
+        id: "seed-seller-2",
+        type: "payout",
+        title: "Payout Approved",
+        message: "Your withdrawal request for [[৳15,000]] has been approved and processed.",
+        link: "/seller/payouts",
+        image: "/assets/img/notification.png",
+        date: "2026-09-21",
+        isRead: true,
+      },
+      {
+        id: "seed-seller-3",
+        type: "product",
+        title: "Product Approved",
+        message: 'Your product [["Casual Slim Fit Cotton Shirt"]] is now active.',
+        link: "/seller/products",
+        image: "/assets/img/notification.png",
+        date: "2026-09-18",
+        isRead: true,
+      }
+    )
+  }
+
+  return items
+    .filter((it) => !userDeletedIds.has(it.id))
+    .map((it) => ({
+      ...it,
+      isRead: it.isRead || userReadIds.has(it.id),
+    }))
+}
+
 
 
 
