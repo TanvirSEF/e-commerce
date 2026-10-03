@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Plus, Send, CheckCircle, Clock, AlertCircle, X, ChevronRight } from "lucide-react"
 import { SeedSupportTicket } from "@/db/seed/data"
 import { createTicketAction } from "@/app/actions/ecommerce-actions"
@@ -138,13 +139,13 @@ export function SupportTicketsView({ initialTickets }: SupportTicketsViewProps) 
                       )}
                     </td>
                     <td className="py-3.5 px-4 sm:px-6 text-right">
-                      <button
-                        onClick={() => setSelectedTicket(ticket)}
-                        className="inline-flex items-center gap-1 text-primary font-bold hover:underline"
+                      <Link
+                        href={`/dashboard/support-tickets/${ticket.code || ticket.id}`}
+                        className="inline-flex items-center gap-1 text-[#d43533] font-bold hover:underline"
                       >
                         <span>View Details</span>
                         <ChevronRight className="size-3" />
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))

@@ -149,3 +149,29 @@ export const wishlistsRelations = relations(wishlists, ({ one }) => ({
 
 export type Wishlist = typeof wishlists.$inferSelect
 export type NewWishlist = typeof wishlists.$inferInsert
+
+export const customerPaymentInfos = pgTable("customer_payment_infos", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  paymentType: varchar("payment_type", { length: 50 }).notNull(),
+  bankName: varchar("bank_name", { length: 150 }),
+  accountName: varchar("account_name", { length: 150 }).notNull(),
+  accountNumber: varchar("account_number", { length: 100 }).notNull(),
+  routingNumber: varchar("routing_number", { length: 100 }),
+  paymentInstruction: text("payment_instruction"),
+  setDefault: boolean("set_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
+export const customerPaymentInfosRelations = relations(customerPaymentInfos, ({ one }) => ({
+  user: one(users, {
+    fields: [customerPaymentInfos.userId],
+    references: [users.id],
+  }),
+}))
+
+export type CustomerPaymentInfo = typeof customerPaymentInfos.$inferSelect
+export type NewCustomerPaymentInfo = typeof customerPaymentInfos.$inferInsert

@@ -34,7 +34,13 @@ export function ClubPointsView({
 
     setSubmitting(true)
     const pts = Number(pointsToConvert)
-    await convertClubPointsAction("usr_customer_default_01", pts)
+    const res = await convertClubPointsAction(pts)
+
+    if (!res.success) {
+      alert((res as any).error || "Failed to convert points.")
+      setSubmitting(false)
+      return
+    }
 
     setTotalPoints((prev) => Math.max(0, prev - pts))
     setHistory((prev) =>

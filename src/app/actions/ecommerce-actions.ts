@@ -61,29 +61,74 @@ export async function toggleFlashDealFeaturedAction(id: number | string, feature
 }
 
 export async function rechargeWalletAction(data: {
-  userId?: string
   amount: number
   paymentMethod: string
   paymentDetails?: string
   offlinePayment?: boolean
 }) {
-  return await rechargeWallet(data)
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, newBalance: 0, error: "Unauthenticated" }
+  }
+  const res = await rechargeWallet({
+    ...data,
+    userId: session.user.id,
+  })
+  revalidatePath("/dashboard/wallet")
+  revalidatePath("/dashboard")
+  return res
 }
 
-export async function convertClubPointsAction(
-  userId: string = "usr_customer_default_01",
-  pointsToConvert: number
-) {
-  return await convertClubPoints(userId, pointsToConvert)
+export async function convertClubPointsAction(pointsToConvert: number) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, creditedAmount: 0, error: "Unauthenticated" }
+  }
+  const res = await convertClubPoints(session.user.id, pointsToConvert)
+  revalidatePath("/dashboard/club-points")
+  revalidatePath("/dashboard/wallet")
+  revalidatePath("/dashboard")
+  return res
 }
 
 export async function createTicketAction(data: {
-  userId?: string
   subject: string
   details: string
   files?: string[]
 }) {
-  return await createTicket(data)
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    throw new Error("Unauthenticated user cannot create ticket.")
+  }
+  const res = await createTicket({
+    ...data,
+    userId: session.user.id,
+  })
+  revalidatePath("/dashboard/support-tickets")
+  return res
+}
+
+export async function replyCustomerTicketAction(data: {
+  ticketId: number
+  reply: string
+  files?: string[]
+}) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
+  const { replyTicketCustomer } = await import("@/services/ticket-service")
+  const res = await replyTicketCustomer({
+    ...data,
+    userId: session.user.id,
+  })
+  revalidatePath(`/dashboard/support-tickets/${data.ticketId}`)
+  revalidatePath("/dashboard/support-tickets")
+  return res
 }
 
 export async function updateSellerVerificationAction(shopId: number, status: boolean) {
@@ -443,32 +488,43 @@ export async function updateCustomerProfileAction(data: {
   password?: string
 }) {
   try {
+    const { getServerSession } = await import("@/lib/auth/session-helper")
+    let targetUserId = data.userId
+    if (!targetUserId) {
+      const session = await getServerSession()
+      targetUserId = session?.user?.id
+    }
+    if (!targetUserId) {
+      return { success: false, message: "Unauthenticated" }
+    }
+
     const { db } = await import("@/db")
     const { users, accounts } = await import("@/db/schema")
     const { eq } = await import("drizzle-orm")
 
-    if (data.userId) {
-      await db
-        .update(users)
-        .set({
-          name: data.name,
-          ...(data.phone ? { phone: data.phone } : {}),
-          ...(data.avatar ? { image: data.avatar } : {}),
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, data.userId))
+    await db
+      .update(users)
+      .set({
+        name: data.name,
+        ...(data.phone ? { phone: data.phone } : {}),
+        ...(data.avatar ? { image: data.avatar } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, targetUserId))
 
-      if (data.password && data.password.trim().length > 0) {
-        try {
-          const { hashPassword } = await import("better-auth/crypto")
-          const hashedPassword = await hashPassword(data.password)
-          await db
-            .update(accounts)
-            .set({ password: hashedPassword, updatedAt: new Date() })
-            .where(eq(accounts.userId, data.userId))
-        } catch {}
-      }
+    if (data.password && data.password.trim().length > 0) {
+      try {
+        const { hashPassword } = await import("better-auth/crypto")
+        const hashedPassword = await hashPassword(data.password)
+        await db
+          .update(accounts)
+          .set({ password: hashedPassword, updatedAt: new Date() })
+          .where(eq(accounts.userId, targetUserId))
+      } catch {}
     }
+
+    revalidatePath("/dashboard/profile")
+    revalidatePath("/dashboard")
     return { success: true, message: "Profile updated successfully" }
   } catch (err: any) {
     return { success: false, message: err?.message || "Failed to update profile" }
@@ -530,16 +586,25 @@ export async function updateUserEmailAction(data: {
       return { success: false, message: "Invalid verification code. Please check and try again." }
     }
 
+    const { getServerSession } = await import("@/lib/auth/session-helper")
+    const session = await getServerSession()
+    const targetUserId = data.userId || session?.user?.id
+
+    if (!targetUserId) {
+      return { success: false, message: "User not authenticated." }
+    }
+
     const { db } = await import("@/db")
     const { users } = await import("@/db/schema")
     const { eq } = await import("drizzle-orm")
 
-    if (data.userId) {
-      await db
-        .update(users)
-        .set({ email: cleanEmail, updatedAt: new Date() })
-        .where(eq(users.id, data.userId))
-    }
+    await db
+      .update(users)
+      .set({ email: cleanEmail, updatedAt: new Date() })
+      .where(eq(users.id, targetUserId))
+
+    revalidatePath("/dashboard/profile")
+    revalidatePath("/dashboard")
 
     return {
       success: true,
@@ -1906,27 +1971,163 @@ export async function toggleCouponStatusAction(id: number | string, status: bool
 
 // Notification Actions (Customer & Admin Bulk Delete & Mark As Read)
 export async function deleteNotificationsAction(ids: string[]) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
   const { deleteUserNotifications } = await import("@/services/notification-service")
-  let userId = "usr_customer_default_01"
-  try {
-    const { auth } = await import("@/lib/auth/auth")
-    const { headers } = await import("next/headers")
-    const session = await auth.api.getSession({ headers: await headers() })
-    if (session?.user?.id) userId = session.user.id
-  } catch {}
-  return await deleteUserNotifications(ids, userId)
+  const res = await deleteUserNotifications(ids, session.user.id)
+  revalidatePath("/dashboard/notifications")
+  return res
 }
 
 export async function markNotificationsReadAction(ids?: string[]) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
   const { markNotificationsAsRead } = await import("@/services/notification-service")
-  let userId = "usr_customer_default_01"
+  const res = await markNotificationsAsRead(ids, session.user.id)
+  revalidatePath("/dashboard/notifications")
+  return res
+}
+
+// Customer Address Actions (100% DB-driven)
+export async function addCustomerAddressAction(data: {
+  address: string
+  country?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  phone?: string
+  setDefault?: boolean
+  setBilling?: boolean
+}) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
+  const { addCustomerAddress } = await import("@/services/customer-extra-service")
+  const item = await addCustomerAddress({ ...data, userId: session.user.id })
+  revalidatePath("/dashboard/profile")
+  revalidatePath("/dashboard")
+  return { success: Boolean(item), item }
+}
+
+export async function updateCustomerAddressAction(data: {
+  id: number
+  address?: string
+  country?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  phone?: string
+  setDefault?: boolean
+  setBilling?: boolean
+}) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
+  const { updateCustomerAddress } = await import("@/services/customer-extra-service")
+  const success = await updateCustomerAddress({ ...data, userId: session.user.id })
+  revalidatePath("/dashboard/profile")
+  revalidatePath("/dashboard")
+  return { success }
+}
+
+export async function deleteCustomerAddressAction(id: number) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
+  const { deleteCustomerAddress } = await import("@/services/customer-extra-service")
+  const success = await deleteCustomerAddress(id, session.user.id)
+  revalidatePath("/dashboard/profile")
+  revalidatePath("/dashboard")
+  return { success }
+}
+
+export async function setDefaultAddressAction(id: number, type: "shipping" | "billing") {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
+  const { setDefaultAddress } = await import("@/services/customer-extra-service")
+  const success = await setDefaultAddress(id, session.user.id, type)
+  revalidatePath("/dashboard/profile")
+  revalidatePath("/dashboard")
+  return { success }
+}
+
+// Customer Payment Info Actions (100% DB-driven)
+export async function addCustomerPaymentInfoAction(data: {
+  paymentType: "bank_transfer" | "bkash" | "nagad" | "others"
+  bankName?: string
+  accountName: string
+  accountNumber: string
+  routingNumber?: string
+  paymentInstruction?: string
+  setDefault?: boolean
+}) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
+  const { addCustomerPaymentInfo } = await import("@/services/customer-extra-service")
+  const item = await addCustomerPaymentInfo({ ...data, userId: session.user.id })
+  revalidatePath("/dashboard/profile")
+  return { success: Boolean(item), item }
+}
+
+export async function deleteCustomerPaymentInfoAction(id: number) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
+  const { deleteCustomerPaymentInfo } = await import("@/services/customer-extra-service")
+  const success = await deleteCustomerPaymentInfo(id, session.user.id)
+  revalidatePath("/dashboard/profile")
+  return { success }
+}
+
+export async function setDefaultPaymentInfoAction(id: number) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
+  const { setDefaultPaymentInfo } = await import("@/services/customer-extra-service")
+  const success = await setDefaultPaymentInfo(id, session.user.id)
+  revalidatePath("/dashboard/profile")
+  return { success }
+}
+
+export async function updateCustomerEmailAction(newEmail: string) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Unauthenticated" }
+  }
   try {
-    const { auth } = await import("@/lib/auth/auth")
-    const { headers } = await import("next/headers")
-    const session = await auth.api.getSession({ headers: await headers() })
-    if (session?.user?.id) userId = session.user.id
-  } catch {}
-  return await markNotificationsAsRead(ids, userId)
+    const { db } = await import("@/db")
+    const { users } = await import("@/db/schema")
+    const { eq } = await import("drizzle-orm")
+    await db.update(users).set({ email: newEmail.trim().toLowerCase(), updatedAt: new Date() }).where(eq(users.id, session.user.id))
+    revalidatePath("/dashboard/profile")
+    revalidatePath("/dashboard")
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to update email" }
+  }
 }
 
 

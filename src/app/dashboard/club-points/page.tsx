@@ -1,4 +1,6 @@
 import { Metadata } from "next"
+import { redirect } from "next/navigation"
+import { getServerSession } from "@/lib/auth/session-helper"
 import { getClubPoints } from "@/services/wallet-service"
 import { ensureAddonActivated } from "@/services/addon-service"
 import { ClubPointsView } from "./_components/club-points-view"
@@ -12,7 +14,12 @@ export const metadata: Metadata = {
 
 export default async function ClubPointsPage() {
   await ensureAddonActivated("club_points")
-  const { totalPoints, convertRate, history } = await getClubPoints()
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    redirect("/login")
+  }
+
+  const { totalPoints, convertRate, history } = await getClubPoints(session.user.id)
 
   return (
     <ClubPointsView

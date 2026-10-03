@@ -22,12 +22,14 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
   const [senderNumber, setSenderNumber] = useState("")
   const [txnId, setTxnId] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const handleRecharge = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!amount || Number(amount) <= 0) return
 
     setSubmitting(true)
+    setFeedback(null)
     const isOffline = modalType === "offline"
     const chosenMethod = isOffline ? offlineMethod : paymentMethod
     const details = isOffline
@@ -41,6 +43,12 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
       offlinePayment: isOffline,
     })
 
+    if (!res.success) {
+      setFeedback({ type: "error", text: (res as any).error || "Failed to recharge wallet." })
+      setSubmitting(false)
+      return
+    }
+
     const newTxn: SeedWalletTransaction = {
       id: `w-${Date.now()}`,
       date: new Date().toISOString().slice(0, 10),
@@ -52,6 +60,9 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
     setHistory([newTxn, ...history])
     if (!isOffline) {
       setBalance(res.newBalance)
+      setFeedback({ type: "success", text: `Wallet recharged successfully with ৳${Number(amount).toFixed(2)}!` })
+    } else {
+      setFeedback({ type: "success", text: "Offline recharge request submitted. Admin will review and approve shortly." })
     }
 
     setSubmitting(false)
@@ -59,6 +70,7 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
     setAmount("")
     setSenderNumber("")
     setTxnId("")
+    setTimeout(() => setFeedback(null), 5000)
   }
 
   return (
@@ -70,6 +82,19 @@ export function WalletView({ initialBalance, initialHistory }: WalletViewProps) 
           View your balance, recharge credits, and track deposit transactions.
         </p>
       </div>
+
+      {feedback && (
+        <div
+          className={`p-3.5 rounded text-xs font-semibold flex items-center justify-between border ${
+            feedback.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-red-50 border-red-200 text-red-800"
+          }`}
+        >
+          <span>{feedback.text}</span>
+          <button type="button" onClick={() => setFeedback(null)} className="text-gray-500 hover:text-gray-800">✕</button>
+        </div>
+      )}
 
       {/* Cards Row: Balance, Online Recharge, Offline Recharge */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

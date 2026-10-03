@@ -8,7 +8,8 @@ import {
   SeedClubPoint,
 } from "../db/seed/data"
 
-export async function getWalletBalance(userId: string = "usr_customer_default_01"): Promise<number> {
+export async function getWalletBalance(userId?: string): Promise<number> {
+  if (!userId) return 0
   try {
     const [user] = await db.select({ balance: users.balance }).from(users).where(eq(users.id, userId)).limit(1)
     if (user && user.balance) {
@@ -17,41 +18,43 @@ export async function getWalletBalance(userId: string = "usr_customer_default_01
   } catch (err) {
     console.warn("DB getWalletBalance fallback:", (err as Error).message)
   }
-  return 2500.0
+  return 0
 }
 
 export async function getWalletHistory(
-  userId: string = "usr_customer_default_01"
+  userId?: string
 ): Promise<SeedWalletTransaction[]> {
+  if (!userId) return []
   try {
     const rows = await db.select().from(wallets).where(eq(wallets.userId, userId)).orderBy(desc(wallets.createdAt))
-    if (rows.length > 0) {
-      return rows.map((w) => ({
-        id: String(w.id),
-        date: w.createdAt.toISOString().slice(0, 10),
-        amount: Number(w.amount),
-        paymentMethod: w.paymentMethod,
-        status: w.approval
-          ? w.addedBy === "admin"
-            ? "recharged_by_admin"
-            : "approved"
-          : "pending",
-      }))
-    }
+    return rows.map((w) => ({
+      id: String(w.id),
+      date: w.createdAt.toISOString().slice(0, 10),
+      amount: Number(w.amount),
+      paymentMethod: w.paymentMethod,
+      status: w.approval
+        ? w.addedBy === "admin"
+          ? "recharged_by_admin"
+          : "approved"
+        : "pending",
+    }))
   } catch (err) {
-    console.warn("DB getWalletHistory fallback to SEED_WALLET_TRANSACTIONS:", (err as Error).message)
+    console.warn("DB getWalletHistory error:", (err as Error).message)
+    return []
   }
-  return SEED_WALLET_TRANSACTIONS
 }
 
 export async function rechargeWallet(data: {
-  userId?: string
+  userId: string
   amount: number
   paymentMethod: string
   paymentDetails?: string
   offlinePayment?: boolean
 }): Promise<{ success: boolean; newBalance: number }> {
-  const userId = data.userId || "usr_customer_default_01"
+  const userId = data.userId
+  if (!userId) {
+    return { success: false, newBalance: 0 }
+  }
   try {
     await db.insert(wallets).values({
       userId,
@@ -63,59 +66,92 @@ export async function rechargeWallet(data: {
       addedBy: "user",
     })
 
+    const current = await getWalletBalance(userId)
     if (!data.offlinePayment) {
-      const current = await getWalletBalance(userId)
       const updated = current + data.amount
       await db.update(users).set({ balance: updated.toFixed(2) }).where(eq(users.id, userId))
       return { success: true, newBalance: updated }
     }
+    return { success: true, newBalance: current }
   } catch (err) {
-    console.warn("rechargeWallet db error:", (err as Error).message)
+    console.error("rechargeWallet db error:", (err as Error).message)
+    return { success: false, newBalance: 0 }
   }
-
-  return { success: true, newBalance: 2500 + data.amount }
 }
 
-export async function getClubPoints(userId: string = "usr_customer_default_01"): Promise<{
+export async function getClubPoints(userId?: string): Promise<{
   totalPoints: number
   convertRate: number // e.g. 100 points = 10 BDT
   history: SeedClubPoint[]
 }> {
+  if (!userId) {
+    return { totalPoints: 0, convertRate: 10, history: [] }
+  }
   try {
     const rows = await db.select().from(clubPoints).where(eq(clubPoints.userId, userId)).orderBy(desc(clubPoints.createdAt))
-    if (rows.length > 0) {
-      const unconv = rows.filter((r) => !r.converted).reduce((sum, r) => sum + r.points, 0)
-      return {
-        totalPoints: unconv,
-        convertRate: 10, // 100 points = 10 BDT
-        history: rows.map((r) => ({
-          id: String(r.id),
-          orderCode: "20260920-101122",
-          points: r.points,
-          converted: r.converted,
-          date: r.createdAt.toISOString().slice(0, 10),
-        })),
-      }
+    const unconv = rows.filter((r) => !r.converted).reduce((sum, r) => sum + r.points, 0)
+    return {
+      totalPoints: unconv,
+      convertRate: 10, // 100 points = 10 BDT
+      history: rows.map((r) => ({
+        id: String(r.id),
+        orderCode: r.orderId ? `ORD-${r.orderId}` : "REWARD-EARN",
+        points: r.points,
+        converted: r.converted,
+        date: r.createdAt.toISOString().slice(0, 10),
+      })),
     }
   } catch (err) {
-    console.warn("getClubPoints fallback:", (err as Error).message)
-  }
-
-  const unconv = SEED_CLUB_POINTS.filter((p) => !p.converted).reduce((sum, p) => sum + p.points, 0)
-  return {
-    totalPoints: unconv,
-    convertRate: 10,
-    history: SEED_CLUB_POINTS,
+    console.warn("getClubPoints error:", (err as Error).message)
+    return { totalPoints: 0, convertRate: 10, history: [] }
   }
 }
 
 export async function convertClubPoints(
-  userId: string = "usr_customer_default_01",
+  userId: string,
   pointsToConvert: number
-): Promise<{ success: boolean; creditedAmount: number }> {
+): Promise<{ success: boolean; creditedAmount: number; error?: string }> {
+  if (!userId || pointsToConvert < 100) {
+    return { success: false, creditedAmount: 0, error: "Minimum 100 points required to convert." }
+  }
+
   // Rate: 100 points = 10 BDT (0.1 BDT per point)
   const creditedAmount = Math.floor(pointsToConvert * 0.1)
+
   try {
+    // 1. Fetch unconverted rows
+    const { asc } = await import("drizzle-orm")
+    const unconvertedRows = await db
+      .select()
+      .from(clubPoints)
+      .where(and(eq(clubPoints.userId, userId), eq(clubPoints.converted, false)))
+      .orderBy(asc(clubPoints.createdAt))
+
+    const totalAvailable = unconvertedRows.reduce((sum, r) => sum + r.points, 0)
+    if (totalAvailable < pointsToConvert) {
+      return { success: false, creditedAmount: 0, error: "Insufficient available points." }
+    }
+
+    // 2. Mark points as converted
+    let remainingToConvert = pointsToConvert
+    for (const row of unconvertedRows) {
+      if (remainingToConvert <= 0) break
+      if (row.points <= remainingToConvert) {
+        await db.update(clubPoints).set({ converted: true }).where(eq(clubPoints.id, row.id))
+        remainingToConvert -= row.points
+      } else {
+        await db.update(clubPoints).set({ points: row.points - remainingToConvert }).where(eq(clubPoints.id, row.id))
+        await db.insert(clubPoints).values({
+          userId,
+          orderId: row.orderId,
+          points: remainingToConvert,
+          converted: true,
+        })
+        remainingToConvert = 0
+      }
+    }
+
+    // 3. Credit User Balance & Log Wallet Record
     const current = await getWalletBalance(userId)
     const newBal = current + creditedAmount
     await db.update(users).set({ balance: newBal.toFixed(2) }).where(eq(users.id, userId))
@@ -126,10 +162,12 @@ export async function convertClubPoints(
       approval: true,
       addedBy: "user",
     })
+
+    return { success: true, creditedAmount }
   } catch (err) {
-    console.warn("convertClubPoints error:", (err as Error).message)
+    console.error("convertClubPoints error:", (err as Error).message)
+    return { success: false, creditedAmount: 0, error: "Failed to convert points. Please try again." }
   }
-  return { success: true, creditedAmount }
 }
 
 import type { WalletRechargeItem, AdminWalletRechargesResponse } from "@/types/wallet-recharge"

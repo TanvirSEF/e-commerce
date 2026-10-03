@@ -23,6 +23,7 @@ export const customerAddresses = pgTable("customer_addresses", {
   postalCode: varchar("postal_code", { length: 20 }),
   phone: varchar("phone", { length: 50 }),
   setDefault: boolean("set_default").default(false).notNull(),
+  setBilling: boolean("set_billing").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })

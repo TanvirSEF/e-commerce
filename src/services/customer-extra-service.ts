@@ -333,6 +333,7 @@ export interface CustomerAddressItem {
   postalCode: string | null
   phone: string | null
   setDefault: boolean
+  setBilling: boolean
 }
 
 export async function getCustomerAddresses(userId: string): Promise<CustomerAddressItem[]> {
@@ -353,10 +354,11 @@ export async function getCustomerAddresses(userId: string): Promise<CustomerAddr
       state: r.state,
       postalCode: r.postalCode,
       phone: r.phone,
-      setDefault: r.setDefault,
+      setDefault: Boolean(r.setDefault),
+      setBilling: Boolean((r as any).setBilling),
     }))
   } catch (err) {
-    console.warn("getCustomerAddresses fallback:", err)
+    console.warn("getCustomerAddresses error:", err)
     return []
   }
 }
@@ -379,14 +381,24 @@ export async function addCustomerAddress(data: {
   postalCode?: string
   phone?: string
   setDefault?: boolean
+  setBilling?: boolean
 }): Promise<CustomerAddressItem | null> {
   try {
+    if (!data.userId) return null
+
     if (data.setDefault) {
       await db
         .update(customerAddresses)
         .set({ setDefault: false })
         .where(eq(customerAddresses.userId, data.userId))
     }
+    if (data.setBilling) {
+      await db
+        .update(customerAddresses)
+        .set({ setBilling: false })
+        .where(eq(customerAddresses.userId, data.userId))
+    }
+
     const [inserted] = await db
       .insert(customerAddresses)
       .values({
@@ -397,9 +409,11 @@ export async function addCustomerAddress(data: {
         state: data.state || "",
         postalCode: data.postalCode || "",
         phone: data.phone || "",
-        setDefault: data.setDefault ?? true,
+        setDefault: data.setDefault ?? false,
+        setBilling: data.setBilling ?? false,
       })
       .returning()
+
     return inserted
       ? {
           id: inserted.id,
@@ -410,12 +424,224 @@ export async function addCustomerAddress(data: {
           state: inserted.state,
           postalCode: inserted.postalCode,
           phone: inserted.phone,
-          setDefault: inserted.setDefault,
+          setDefault: Boolean(inserted.setDefault),
+          setBilling: Boolean((inserted as any).setBilling),
         }
       : null
   } catch (err) {
     console.error("addCustomerAddress error:", err)
     return null
+  }
+}
+
+export async function updateCustomerAddress(data: {
+  id: number
+  userId: string
+  address?: string
+  country?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  phone?: string
+  setDefault?: boolean
+  setBilling?: boolean
+}): Promise<boolean> {
+  try {
+    if (!data.userId || !data.id) return false
+
+    if (data.setDefault) {
+      await db
+        .update(customerAddresses)
+        .set({ setDefault: false })
+        .where(eq(customerAddresses.userId, data.userId))
+    }
+    if (data.setBilling) {
+      await db
+        .update(customerAddresses)
+        .set({ setBilling: false })
+        .where(eq(customerAddresses.userId, data.userId))
+    }
+
+    const updateObj: Record<string, any> = { updatedAt: new Date() }
+    if (data.address !== undefined) updateObj.address = data.address
+    if (data.country !== undefined) updateObj.country = data.country
+    if (data.city !== undefined) updateObj.city = data.city
+    if (data.state !== undefined) updateObj.state = data.state
+    if (data.postalCode !== undefined) updateObj.postalCode = data.postalCode
+    if (data.phone !== undefined) updateObj.phone = data.phone
+    if (data.setDefault !== undefined) updateObj.setDefault = data.setDefault
+    if (data.setBilling !== undefined) updateObj.setBilling = data.setBilling
+
+    await db
+      .update(customerAddresses)
+      .set(updateObj)
+      .where(and(eq(customerAddresses.id, data.id), eq(customerAddresses.userId, data.userId)))
+
+    return true
+  } catch (err) {
+    console.error("updateCustomerAddress error:", err)
+    return false
+  }
+}
+
+export async function deleteCustomerAddress(id: number, userId: string): Promise<boolean> {
+  try {
+    if (!id || !userId) return false
+    await db
+      .delete(customerAddresses)
+      .where(and(eq(customerAddresses.id, id), eq(customerAddresses.userId, userId)))
+    return true
+  } catch (err) {
+    console.error("deleteCustomerAddress error:", err)
+    return false
+  }
+}
+
+export async function setDefaultAddress(id: number, userId: string, type: "shipping" | "billing"): Promise<boolean> {
+  try {
+    if (!id || !userId) return false
+    if (type === "shipping") {
+      await db.update(customerAddresses).set({ setDefault: false }).where(eq(customerAddresses.userId, userId))
+      await db.update(customerAddresses).set({ setDefault: true }).where(and(eq(customerAddresses.id, id), eq(customerAddresses.userId, userId)))
+    } else {
+      await db.update(customerAddresses).set({ setBilling: false }).where(eq(customerAddresses.userId, userId))
+      await db.update(customerAddresses).set({ setBilling: true }).where(and(eq(customerAddresses.id, id), eq(customerAddresses.userId, userId)))
+    }
+    return true
+  } catch (err) {
+    console.error("setDefaultAddress error:", err)
+    return false
+  }
+}
+
+// ==========================================
+// Customer Payment Information (Refund Payout)
+// ==========================================
+
+export interface CustomerPaymentInfoItem {
+  id: number
+  userId: string
+  paymentType: "bank_transfer" | "bkash" | "nagad" | "others"
+  bankName: string | null
+  accountName: string
+  accountNumber: string
+  routingNumber: string | null
+  paymentInstruction: string | null
+  setDefault: boolean
+}
+
+export async function getCustomerPaymentInfos(userId: string): Promise<CustomerPaymentInfoItem[]> {
+  try {
+    if (!userId) return []
+    const { customerPaymentInfos } = await import("@/db/schema/customer")
+    const rows = await db
+      .select()
+      .from(customerPaymentInfos)
+      .where(eq(customerPaymentInfos.userId, userId))
+      .orderBy(desc(customerPaymentInfos.setDefault), desc(customerPaymentInfos.id))
+
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.userId,
+      paymentType: (r.paymentType as any) || "others",
+      bankName: r.bankName,
+      accountName: r.accountName,
+      accountNumber: r.accountNumber,
+      routingNumber: r.routingNumber,
+      paymentInstruction: r.paymentInstruction,
+      setDefault: r.setDefault,
+    }))
+  } catch (err) {
+    console.warn("getCustomerPaymentInfos error:", err)
+    return []
+  }
+}
+
+export async function addCustomerPaymentInfo(data: {
+  userId: string
+  paymentType: "bank_transfer" | "bkash" | "nagad" | "others"
+  bankName?: string
+  accountName: string
+  accountNumber: string
+  routingNumber?: string
+  paymentInstruction?: string
+  setDefault?: boolean
+}): Promise<CustomerPaymentInfoItem | null> {
+  try {
+    if (!data.userId) return null
+    const { customerPaymentInfos } = await import("@/db/schema/customer")
+
+    if (data.setDefault) {
+      await db
+        .update(customerPaymentInfos)
+        .set({ setDefault: false })
+        .where(eq(customerPaymentInfos.userId, data.userId))
+    }
+
+    const [inserted] = await db
+      .insert(customerPaymentInfos)
+      .values({
+        userId: data.userId,
+        paymentType: data.paymentType,
+        bankName: data.bankName || null,
+        accountName: data.accountName,
+        accountNumber: data.accountNumber,
+        routingNumber: data.routingNumber || null,
+        paymentInstruction: data.paymentInstruction || null,
+        setDefault: data.setDefault ?? false,
+      })
+      .returning()
+
+    return inserted
+      ? {
+          id: inserted.id,
+          userId: inserted.userId,
+          paymentType: inserted.paymentType as any,
+          bankName: inserted.bankName,
+          accountName: inserted.accountName,
+          accountNumber: inserted.accountNumber,
+          routingNumber: inserted.routingNumber,
+          paymentInstruction: inserted.paymentInstruction,
+          setDefault: inserted.setDefault,
+        }
+      : null
+  } catch (err) {
+    console.error("addCustomerPaymentInfo error:", err)
+    return null
+  }
+}
+
+export async function deleteCustomerPaymentInfo(id: number, userId: string): Promise<boolean> {
+  try {
+    if (!id || !userId) return false
+    const { customerPaymentInfos } = await import("@/db/schema/customer")
+    await db
+      .delete(customerPaymentInfos)
+      .where(and(eq(customerPaymentInfos.id, id), eq(customerPaymentInfos.userId, userId)))
+    return true
+  } catch (err) {
+    console.error("deleteCustomerPaymentInfo error:", err)
+    return false
+  }
+}
+
+export async function setDefaultPaymentInfo(id: number, userId: string): Promise<boolean> {
+  try {
+    if (!id || !userId) return false
+    const { customerPaymentInfos } = await import("@/db/schema/customer")
+    await db
+      .update(customerPaymentInfos)
+      .set({ setDefault: false })
+      .where(eq(customerPaymentInfos.userId, userId))
+
+    await db
+      .update(customerPaymentInfos)
+      .set({ setDefault: true })
+      .where(and(eq(customerPaymentInfos.id, id), eq(customerPaymentInfos.userId, userId)))
+    return true
+  } catch (err) {
+    console.error("setDefaultPaymentInfo error:", err)
+    return false
   }
 }
 

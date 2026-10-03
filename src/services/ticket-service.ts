@@ -226,9 +226,9 @@ export async function updateTicketStatus(ticketId: number, status: string) {
  * Customer / Frontend support tickets query
  */
 export async function getSupportTickets(userId?: string) {
+  if (!userId) return []
   try {
-    const whereClause = userId ? eq(tickets.userId, userId) : undefined
-    const rows = await db.select().from(tickets).where(whereClause).orderBy(desc(tickets.createdAt))
+    const rows = await db.select().from(tickets).where(eq(tickets.userId, userId)).orderBy(desc(tickets.createdAt))
 
     return rows.map((t) => ({
       id: String(t.id),
@@ -249,17 +249,20 @@ export async function getSupportTickets(userId?: string) {
  * Customer ticket creation
  */
 export async function createTicket(data: {
-  userId?: string
+  userId: string
   subject: string
   details: string
   files?: string[]
 }) {
+  if (!data.userId) {
+    throw new Error("Unauthenticated user cannot create ticket.")
+  }
   const code = String(Math.floor(100000 + Math.random() * 900000))
   const [inserted] = await db
     .insert(tickets)
     .values({
       code,
-      userId: data.userId || "usr_customer_default_01",
+      userId: data.userId,
       subject: data.subject,
       details: data.details,
       files: data.files || [],
@@ -281,4 +284,114 @@ export async function createTicket(data: {
       replies: [],
     },
   }
+}
+
+/**
+ * Get ticket detail for customer view (1:1 with Laravel show.blade.php)
+ */
+export async function getTicketDetailCustomer(ticketIdOrCode: string | number, userId: string) {
+  if (!userId) return null
+  try {
+    const isNumeric = !isNaN(Number(ticketIdOrCode))
+    const condition = isNumeric
+      ? and(eq(tickets.userId, userId), or(eq(tickets.id, Number(ticketIdOrCode)), eq(tickets.code, String(ticketIdOrCode))))
+      : and(eq(tickets.userId, userId), eq(tickets.code, String(ticketIdOrCode)))
+
+    const [ticketRow] = await db
+      .select({
+        id: tickets.id,
+        code: tickets.code,
+        subject: tickets.subject,
+        details: tickets.details,
+        files: tickets.files,
+        status: tickets.status,
+        createdAt: tickets.createdAt,
+        updatedAt: tickets.updatedAt,
+        userName: users.name,
+        userAvatar: users.image,
+      })
+      .from(tickets)
+      .leftJoin(users, eq(tickets.userId, users.id))
+      .where(condition)
+      .limit(1)
+
+    if (!ticketRow) return null
+
+    // Fetch replies
+    const replies = await db
+      .select({
+        id: ticketReplies.id,
+        reply: ticketReplies.reply,
+        files: ticketReplies.files,
+        createdAt: ticketReplies.createdAt,
+        userName: users.name,
+        userRole: users.role,
+        userAvatar: users.image,
+      })
+      .from(ticketReplies)
+      .leftJoin(users, eq(ticketReplies.userId, users.id))
+      .where(eq(ticketReplies.ticketId, ticketRow.id))
+      .orderBy(asc(ticketReplies.createdAt))
+
+    return {
+      id: ticketRow.id,
+      code: ticketRow.code,
+      subject: ticketRow.subject,
+      details: ticketRow.details,
+      files: (ticketRow.files as string[]) || [],
+      status: ticketRow.status,
+      createdAt: ticketRow.createdAt.toISOString().slice(0, 16).replace("T", " "),
+      userName: ticketRow.userName || "Customer",
+      userAvatar: ticketRow.userAvatar || "/assets/img/avatar-place.png",
+      replies: replies.map((r) => ({
+        id: r.id,
+        reply: r.reply,
+        files: (r.files as string[]) || [],
+        createdAt: r.createdAt.toISOString().slice(0, 16).replace("T", " "),
+        userName: r.userName || "User",
+        userRole: r.userRole || "customer",
+        userAvatar: r.userAvatar || "/assets/img/avatar-place.png",
+      })),
+    }
+  } catch (err) {
+    console.error("getTicketDetailCustomer error:", err)
+    return null
+  }
+}
+
+/**
+ * Submit customer reply to support ticket (1:1 with Laravel support_ticket.seller_store)
+ */
+export async function replyTicketCustomer(data: {
+  ticketId: number
+  userId: string
+  reply: string
+  files?: string[]
+}) {
+  if (!data.userId) {
+    return { success: false, error: "Unauthenticated" }
+  }
+
+  const [inserted] = await db
+    .insert(ticketReplies)
+    .values({
+      ticketId: data.ticketId,
+      userId: data.userId,
+      reply: data.reply,
+      files: data.files || [],
+      createdAt: new Date(),
+    })
+    .returning()
+
+  await db
+    .update(tickets)
+    .set({
+      status: "pending",
+      viewed: false,
+      clientViewed: true,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(tickets.id, data.ticketId), eq(tickets.userId, data.userId)))
+
+  return { success: true, replyId: inserted.id }
 }
