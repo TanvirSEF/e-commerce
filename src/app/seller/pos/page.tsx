@@ -1,6 +1,8 @@
 import React from "react"
 import { Metadata } from "next"
-import { getProducts } from "@/services/product-service"
+import { getServerSession } from "@/lib/auth/session-helper"
+import { getSellerFullDashboardData } from "@/services/seller-service"
+import { getSellerPosProducts, getPosCustomers } from "@/services/pos-service"
 import { getCategories } from "@/services/category-service"
 import { ensureAddonActivated } from "@/services/addon-service"
 import { SellerPosView } from "./_components/seller-pos-view"
@@ -14,14 +16,36 @@ export const metadata: Metadata = {
 
 export default async function SellerPosPage() {
   await ensureAddonActivated("pos_system")
-  const [{ data: products }, categories] = await Promise.all([
-    getProducts({ limit: 100 }),
+
+  // Resolve logged-in seller shop
+  const session = await getServerSession()
+  const sellerData = await getSellerFullDashboardData({
+    userId: session?.user?.id,
+  })
+
+  const shopId = sellerData.shop.id
+  const shopName = sellerData.shop.name
+  const shopSlug = sellerData.shop.slug
+
+  // Concurrently fetch real PostgreSQL data
+  const [products, categories, customers] = await Promise.all([
+    getSellerPosProducts({ shopId }),
     getCategories(),
+    getPosCustomers(),
   ])
 
   return (
     <div className="p-4 md:p-6">
-      <SellerPosView products={products} categories={categories} />
+      <SellerPosView
+        products={products}
+        categories={categories}
+        customers={customers}
+        sellerInfo={{
+          shopId,
+          shopName,
+          shopSlug,
+        }}
+      />
     </div>
   )
 }

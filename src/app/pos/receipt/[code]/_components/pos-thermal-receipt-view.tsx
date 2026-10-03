@@ -28,13 +28,20 @@ export function PosThermalReceiptView({
     <div className="min-h-screen bg-gray-100 p-4 sm:p-8 flex flex-col items-center print:bg-white print:p-0">
       {/* Top action bar (hidden during print) */}
       <div className="w-full max-w-sm mb-4 flex items-center justify-between print:hidden">
-        <Link
-          href="/admin/pos"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs"
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              window.history.back()
+            } else {
+              window.location.href = "/seller/pos"
+            }
+          }}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to POS
-        </Link>
+        </button>
         <button
           type="button"
           onClick={() => window.print()}

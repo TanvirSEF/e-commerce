@@ -18,14 +18,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PosReceiptPage({ params }: PageProps) {
   const { code } = await params
-  const [sale, config] = await Promise.all([
-    getPosSaleByCode(code),
-    getPosConfig(),
-  ])
-
+  const sale = await getPosSaleByCode(code)
   if (!sale) {
     notFound()
   }
+  const config = await getPosConfig(sale.sellerId || undefined)
 
   return <PosThermalReceiptView sale={sale} width={config.thermalPrinterWidth} />
 }

@@ -1254,9 +1254,9 @@ export async function createPosSaleAction(data: any) {
   return await createPosSale(data)
 }
 
-export async function updatePosConfigAction(data: any) {
+export async function updatePosConfigAction(data: any, shopId?: number | string) {
   const { updatePosConfig } = await import("@/services/pos-service")
-  return await updatePosConfig(data)
+  return await updatePosConfig(data, shopId)
 }
 
 export async function updateSmsGatewayAction(gatewayId: string, data: any) {
