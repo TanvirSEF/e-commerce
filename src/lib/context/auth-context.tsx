@@ -66,15 +66,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (storedWishlist) {
           setWishlist(JSON.parse(storedWishlist))
         }
-      } else {
-        setUser(null)
-        setWishlist([])
-        localStorage.removeItem("active_ecom_wishlist")
       }
     } catch {
       // ignore
     }
-    isInitialized.current = true
+
+    // Authoritative session verification with server
+    import("@/app/actions/ecommerce-actions")
+      .then(({ getCurrentUserAction }) => getCurrentUserAction())
+      .then((serverUser) => {
+        if (serverUser) {
+          const profile: UserProfile = {
+            id: serverUser.id,
+            name: serverUser.name,
+            email: serverUser.email,
+            phone: serverUser.phone || "+880 1700 000000",
+            avatar: serverUser.avatar || "/assets/img/avatar-place.png",
+            role: serverUser.role || "customer",
+            balance: Number(serverUser.balance || 0),
+            clubPoints: 150,
+            totalExpenditure: 8450,
+            orderedCount: 4,
+          }
+          setUser(profile)
+          try {
+            localStorage.setItem("active_ecom_user", JSON.stringify(profile))
+          } catch {}
+        } else {
+          setUser(null)
+          setWishlist([])
+          try {
+            localStorage.removeItem("active_ecom_user")
+            localStorage.removeItem("active_ecom_wishlist")
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        isInitialized.current = true
+      })
   }, [])
 
   // Sync wishlist with PostgreSQL database
@@ -139,6 +169,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           orderedCount: 4,
         }
         setUser(loggedUser)
+        try {
+          localStorage.setItem("active_ecom_user", JSON.stringify(loggedUser))
+        } catch {}
         return { success: true, redirectTo: result.redirectTo }
       }
 
@@ -179,6 +212,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           orderedCount: 0,
         }
         setUser(newUser)
+        try {
+          localStorage.setItem("active_ecom_user", JSON.stringify(newUser))
+        } catch {}
         return { success: true, redirectTo: result.redirectTo }
       }
 

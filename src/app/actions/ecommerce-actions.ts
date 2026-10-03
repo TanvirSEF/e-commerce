@@ -2229,6 +2229,19 @@ export async function logoutAction(): Promise<{ success: boolean }> {
   }
 }
 
+export async function getCurrentUserAction() {
+  try {
+    const { getServerSession } = await import("@/lib/auth/session-helper")
+    const session = await getServerSession()
+    if (!session?.user) {
+      return null
+    }
+    return session.user
+  } catch {
+    return null
+  }
+}
+
 // Password Reset Actions (1:1 Active eCommerce Parity)
 export async function sendPasswordResetCodeAction(data: {
   emailOrPhone: string

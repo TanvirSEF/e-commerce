@@ -1,10 +1,10 @@
 import { Metadata } from "next"
-import { headers } from "next/headers"
+import { redirect } from "next/navigation"
+import { getServerSession } from "@/lib/auth/session-helper"
 import { DashboardOverview } from "./_components/dashboard-overview"
 import { getUserOrders, getUserTotalExpenditure } from "@/services/order-service"
 import { getWalletBalance, getClubPoints } from "@/services/wallet-service"
 import { getUserWishlistProducts, getDefaultShippingAddress, getCustomerAddresses } from "@/services/customer-extra-service"
-import { auth } from "@/lib/auth/auth"
 
 export const metadata: Metadata = {
   title: "Customer Dashboard | Active eCommerce",
@@ -12,16 +12,11 @@ export const metadata: Metadata = {
 }
 
 export default async function DashboardPage() {
-  let currentUserId = "usr_customer_default_01"
-  try {
-    const h = await headers()
-    const session = await auth.api.getSession({ headers: h })
-    if (session?.user?.id) {
-      currentUserId = session.user.id
-    }
-  } catch {
-    // Fallback to default customer
+  const session = await getServerSession()
+  if (!session?.user) {
+    redirect("/login")
   }
+  const currentUserId = session.user.id
 
   const [
     orders,
