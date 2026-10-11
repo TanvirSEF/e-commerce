@@ -1,5 +1,5 @@
-export { getProducts, getProductBySlug } from "@/services/product-service"
-export type { ProductFilters } from "@/services/product-service"
+export { getProducts, getProductBySlug, getCatalogFilterFacets } from "@/services/product-service"
+export type { ProductFilters, CatalogFilterFacets, CatalogFilterCategory } from "@/services/product-service"
 export { getCategories, getCategoryBySlug } from "@/services/category-service"
 export { getBrands } from "@/services/brand-service"
 export { createOrder, getOrderByCode, getUserOrders } from "@/services/order-service"

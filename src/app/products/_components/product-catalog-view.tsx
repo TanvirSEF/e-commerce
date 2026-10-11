@@ -1,21 +1,25 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ChevronRight, PackageOpen } from "lucide-react"
 import { ProductCard, type ProductCardProps } from "@/components/product/product-card"
 import { ProductFilterSidebar, type FilterState } from "./product-filter-sidebar"
 import { ProductSortBar } from "./product-sort-bar"
+import type { CatalogFilterFacets } from "@/services/product-service"
 
 interface ProductCatalogViewProps {
   initialProducts: (ProductCardProps & {
     categorySlug: string
+    categorySlugs?: string[]
     brandSlug?: string
     colorName?: string
   })[]
   initialCategory?: string
   initialBrand?: string
   initialKeyword?: string
+  facets?: CatalogFilterFacets
 }
 
 export function ProductCatalogView({
@@ -23,7 +27,9 @@ export function ProductCatalogView({
   initialCategory = "",
   initialBrand = "",
   initialKeyword = "",
+  facets,
 }: ProductCatalogViewProps) {
+  const router = useRouter()
   const [filters, setFilters] = useState<FilterState>({
     category: initialCategory,
     minPrice: "",
@@ -39,6 +45,14 @@ export function ProductCatalogView({
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 12
 
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      category: initialCategory,
+      brand: initialBrand,
+    }))
+  }, [initialCategory, initialBrand])
+
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
     return initialProducts.filter((p) => {
@@ -49,9 +63,14 @@ export function ProductCatalogView({
       ) {
         return false
       }
-      // Category
-      if (filters.category && p.categorySlug !== filters.category) {
-        return false
+      // Category (direct match or ancestor match)
+      if (filters.category) {
+        const matches =
+          p.categorySlug === filters.category ||
+          Boolean(p.categorySlugs?.includes(filters.category))
+        if (!matches) {
+          return false
+        }
       }
       // Min Price
       if (filters.minPrice && p.price < Number(filters.minPrice)) {
@@ -97,6 +116,21 @@ export function ProductCatalogView({
     currentPage * pageSize
   )
 
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters)
+    setCurrentPage(1)
+
+    const params = new URLSearchParams()
+    if (newFilters.category) params.set("category", newFilters.category)
+    if (newFilters.brand) params.set("brand", newFilters.brand)
+    if (newFilters.minPrice) params.set("minPrice", newFilters.minPrice)
+    if (newFilters.maxPrice) params.set("maxPrice", newFilters.maxPrice)
+    if (initialKeyword) params.set("keyword", initialKeyword)
+
+    const qs = params.toString()
+    router.push(qs ? `/products?${qs}` : "/products", { scroll: false })
+  }
+
   const handleClearFilters = () => {
     setFilters({
       category: "",
@@ -107,6 +141,8 @@ export function ProductCatalogView({
       rating: 0,
     })
     setCurrentPage(1)
+    const qs = initialKeyword ? `?keyword=${encodeURIComponent(initialKeyword)}` : ""
+    router.push(`/products${qs}`, { scroll: false })
   }
 
   return (
@@ -144,13 +180,14 @@ export function ProductCatalogView({
           {/* Filter Sidebar */}
           <ProductFilterSidebar
             filters={filters}
-            onFilterChange={(newFilters) => {
-              setFilters(newFilters)
-              setCurrentPage(1)
-            }}
+            onFilterChange={handleFilterChange}
             onClearFilters={handleClearFilters}
             isMobileOpen={mobileFilterOpen}
             onCloseMobile={() => setMobileFilterOpen(false)}
+            categories={facets?.categories}
+            brands={facets?.brands}
+            colors={facets?.colors}
+            totalProductCount={facets?.totalProducts ?? initialProducts.length}
           />
 
           {/* Catalog Products Area */}

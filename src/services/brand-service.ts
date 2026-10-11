@@ -1,19 +1,32 @@
-import { db } from "../db"
+import { db, pool } from "../db"
 import { brands } from "../db/schema"
 import { desc, eq } from "drizzle-orm"
 import { SEED_BRANDS, SeedBrand } from "../db/seed/data"
 
 export async function getBrands(): Promise<SeedBrand[]> {
   try {
-    const rows = await db.select().from(brands).orderBy(desc(brands.top), brands.name)
-    if (rows.length > 0) {
-      return rows.map((b) => ({
+    const res = await pool.query(`
+      SELECT 
+        b.id, 
+        b.name, 
+        b.slug,
+        b.logo,
+        b.top,
+        COUNT(DISTINCT p.id)::int as count
+      FROM brands b
+      LEFT JOIN products p ON p.brand_id = b.id AND p.published = true
+      GROUP BY b.id, b.name, b.slug, b.logo, b.top
+      ORDER BY b.top DESC, count DESC, b.name ASC
+    `)
+
+    if (res.rows.length > 0) {
+      return res.rows.map((b: any) => ({
         id: String(b.id),
         name: b.name,
         slug: b.slug,
         logo: b.logo || "/assets/img/placeholder.jpg",
         top: b.top,
-        productCount: 25,
+        productCount: Number(b.count || 0),
       }))
     }
   } catch (err) {

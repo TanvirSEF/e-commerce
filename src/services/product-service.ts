@@ -1,6 +1,6 @@
-import { db } from "../db"
-import { products, categories, brands } from "../db/schema"
-import { eq, ilike, and, gte, lte, desc, asc, count } from "drizzle-orm"
+import { db, pool } from "../db"
+import { products, categories, brands, colors } from "../db/schema"
+import { eq, ilike, and, gte, lte, desc, asc, count, inArray } from "drizzle-orm"
 import { SEED_PRODUCTS, SeedProduct } from "../db/seed/data"
 
 export interface ProductFilters {
@@ -42,7 +42,21 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
       conditions.push(eq(products.addedBy, addedBy))
     }
     if (catSlug) {
-      conditions.push(eq(categories.slug, catSlug))
+      const catRows = await pool.query(`
+        WITH RECURSIVE cat_tree AS (
+          SELECT id FROM categories WHERE slug = $1
+          UNION ALL
+          SELECT c.id FROM categories c JOIN cat_tree ct ON c.parent_id = ct.id
+        )
+        SELECT id FROM cat_tree
+      `, [catSlug])
+
+      const allCatIds = catRows.rows.map((r: any) => r.id)
+      if (allCatIds.length > 0) {
+        conditions.push(inArray(products.categoryId, allCatIds))
+      } else {
+        conditions.push(eq(categories.slug, catSlug))
+      }
     }
     if (bSlug) {
       conditions.push(eq(brands.slug, bSlug))
@@ -107,6 +121,7 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
         published: products.published,
         addedBy: products.addedBy,
         description: products.description,
+        categoryId: products.categoryId,
         categorySlug: categories.slug,
         categoryName: categories.name,
         brandSlug: brands.slug,
@@ -120,39 +135,56 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
       .limit(limit)
       .offset(offset)
 
-    if (rows.length > 0) {
-      const data: SeedProduct[] = rows.map((p) => ({
-        id: String(p.id),
-        name: p.name,
-        slug: p.slug,
-        sku: p.sku || "",
-        categorySlug: p.categorySlug || "",
-        brandSlug: p.brandSlug || "",
-        price: Number(p.unitPrice),
-        originalPrice: p.purchasePrice ? Number(p.purchasePrice) : Number(p.unitPrice),
-        discountPercent: Number(p.discount),
-        rating: Number(p.rating),
-        reviewCount: p.numOfReviews,
-        salesCount: p.numOfSale,
-        stock: p.currentStock,
-        unit: p.unit,
-        thumbnail: p.thumbnailImg,
-        images: p.photos || [],
-        colors: (p.colors || []).map((hex, i) => ({ name: `Color ${i + 1}`, hex })),
-        sizes: (p.choiceOptions?.[0]?.values as string[]) || [],
-        featured: p.featured,
-        todaysDeal: p.todaysDeal,
-        published: p.published,
-        addedBy: p.addedBy || "admin",
-        sellerName: "Active eCommerce Outlet",
-        sellerSlug: "active-outlet",
-        description: p.description || "",
-        specifications: [],
-        reviews: [],
-      }))
-
-      return { data, total }
+    const catMapRes = await pool.query(`
+      WITH RECURSIVE cat_ancestors AS (
+        SELECT id, slug, parent_id, id as leaf_id
+        FROM categories
+        UNION ALL
+        SELECT p.id, p.slug, p.parent_id, ca.leaf_id
+        FROM categories p
+        JOIN cat_ancestors ca ON ca.parent_id = p.id
+      )
+      SELECT leaf_id, ARRAY_AGG(slug) as all_slugs
+      FROM cat_ancestors
+      GROUP BY leaf_id
+    `)
+    const catSlugsMap: Record<number, string[]> = {}
+    for (const r of catMapRes.rows) {
+      catSlugsMap[r.leaf_id] = r.all_slugs || []
     }
+
+    const data: SeedProduct[] = rows.map((p) => ({
+      id: String(p.id),
+      name: p.name,
+      slug: p.slug,
+      sku: p.sku || "",
+      categorySlug: p.categorySlug || "",
+      categorySlugs: p.categoryId ? (catSlugsMap[p.categoryId] || [p.categorySlug || ""]) : [],
+      brandSlug: p.brandSlug || "",
+      price: Number(p.unitPrice),
+      originalPrice: p.purchasePrice ? Number(p.purchasePrice) : Number(p.unitPrice),
+      discountPercent: Number(p.discount),
+      rating: Number(p.rating),
+      reviewCount: p.numOfReviews,
+      salesCount: p.numOfSale,
+      stock: p.currentStock,
+      unit: p.unit,
+      thumbnail: p.thumbnailImg,
+      images: p.photos || [],
+      colors: (p.colors || []).map((hex, i) => ({ name: `Color ${i + 1}`, hex })),
+      sizes: (p.choiceOptions?.[0]?.values as string[]) || [],
+      featured: p.featured,
+      todaysDeal: p.todaysDeal,
+      published: p.published,
+      addedBy: p.addedBy || "admin",
+      sellerName: "Active eCommerce Outlet",
+      sellerSlug: "active-outlet",
+      description: p.description || "",
+      specifications: [],
+      reviews: [],
+    }))
+
+    return { data, total }
   } catch (err) {
     console.warn("DB getProducts fallback to SEED_PRODUCTS:", (err as Error).message)
   }
@@ -186,6 +218,131 @@ export async function getProducts(filters: ProductFilters = {}): Promise<{ data:
   return {
     data: list.slice(offset, offset + limit),
     total: list.length,
+  }
+}
+
+export interface CatalogFilterCategory {
+  id: number
+  name: string
+  slug: string
+  count: number
+  childSlugs?: string[]
+  children?: CatalogFilterCategory[]
+}
+
+export interface CatalogFilterFacets {
+  totalProducts: number
+  categories: CatalogFilterCategory[]
+  brands: {
+    id: number
+    name: string
+    slug: string
+    count: number
+  }[]
+  colors: {
+    id: number
+    name: string
+    hex: string
+  }[]
+}
+
+export async function getCatalogFilterFacets(): Promise<CatalogFilterFacets> {
+  try {
+    const totalRes = await pool.query(`
+      SELECT COUNT(*)::int as total
+      FROM products
+      WHERE published = true
+    `)
+    const totalProducts = totalRes.rows[0]?.total || 0
+
+    const catRes = await pool.query(`
+      WITH RECURSIVE cat_tree AS (
+        SELECT id as sub_root, id, slug FROM categories
+        UNION ALL
+        SELECT ct.sub_root, c.id, c.slug FROM categories c JOIN cat_tree ct ON c.parent_id = ct.id
+      )
+      SELECT 
+        c.id, 
+        c.name, 
+        c.slug, 
+        c.parent_id,
+        c.order_level,
+        COUNT(DISTINCT p.id)::int as count,
+        ARRAY_AGG(DISTINCT ct.slug) as child_slugs
+      FROM categories c
+      LEFT JOIN cat_tree ct ON ct.sub_root = c.id
+      LEFT JOIN products p ON p.category_id = ct.id AND p.published = true
+      GROUP BY c.id, c.name, c.slug, c.parent_id, c.order_level
+      ORDER BY c.order_level ASC, c.name ASC
+    `)
+
+    const catMap = new Map<number, CatalogFilterCategory & { parentId: number | null }>()
+    for (const r of catRes.rows) {
+      catMap.set(r.id, {
+        id: Number(r.id),
+        name: r.name,
+        slug: r.slug,
+        count: Number(r.count || 0),
+        childSlugs: r.child_slugs || [],
+        parentId: r.parent_id || null,
+        children: [],
+      })
+    }
+
+    const categoriesTree: CatalogFilterCategory[] = []
+    for (const cat of catMap.values()) {
+      if (!cat.parentId || cat.parentId === 0) {
+        categoriesTree.push(cat)
+      } else {
+        const parent = catMap.get(cat.parentId)
+        if (parent) {
+          parent.children = parent.children || []
+          parent.children.push(cat)
+        }
+      }
+    }
+
+    const brandRes = await pool.query(`
+      SELECT 
+        b.id, 
+        b.name, 
+        b.slug, 
+        COUNT(DISTINCT p.id)::int as count
+      FROM brands b
+      LEFT JOIN products p ON p.brand_id = b.id AND p.published = true
+      GROUP BY b.id, b.name, b.slug
+      ORDER BY count DESC, b.name ASC
+    `)
+
+    const colorsRes = await pool.query(`
+      SELECT id, name, code as hex
+      FROM colors
+      ORDER BY name ASC
+    `)
+
+    return {
+      totalProducts,
+      categories: categoriesTree,
+      brands: brandRes.rows.map((r: any) => ({
+        id: Number(r.id),
+        name: r.name,
+        slug: r.slug,
+        count: Number(r.count || 0),
+      })),
+      colors: colorsRes.rows.map((r: any) => ({
+        id: Number(r.id),
+        name: r.name,
+        hex: r.hex || "#000000",
+      })),
+    }
+  } catch (err) {
+    console.warn("DB getCatalogFilterFacets fallback:", (err as Error).message)
+    return {
+      totalProducts: 12,
+      categories: [],
+      brands: [],
+      colors: [],
+    }
   }
 }
 

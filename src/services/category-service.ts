@@ -1,26 +1,39 @@
-import { db } from "../db"
+import { db, pool } from "../db"
 import { categories } from "../db/schema"
 import { desc, eq } from "drizzle-orm"
 import { SEED_CATEGORIES, SeedCategory } from "../db/seed/data"
 
 export async function getCategories(): Promise<SeedCategory[]> {
   try {
-    const rows = await db
-      .select()
-      .from(categories)
-      .orderBy(desc(categories.featured), categories.orderLevel)
+    const res = await pool.query(`
+      SELECT 
+        c.id, 
+        c.name, 
+        c.slug,
+        c.icon,
+        c.banner,
+        c.featured,
+        c.order_level,
+        c.parent_id,
+        COUNT(DISTINCT p.id)::int as count
+      FROM categories c
+      LEFT JOIN categories sub ON sub.parent_id = c.id
+      LEFT JOIN products p ON (p.category_id = c.id OR p.category_id = sub.id) AND p.published = true
+      GROUP BY c.id, c.name, c.slug, c.icon, c.banner, c.featured, c.order_level, c.parent_id
+      ORDER BY c.featured DESC, c.order_level ASC, c.name ASC
+    `)
 
-    if (rows.length > 0) {
-      return rows.map((c) => ({
+    if (res.rows.length > 0) {
+      return res.rows.map((c: any) => ({
         id: String(c.id),
         name: c.name,
         slug: c.slug,
         icon: c.icon || "/assets/img/placeholder.jpg",
         banner: c.banner || "/assets/img/placeholder-rect.jpg",
         featured: c.featured,
-        orderLevel: c.orderLevel,
-        parentId: c.parentId || null,
-        itemCount: 50,
+        orderLevel: c.order_level,
+        parentId: c.parent_id || null,
+        itemCount: Number(c.count || 0),
       }))
     }
   } catch (err) {

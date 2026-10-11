@@ -1,7 +1,9 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { X, Star, RotateCcw } from "lucide-react"
+import { CategoryTreeItem } from "./category-tree-item"
+import type { CatalogFilterCategory } from "@/services/product-service"
 
 export interface FilterState {
   category: string
@@ -12,41 +14,32 @@ export interface FilterState {
   rating: number
 }
 
+export type FilterCategoryItem = CatalogFilterCategory
+
+export interface FilterBrandItem {
+  id?: number
+  name: string
+  slug: string
+  count: number
+}
+
+export interface FilterColorItem {
+  id?: number
+  name: string
+  hex: string
+}
+
 interface ProductFilterSidebarProps {
   filters: FilterState
   onFilterChange: (newFilters: FilterState) => void
   onClearFilters: () => void
   isMobileOpen: boolean
   onCloseMobile: () => void
+  categories?: FilterCategoryItem[]
+  brands?: FilterBrandItem[]
+  colors?: FilterColorItem[]
+  totalProductCount?: number
 }
-
-const CATEGORIES = [
-  { name: "All Categories", slug: "", count: 180 },
-  { name: "Women Clothing & Fashion", slug: "women-clothing-fashion", count: 48 },
-  { name: "Men Clothing & Fashion", slug: "men-clothing-fashion", count: 36 },
-  { name: "Computer & Accessories", slug: "computer-accessories", count: 32 },
-  { name: "Cellphones & Tabs", slug: "cellphones-tabs", count: 24 },
-  { name: "Consumer Electronics", slug: "consumer-electronics", count: 28 },
-  { name: "Sports & Outdoor", slug: "sports-outdoor", count: 12 },
-]
-
-const BRANDS = [
-  { name: "Samsung", slug: "samsung", count: 34 },
-  { name: "Apple", slug: "apple", count: 22 },
-  { name: "Xiaomi", slug: "xiaomi", count: 19 },
-  { name: "Sony", slug: "sony", count: 15 },
-  { name: "Nike", slug: "nike", count: 28 },
-  { name: "Adidas", slug: "adidas", count: 18 },
-]
-
-const COLORS = [
-  { name: "Black", hex: "#000000" },
-  { name: "White", hex: "#ffffff" },
-  { name: "Red", hex: "#d43533" },
-  { name: "Blue", hex: "#3490f3" },
-  { name: "Yellow", hex: "#ffc519" },
-  { name: "Gray", hex: "#9d9da6" },
-]
 
 export function ProductFilterSidebar({
   filters,
@@ -54,9 +47,18 @@ export function ProductFilterSidebar({
   onClearFilters,
   isMobileOpen,
   onCloseMobile,
+  categories = [],
+  brands = [],
+  colors = [],
+  totalProductCount = 0,
 }: ProductFilterSidebarProps) {
   const [minPriceInput, setMinPriceInput] = useState(filters.minPrice)
   const [maxPriceInput, setMaxPriceInput] = useState(filters.maxPrice)
+
+  useEffect(() => {
+    setMinPriceInput(filters.minPrice)
+    setMaxPriceInput(filters.maxPrice)
+  }, [filters.minPrice, filters.maxPrice])
 
   const handlePriceApply = (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,24 +88,32 @@ export function ProductFilterSidebar({
         </button>
       </div>
 
-      {/* 1. Category Facet */}
+      {/* 1. Category Facet with Expandable Subcategories */}
       <div className="border-b border-gray-100 pb-4">
         <h4 className="mb-2.5 font-bold text-gray-800 uppercase">Categories</h4>
-        <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto pr-1">
-          {CATEGORIES.map((cat) => (
-            <button
+        <div className="flex max-h-[380px] flex-col gap-1 overflow-y-auto pr-1">
+          {/* All Categories Option */}
+          <button
+            type="button"
+            onClick={() => onFilterChange({ ...filters, category: "" })}
+            className={`flex items-center justify-between rounded px-2 py-1 text-left text-xs transition-colors ${
+              !filters.category
+                ? "bg-red-50 font-bold text-[#d43533]"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            }`}
+          >
+            <span className="truncate pr-1">All Categories</span>
+            <span className="text-[10px] text-gray-400 shrink-0">({totalProductCount})</span>
+          </button>
+
+          {/* Expandable Category Tree */}
+          {categories.map((cat) => (
+            <CategoryTreeItem
               key={cat.slug}
-              type="button"
-              onClick={() => onFilterChange({ ...filters, category: cat.slug })}
-              className={`flex items-center justify-between rounded px-2 py-1 text-left transition-colors ${
-                filters.category === cat.slug
-                  ? "bg-red-50 font-bold text-[#d43533]"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              <span>{cat.name}</span>
-              <span className="text-[10px] text-gray-400">({cat.count})</span>
-            </button>
+              category={cat}
+              activeCategory={filters.category}
+              onSelectCategory={(slug) => onFilterChange({ ...filters, category: slug })}
+            />
           ))}
         </div>
       </div>
@@ -139,60 +149,64 @@ export function ProductFilterSidebar({
       </div>
 
       {/* 3. Brands Facet */}
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="mb-2.5 font-bold text-gray-800 uppercase">Brands</h4>
-        <div className="flex flex-col gap-2">
-          {BRANDS.map((b) => (
-            <label
-              key={b.slug}
-              className="flex cursor-pointer items-center justify-between text-gray-600 hover:text-gray-900"
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="brand_filter"
-                  checked={filters.brand === b.slug}
-                  onChange={() =>
-                    onFilterChange({
-                      ...filters,
-                      brand: filters.brand === b.slug ? "" : b.slug,
-                    })
-                  }
-                  className="accent-[#d43533]"
-                />
-                <span>{b.name}</span>
-              </div>
-              <span className="text-[10px] text-gray-400">({b.count})</span>
-            </label>
-          ))}
+      {brands.length > 0 && (
+        <div className="border-b border-gray-100 pb-4">
+          <h4 className="mb-2.5 font-bold text-gray-800 uppercase">Brands</h4>
+          <div className="flex max-h-52 flex-col gap-2 overflow-y-auto pr-1">
+            {brands.map((b) => (
+              <label
+                key={b.slug}
+                className="flex cursor-pointer items-center justify-between text-gray-600 hover:text-gray-900"
+              >
+                <div className="flex items-center gap-2 truncate pr-1">
+                  <input
+                    type="radio"
+                    name="brand_filter"
+                    checked={filters.brand === b.slug}
+                    onChange={() =>
+                      onFilterChange({
+                        ...filters,
+                        brand: filters.brand === b.slug ? "" : b.slug,
+                      })
+                    }
+                    className="accent-[#d43533]"
+                  />
+                  <span className="truncate">{b.name}</span>
+                </div>
+                <span className="text-[10px] text-gray-400 shrink-0">({b.count})</span>
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 4. Color Facet */}
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="mb-2.5 font-bold text-gray-800 uppercase">Color</h4>
-        <div className="flex flex-wrap gap-2">
-          {COLORS.map((c) => (
-            <button
-              key={c.name}
-              type="button"
-              onClick={() =>
-                onFilterChange({
-                  ...filters,
-                  color: filters.color === c.name ? "" : c.name,
-                })
-              }
-              title={c.name}
-              style={{ backgroundColor: c.hex }}
-              className={`h-6 w-6 rounded-full border border-gray-300 transition-transform ${
-                filters.color === c.name
-                  ? "scale-125 ring-2 ring-[#d43533] ring-offset-1"
-                  : "hover:scale-110"
-              }`}
-            />
-          ))}
+      {colors.length > 0 && (
+        <div className="border-b border-gray-100 pb-4">
+          <h4 className="mb-2.5 font-bold text-gray-800 uppercase">Color</h4>
+          <div className="flex flex-wrap gap-2">
+            {colors.map((c) => (
+              <button
+                key={c.name}
+                type="button"
+                onClick={() =>
+                  onFilterChange({
+                    ...filters,
+                    color: filters.color === c.name ? "" : c.name,
+                  })
+                }
+                title={c.name}
+                style={{ backgroundColor: c.hex }}
+                className={`h-6 w-6 rounded-full border border-gray-300 transition-transform ${
+                  filters.color === c.name
+                    ? "scale-125 ring-2 ring-[#d43533] ring-offset-1"
+                    : "hover:scale-110"
+                }`}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 5. Rating Filter */}
       <div>

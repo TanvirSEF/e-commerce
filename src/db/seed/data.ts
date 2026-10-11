@@ -32,6 +32,7 @@ export interface SeedProduct {
   slug: string
   sku: string
   categorySlug: string
+  categorySlugs?: string[]
   brandSlug: string
   price: number
   originalPrice: number
