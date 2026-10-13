@@ -2,8 +2,18 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { ExternalLink, ShieldCheck, Clock, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import {
+  ExternalLink,
+  ShieldCheck,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  FileCheck2,
+  HelpCircle,
+} from "lucide-react"
 import { submitSellerVerificationAction } from "@/app/actions/seller-actions"
+import { DocumentUploadField } from "./document-upload-field"
 import type { shops } from "@/db/schema"
 
 type ShopRow = typeof shops.$inferSelect
@@ -40,6 +50,15 @@ export function SellerVerifyView({ shop }: SellerVerifyViewProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!form.documentUrl) {
+      setMessage({
+        type: "error",
+        text: "Please upload or attach your identification document scan.",
+      })
+      return
+    }
+
     setIsSubmitting(true)
     setMessage(null)
 
@@ -197,19 +216,15 @@ export function SellerVerifyView({ shop }: SellerVerifyViewProps) {
               </div>
             </div>
 
-            {/* Document URL */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-              <label className="md:col-span-3 text-xs font-medium text-gray-700">
-                Document URL / Attachment <span className="text-[#d43533]">*</span>
+            {/* Document Upload */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+              <label className="md:col-span-3 text-xs font-medium text-gray-700 pt-2">
+                Business Document Scan <span className="text-[#d43533]">*</span>
               </label>
               <div className="md:col-span-9">
-                <input
-                  type="text"
-                  required
+                <DocumentUploadField
                   value={form.documentUrl}
-                  onChange={(e) => setForm((prev) => ({ ...prev, documentUrl: e.target.value }))}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded focus:border-[#d43533] focus:outline-none"
+                  onChange={(url) => setForm((prev) => ({ ...prev, documentUrl: url }))}
                 />
               </div>
             </div>
@@ -260,6 +275,29 @@ export function SellerVerifyView({ shop }: SellerVerifyViewProps) {
           </form>
         </div>
       </div>
+
+      {/* Verification Process Guidance Card */}
+      <div className="p-4 bg-gray-50 border border-gray-200 rounded-sm">
+        <h5 className="text-xs font-bold text-gray-800 flex items-center gap-1.5 mb-2">
+          <HelpCircle className="w-4 h-4 text-gray-500" />
+          How Shop Verification Works
+        </h5>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-gray-600">
+          <div className="bg-white p-3 rounded border border-gray-200">
+            <span className="font-bold text-[#d43533] block mb-1">1. Submit Documents</span>
+            Provide your Trade License, NID number, settlement bank info, and upload document scans (PDF/Image).
+          </div>
+          <div className="bg-white p-3 rounded border border-gray-200">
+            <span className="font-bold text-[#d43533] block mb-1">2. Admin Review</span>
+            The admin team inspects your business registration documents from the Admin Verification Desk.
+          </div>
+          <div className="bg-white p-3 rounded border border-gray-200">
+            <span className="font-bold text-emerald-600 block mb-1">3. Verified Badge</span>
+            Once approved, your store receives the Verified Seller checkmark badge across all storefront pages.
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
+

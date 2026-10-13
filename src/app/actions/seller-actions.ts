@@ -64,6 +64,8 @@ export async function submitSellerVerificationAction(
   try {
     const res = await submitSellerVerification(shopId, data)
     revalidatePath("/seller/verify")
+    revalidatePath("/admin/sellers/verification")
+    revalidatePath("/admin/sellers")
     return res
   } catch (err) {
     return { success: false, error: (err as Error).message }

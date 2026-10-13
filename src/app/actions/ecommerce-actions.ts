@@ -136,6 +136,9 @@ export async function updateSellerVerificationAction(shopId: number, status: boo
   const res = await updateSellerVerification(shopId, status)
   revalidatePath("/admin/sellers")
   revalidatePath("/admin/sellers/verification")
+  revalidatePath("/seller/verify")
+  revalidatePath("/seller/dashboard")
+  revalidatePath("/shop")
   return res
 }
 
