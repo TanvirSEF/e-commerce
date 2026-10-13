@@ -270,6 +270,18 @@ export function SellerRefundRequestsView({ initialRefunds, stats: initialStats }
                   </p>
                 </div>
               )}
+              {viewReasonTarget.attachment && (
+                <div>
+                  <p className="text-gray-400 font-medium mb-1">Attachment Proof</p>
+                  <div className="relative w-28 h-28 rounded border border-gray-200 overflow-hidden bg-gray-50">
+                    <img
+                      src={viewReasonTarget.attachment}
+                      alt="Refund Attachment Proof"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex justify-end pt-3 border-t border-gray-100">
               <button

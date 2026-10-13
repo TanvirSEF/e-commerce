@@ -1,5 +1,5 @@
 import { db } from "../db"
-import { refundRequests, refundReasons, orders, users, type RefundReason } from "../db/schema"
+import { refundRequests, refundReasons, orders, users, wallets, type RefundReason } from "../db/schema"
 import { eq, desc, ilike, or, and, sql, count } from "drizzle-orm"
 
 export interface RefundRequestItem {
@@ -296,6 +296,37 @@ export async function processRefundAdmin(data: {
         updatedAt: new Date(),
       })
       .where(eq(refundRequests.id, numericId))
+
+    // Automatically credit customer's wallet if approved
+    if (data.status === "approved") {
+      const [req] = await db
+        .select()
+        .from(refundRequests)
+        .where(eq(refundRequests.id, numericId))
+        .limit(1)
+
+      if (req && req.userId && req.amount) {
+        const refundAmt = Number(req.amount) || 0
+        if (refundAmt > 0) {
+          await db.insert(wallets).values({
+            userId: req.userId,
+            amount: String(refundAmt),
+            paymentMethod: "Refund",
+            paymentDetails: `Refund approved for Order #${req.orderCode}`,
+            approval: true,
+          }).catch(() => {})
+
+          await db
+            .update(users)
+            .set({
+              balance: sql`${users.balance} + ${refundAmt}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, req.userId))
+            .catch(() => {})
+        }
+      }
+    }
 
     return { success: true }
   } catch (err) {
