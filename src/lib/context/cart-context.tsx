@@ -21,6 +21,7 @@ export interface AppliedCoupon {
   code: string
   discount: number
   discountType: "percent" | "amount"
+  maxDiscount?: number
 }
 
 interface CartContextType {
@@ -216,6 +217,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           code: clean,
           discount: res.discount,
           discountType: res.discountType || "percent",
+          maxDiscount: res.maxDiscount,
         })
         return { success: true, message: res.message }
       } else if (!res.success && res.message) {
@@ -261,6 +263,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   if (appliedCoupon && selectedSubtotal > 0) {
     if (appliedCoupon.discountType === "percent") {
       couponDiscount = Math.round((selectedSubtotal * appliedCoupon.discount) / 100)
+      if (appliedCoupon.maxDiscount && couponDiscount > appliedCoupon.maxDiscount) {
+        couponDiscount = appliedCoupon.maxDiscount
+      }
     } else {
       couponDiscount = Math.min(appliedCoupon.discount, selectedSubtotal)
     }
