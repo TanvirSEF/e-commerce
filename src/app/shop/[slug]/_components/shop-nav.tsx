@@ -6,9 +6,10 @@ interface ShopNavProps {
   shopSlug: string
   activeTab: string
   couponCount: number
+  productCount?: number
 }
 
-export function ShopNav({ shopSlug, activeTab, couponCount }: ShopNavProps) {
+export function ShopNav({ shopSlug, activeTab, couponCount, productCount }: ShopNavProps) {
   const tabs = [
     { key: "home", label: "Store Home", href: `/shop/${shopSlug}` },
     { key: "top-selling", label: "Top Selling", href: `/shop/${shopSlug}?tab=top-selling` },
@@ -17,7 +18,11 @@ export function ShopNav({ shopSlug, activeTab, couponCount }: ShopNavProps) {
       label: `Coupons ${couponCount > 0 ? `(${couponCount})` : ""}`,
       href: `/shop/${shopSlug}?tab=coupons`,
     },
-    { key: "all-products", label: "All Products", href: `/shop/${shopSlug}?tab=all-products` },
+    {
+      key: "all-products",
+      label: `All Products ${productCount !== undefined ? `(${productCount})` : ""}`,
+      href: `/shop/${shopSlug}?tab=all-products`,
+    },
   ]
 
   return (

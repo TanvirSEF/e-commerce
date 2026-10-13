@@ -31,7 +31,7 @@ export default async function ShopTypePage({ params }: PageProps) {
   }
 
   const tab = type || "all-products"
-  const [{ products }, coupons] = await Promise.all([
+  const [{ products, total }, coupons] = await Promise.all([
     getShopProducts(slug, { type: tab === "top-selling" ? "top-selling" : undefined }),
     getShopCoupons(slug),
   ])
@@ -46,6 +46,7 @@ export default async function ShopTypePage({ params }: PageProps) {
         shopSlug={shop.slug}
         activeTab={tab}
         couponCount={coupons.length}
+        productCount={total}
       />
 
       {/* Main Content Area */}

@@ -2,6 +2,7 @@ import { db } from "../db"
 import { shops, coupons } from "../db/schema"
 import { eq, desc } from "drizzle-orm"
 import { SEED_SHOPS, SeedShop, SEED_PRODUCTS, SeedProduct, SEED_COUPONS, SeedCoupon } from "../db/seed/data"
+import { getProducts } from "./product-service"
 
 export async function getShops(): Promise<SeedShop[]> {
   try {
@@ -80,6 +81,51 @@ export async function getShopProducts(
     sort?: string
   } = {}
 ): Promise<{ products: SeedProduct[]; total: number }> {
+  try {
+    const [shop] = await db
+      .select({ id: shops.id })
+      .from(shops)
+      .where(eq(shops.slug, shopSlug))
+      .limit(1)
+
+    if (shop) {
+      const sortParam =
+        options.sort === "price-low-to-high"
+          ? "price-asc"
+          : options.sort === "price-high-to-low"
+          ? "price-desc"
+          : options.sort === "rating"
+          ? "rating"
+          : undefined
+
+      const { data, total } = await getProducts({
+        shopId: shop.id,
+        limit: 100,
+        includeUnpublished: false,
+        categorySlug: options.categorySlug,
+        minPrice: options.minPrice,
+        maxPrice: options.maxPrice,
+        sort: sortParam,
+      })
+
+      if (data && data.length > 0) {
+        let list = data
+        if (options.type === "top-selling") {
+          list = [...list].sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))
+        }
+        if (options.rating !== undefined && options.rating > 0) {
+          list = list.filter((p) => p.rating >= (options.rating ?? 0))
+        }
+        return {
+          products: list,
+          total,
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("DB getShopProducts error, falling back to mock:", (err as Error).message)
+  }
+
   let list = SEED_PRODUCTS.filter((p) => p.sellerSlug === shopSlug)
   if (list.length === 0) {
     // If specific shop has few products, share sample products
