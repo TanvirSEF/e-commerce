@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { shops, coupons } from "../db/schema"
-import { eq, desc } from "drizzle-orm"
+import { eq, desc, and, isNull } from "drizzle-orm"
 import { SEED_SHOPS, SeedShop, SEED_PRODUCTS, SeedProduct, SEED_COUPONS, SeedCoupon } from "../db/seed/data"
 import { getProducts } from "./product-service"
 
@@ -168,29 +168,43 @@ export async function getShopProducts(
 
 export async function getShopCoupons(shopSlug: string): Promise<SeedCoupon[]> {
   try {
-    const rows = await db
-      .select()
-      .from(coupons)
-      .where(eq(coupons.status, true))
-      .orderBy(desc(coupons.id))
+    const [shop] = await db
+      .select({ id: shops.id, userId: shops.userId })
+      .from(shops)
+      .where(eq(shops.slug, shopSlug))
+      .limit(1)
 
-    if (rows && rows.length > 0) {
-      return rows.map((r) => ({
-        id: `cpn-${r.id}`,
-        code: r.code,
-        type: (r.type as "cart_base" | "product_base") || "cart_base",
-        discount: parseFloat(r.discount) || 10,
-        discountType: (r.discountType as "percent" | "amount") || "percent",
-        minBuy: r.details?.min_buy || 0,
-        maxDiscount: r.details?.max_discount || 500,
-        startDate: Number(r.startDate) || Date.now(),
-        endDate: Number(r.endDate) || Date.now() + 86400000 * 30,
-        status: r.status,
-        shopSlug,
-      }))
+    if (!shop) {
+      return []
     }
+
+    const rows = shop.userId
+      ? await db
+          .select()
+          .from(coupons)
+          .where(and(eq(coupons.userId, shop.userId), eq(coupons.status, true)))
+          .orderBy(desc(coupons.id))
+      : await db
+          .select()
+          .from(coupons)
+          .where(and(isNull(coupons.userId), eq(coupons.status, true)))
+          .orderBy(desc(coupons.id))
+
+    return rows.map((r) => ({
+      id: `cpn-${r.id}`,
+      code: r.code,
+      type: (r.type as "cart_base" | "product_base") || "cart_base",
+      discount: parseFloat(r.discount) || 10,
+      discountType: (r.discountType as "percent" | "amount") || "percent",
+      minBuy: r.details?.min_buy || 0,
+      maxDiscount: r.details?.max_discount || 500,
+      startDate: Number(r.startDate) * 1000,
+      endDate: Number(r.endDate) * 1000,
+      status: r.status,
+      shopSlug,
+    }))
   } catch (err) {
     console.warn("DB getShopCoupons fallback:", err)
+    return SEED_COUPONS.filter((c) => c.shopSlug === shopSlug)
   }
-  return SEED_COUPONS.filter((c) => !c.shopSlug || c.shopSlug === shopSlug)
 }

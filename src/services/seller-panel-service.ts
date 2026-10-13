@@ -47,7 +47,7 @@ export async function getCurrentSeller(): Promise<CurrentSeller | null> {
       .limit(1)
   }
   if (!shop) return null
-  return { userId: userId ?? shop.userId, shopId: shop.id, shopSlug: shop.slug, shopName: shop.name }
+  return { userId: shop.userId ?? userId, shopId: shop.id, shopSlug: shop.slug, shopName: shop.name }
 }
 
 /* ------------------------------ Coupons ------------------------------ */

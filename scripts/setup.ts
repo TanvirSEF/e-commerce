@@ -487,9 +487,20 @@ async function runSetup() {
 
     // 10. Seed Coupons
     for (const cp of SEED_COUPONS) {
+      let couponUserId: string | null = null
+      if (cp.shopSlug) {
+        const [sh] = await db
+          .select({ userId: schema.shops.userId })
+          .from(schema.shops)
+          .where(eq(schema.shops.slug, cp.shopSlug))
+          .limit(1)
+        couponUserId = sh?.userId ?? null
+      }
+
       const existing = await db.select().from(schema.coupons).where(eq(schema.coupons.code, cp.code))
       if (existing.length === 0) {
         await db.insert(schema.coupons).values({
+          userId: couponUserId,
           code: cp.code,
           type: cp.type,
           discount: cp.discount.toString(),
@@ -499,6 +510,8 @@ async function runSetup() {
           details: { min_buy: cp.minBuy, max_discount: cp.maxDiscount },
           status: cp.status,
         })
+      } else if (couponUserId && !existing[0].userId) {
+        await db.update(schema.coupons).set({ userId: couponUserId }).where(eq(schema.coupons.code, cp.code))
       }
     }
     console.log("[OK] Coupons seeded")

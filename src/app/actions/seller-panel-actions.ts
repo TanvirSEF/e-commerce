@@ -26,6 +26,7 @@ export async function sellerCreateCouponAction(data: {
   if (!seller?.userId) return NOT_SELLER
   const res = await createSellerCoupon(seller.userId, data)
   revalidatePath("/seller/coupons")
+  if (seller.shopSlug) revalidatePath(`/shop/${seller.shopSlug}`)
   return res
 }
 
@@ -34,6 +35,7 @@ export async function sellerDeleteCouponAction(id: number) {
   if (!seller?.userId) return NOT_SELLER
   const ok = await deleteSellerCoupon(seller.userId, id)
   revalidatePath("/seller/coupons")
+  if (seller.shopSlug) revalidatePath(`/shop/${seller.shopSlug}`)
   return { success: ok }
 }
 
@@ -42,6 +44,7 @@ export async function sellerToggleCouponAction(id: number, status: boolean) {
   if (!seller?.userId) return NOT_SELLER
   const ok = await toggleSellerCoupon(seller.userId, id, status)
   revalidatePath("/seller/coupons")
+  if (seller.shopSlug) revalidatePath(`/shop/${seller.shopSlug}`)
   return { success: ok }
 }
 
