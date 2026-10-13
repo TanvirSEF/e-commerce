@@ -693,9 +693,35 @@ export async function createSellerWithdrawRequest(data: {
   }
 }
 
-export async function updateSellerVerification(shopId: number, status: boolean) {
+export async function updateSellerVerification(
+  shopId: number,
+  status: boolean,
+  rejectionReason?: string
+) {
   try {
-    await db.update(shops).set({ verificationStatus: status, updatedAt: new Date() }).where(eq(shops.id, shopId))
+    const [row] = await db
+      .select({ verificationInfo: shops.verificationInfo })
+      .from(shops)
+      .where(eq(shops.id, shopId))
+      .limit(1)
+
+    const currentInfo = row?.verificationInfo || {}
+    const updatedInfo = status
+      ? { ...currentInfo, rejectionReason: undefined, reviewedAt: new Date().toISOString() }
+      : {
+          ...currentInfo,
+          rejectionReason: rejectionReason || "Documents do not meet marketplace verification requirements.",
+          reviewedAt: new Date().toISOString(),
+        }
+
+    await db
+      .update(shops)
+      .set({
+        verificationStatus: status,
+        verificationInfo: updatedInfo,
+        updatedAt: new Date(),
+      })
+      .where(eq(shops.id, shopId))
     return { success: true }
   } catch (err) {
     console.warn("updateSellerVerification error:", (err as Error).message)

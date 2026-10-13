@@ -131,9 +131,13 @@ export async function replyCustomerTicketAction(data: {
   return res
 }
 
-export async function updateSellerVerificationAction(shopId: number, status: boolean) {
+export async function updateSellerVerificationAction(
+  shopId: number,
+  status: boolean,
+  rejectionReason?: string
+) {
   const { updateSellerVerification } = await import("@/services/seller-service")
-  const res = await updateSellerVerification(shopId, status)
+  const res = await updateSellerVerification(shopId, status, rejectionReason)
   revalidatePath("/admin/sellers")
   revalidatePath("/admin/sellers/verification")
   revalidatePath("/seller/verify")

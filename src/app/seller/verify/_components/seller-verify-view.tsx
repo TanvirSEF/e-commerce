@@ -31,10 +31,12 @@ export function SellerVerifyView({ shop }: SellerVerifyViewProps) {
     bankName?: string
     bankAccount?: string
     submittedAt?: string
+    rejectionReason?: string
   } | null
 
   const isVerified = shop.verificationStatus === true
-  const isPending = !shop.verificationStatus && !!existingInfo
+  const isRejected = !shop.verificationStatus && !!existingInfo?.rejectionReason
+  const isPending = !shop.verificationStatus && !!existingInfo && !existingInfo.rejectionReason
 
   const [form, setForm] = useState({
     tradeLicense: existingInfo?.tradeLicense || "",
@@ -115,6 +117,23 @@ export function SellerVerifyView({ shop }: SellerVerifyViewProps) {
             <div className="text-sm font-bold">Verified Merchant Status Active</div>
             <div className="text-xs text-emerald-700 mt-0.5">
               Your store is fully verified and displays the trust badge across all marketplace listings.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isRejected && (
+        <div className="p-4 rounded-sm border bg-red-50 border-red-200 text-red-900 flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-red-100 text-red-700 shrink-0 mt-0.5">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-sm font-bold text-red-800">Verification Request Rejected</div>
+            <div className="text-xs text-red-700 mt-1">
+              Reason: {existingInfo?.rejectionReason}
+            </div>
+            <div className="text-[11px] text-red-600 mt-1">
+              Please review your submitted details, update the identification documents below, and reapply.
             </div>
           </div>
         </div>

@@ -29,17 +29,32 @@ export function SellerVerificationAdminView({
   const [selectedSeller, setSelectedSeller] =
     useState<SellerVerificationItem | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [rejectionNote, setRejectionNote] = useState("")
+  const [showRejectInput, setShowRejectInput] = useState(false)
+
+  const handleOpenModal = (item: SellerVerificationItem) => {
+    setSelectedSeller(item)
+    setRejectionNote(item.rejectionReason || "")
+    setShowRejectInput(false)
+  }
 
   const handleReview = async (shopId: number, approve: boolean) => {
     setIsProcessing(true)
+    const reason = approve
+      ? undefined
+      : rejectionNote.trim() || "Documents do not meet marketplace verification requirements."
+
     try {
-      await updateSellerVerificationAction(shopId, approve)
+      await updateSellerVerificationAction(shopId, approve, reason)
       setVerifications((prev) =>
         prev.map((v) =>
-          v.shopId === shopId ? { ...v, verificationStatus: approve } : v
+          v.shopId === shopId
+            ? { ...v, verificationStatus: approve, rejectionReason: reason }
+            : v
         )
       )
       setSelectedSeller(null)
+      setShowRejectInput(false)
     } finally {
       setIsProcessing(false)
     }
@@ -138,13 +153,15 @@ export function SellerVerificationAdminView({
                     <div className="font-semibold text-slate-800">{item.ownerName}</div>
                     <div className="text-[11px] text-slate-500">{item.ownerPhone}</div>
                   </td>
-                  <td className="py-3.5 px-4 font-mono text-slate-700">{item.tradeLicense}</td>
-                  <td className="py-3.5 px-4 font-mono text-slate-700">{item.nidNumber}</td>
+                  <td className="py-3.5 px-4 font-mono text-slate-700">{item.tradeLicense || "—"}</td>
+                  <td className="py-3.5 px-4 font-mono text-slate-700">{item.nidNumber || "—"}</td>
                   <td className="py-3.5 px-4">
                     <span
                       className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                         item.verificationStatus
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : item.rejectionReason
+                          ? "bg-red-50 text-red-700 border border-red-200"
                           : "bg-amber-50 text-amber-700 border border-amber-200"
                       }`}
                     >
@@ -152,6 +169,11 @@ export function SellerVerificationAdminView({
                         <>
                           <Check className="w-3 h-3" />
                           Verified
+                        </>
+                      ) : item.rejectionReason ? (
+                        <>
+                          <X className="w-3 h-3" />
+                          Rejected
                         </>
                       ) : (
                         <>
@@ -164,7 +186,7 @@ export function SellerVerificationAdminView({
                   <td className="py-3.5 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
-                        onClick={() => setSelectedSeller(item)}
+                        onClick={() => handleOpenModal(item)}
                         className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-semibold text-[11px] inline-flex items-center gap-1 transition-colors"
                       >
                         <Eye className="w-3 h-3" />
@@ -182,7 +204,7 @@ export function SellerVerificationAdminView({
       {/* Inspect Documents Modal */}
       {selectedSeller && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-5 relative animate-in fade-in zoom-in-95 space-y-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-5 relative animate-in fade-in zoom-in-95 space-y-4 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSelectedSeller(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
@@ -194,10 +216,32 @@ export function SellerVerificationAdminView({
               <h3 className="text-base font-bold text-slate-800">
                 Seller Verification: {selectedSeller.shopName}
               </h3>
-              <p className="text-xs text-slate-500">Submitted on {selectedSeller.submittedAt}</p>
+              <p className="text-xs text-slate-500">Submitted on {selectedSeller.submittedAt || "Recently"}</p>
             </div>
 
             <div className="space-y-3 text-xs text-slate-700">
+              {/* Owner Info */}
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-semibold text-slate-700 mb-1">Applicant Contact</div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block">Owner Name</span>
+                    <span className="font-medium text-slate-800">{selectedSeller.ownerName}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Phone</span>
+                    <span className="font-medium text-slate-800">{selectedSeller.ownerPhone}</span>
+                  </div>
+                  {selectedSeller.ownerEmail && selectedSeller.ownerEmail !== "—" && (
+                    <div className="col-span-2">
+                      <span className="text-slate-400 block">Email</span>
+                      <span className="font-medium text-slate-800">{selectedSeller.ownerEmail}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* License & Bank Info */}
               <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded border border-slate-200">
                 <div>
                   <span className="text-slate-400 block text-[10px]">Trade License Number</span>
@@ -217,23 +261,38 @@ export function SellerVerificationAdminView({
                 </div>
               </div>
 
+              {/* Document Preview Card */}
               <div>
                 <span className="font-semibold text-slate-700 block mb-1">
                   Attached Business Identification Document:
                 </span>
                 {selectedSeller.documentUrl ? (
-                  <div className="p-3 bg-slate-100 rounded border flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <FileText className="w-4 h-4 text-[#d43533]" />
-                      {selectedSeller.documentType || "Business Document"}
-                    </span>
-                    <a
-                      href={selectedSeller.documentUrl}
-                      target="_blank"
-                      className="text-[#d43533] hover:underline font-bold text-xs inline-flex items-center gap-1"
-                    >
-                      Preview Scan <ExternalLink className="w-3 h-3" />
-                    </a>
+                  <div className="p-3 bg-slate-100 rounded border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 font-medium truncate">
+                        <FileText className="w-4 h-4 text-[#d43533] shrink-0" />
+                        <span className="truncate">{selectedSeller.documentType || "Business Document"}</span>
+                      </span>
+                      <a
+                        href={selectedSeller.documentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#d43533] hover:underline font-bold text-xs inline-flex items-center gap-1 shrink-0 ml-2"
+                      >
+                        Preview Scan <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+
+                    {/* Inline Image Preview if document is an image */}
+                    {/\.(jpg|jpeg|png|webp|gif|svg)(\?.*)?$/i.test(selectedSeller.documentUrl) && (
+                      <div className="mt-2 max-h-48 overflow-hidden rounded border border-slate-200 bg-white flex justify-center">
+                        <img
+                          src={selectedSeller.documentUrl}
+                          alt="Document Preview"
+                          className="max-h-48 w-auto object-contain"
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-3 bg-slate-50 rounded border text-slate-400 italic">
@@ -241,6 +300,30 @@ export function SellerVerificationAdminView({
                   </div>
                 )}
               </div>
+
+              {/* Show previous rejection reason if exists */}
+              {selectedSeller.rejectionReason && (
+                <div className="p-2.5 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
+                  <span className="font-bold block">Current Rejection Reason:</span>
+                  <span>{selectedSeller.rejectionReason}</span>
+                </div>
+              )}
+
+              {/* Optional Rejection Note Box */}
+              {showRejectInput && (
+                <div className="p-3 bg-red-50/70 border border-red-200 rounded space-y-2">
+                  <label className="font-semibold text-red-800 block text-[11px]">
+                    Specify Rejection Reason (visible to seller):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={rejectionNote}
+                    onChange={(e) => setRejectionNote(e.target.value)}
+                    placeholder="e.g. Uploaded NID scan is blurry or trade license is expired."
+                    className="w-full p-2 border border-red-300 rounded text-xs bg-white focus:outline-none focus:border-red-500"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
@@ -252,20 +335,41 @@ export function SellerVerificationAdminView({
               </button>
 
               <div className="flex gap-2">
-                <button
-                  onClick={() => handleReview(selectedSeller.shopId, false)}
-                  disabled={isProcessing}
-                  className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition-colors"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => handleReview(selectedSeller.shopId, true)}
-                  disabled={isProcessing}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold transition-colors"
-                >
-                  Approve & Verify
-                </button>
+                {!showRejectInput ? (
+                  <>
+                    <button
+                      onClick={() => setShowRejectInput(true)}
+                      disabled={isProcessing}
+                      className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition-colors"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => handleReview(selectedSeller.shopId, true)}
+                      disabled={isProcessing}
+                      className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Approve & Verify
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setShowRejectInput(false)}
+                      className="px-3 py-1.5 border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleReview(selectedSeller.shopId, false)}
+                      disabled={isProcessing}
+                      className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition-colors"
+                    >
+                      Confirm Rejection
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
