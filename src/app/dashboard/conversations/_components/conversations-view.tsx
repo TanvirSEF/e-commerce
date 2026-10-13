@@ -1,9 +1,10 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Search } from "lucide-react"
+import { refreshUserConversationsAction } from "@/app/actions/conversation-actions"
 import type { ConversationItem } from "@/services/conversation-service"
 
 interface ConversationsViewProps {
@@ -12,8 +13,24 @@ interface ConversationsViewProps {
 }
 
 export function ConversationsView({ initialConversations = [] }: ConversationsViewProps) {
-  const [conversations] = useState<ConversationItem[]>(initialConversations ?? [])
+  const [conversations, setConversations] = useState<ConversationItem[]>(initialConversations ?? [])
   const [search, setSearch] = useState("")
+
+  // Live polling for conversations list every 8 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await refreshUserConversationsAction()
+        if (res.success && res.conversations) {
+          setConversations(res.conversations)
+        }
+      } catch {
+        // silent background poll
+      }
+    }, 8000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const list = Array.isArray(conversations) ? conversations : []
 

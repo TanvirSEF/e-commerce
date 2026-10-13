@@ -238,9 +238,23 @@ export async function sendSellerConversationMessageAction(
   try {
     const msg = await sendSellerConversationMessage(conversationId, seller.userId, messageText)
     revalidatePath("/seller/conversations")
+    revalidatePath("/dashboard/conversations")
+    revalidatePath(`/dashboard/conversations/${conversationId}`)
     return { success: true, data: msg }
   } catch (err) {
     return { success: false, error: (err as Error).message }
+  }
+}
+
+export async function refreshSellerConversationsAction() {
+  const seller = await getCurrentSeller()
+  if (!seller) return { success: false, conversations: [] }
+  try {
+    const { getSellerConversationsList } = await import("@/services/seller-panel-service")
+    const list = await getSellerConversationsList(seller)
+    return { success: true, conversations: list }
+  } catch (err) {
+    return { success: false, conversations: [] }
   }
 }
 

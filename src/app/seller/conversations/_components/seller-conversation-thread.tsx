@@ -3,7 +3,10 @@
 import React, { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { ArrowLeft, Send, Loader2 } from "lucide-react"
-import { sendSellerConversationMessageAction } from "@/app/actions/seller-actions"
+import {
+  sendSellerConversationMessageAction,
+  fetchSellerConversationThreadAction,
+} from "@/app/actions/seller-actions"
 import type { SellerConversationMessageItem } from "@/services/seller-panel-service"
 
 interface SellerConversationThreadProps {
@@ -33,6 +36,38 @@ export function SellerConversationThread({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Real-time live sync polling every 4 seconds
+  useEffect(() => {
+    let isMounted = true
+
+    const pollInterval = setInterval(async () => {
+      if (isSending) return
+
+      try {
+        const res = await fetchSellerConversationThreadAction(conversationId)
+        if (isMounted && res.success && res.data?.messages) {
+          const fresh = res.data.messages
+          setMessages((prev) => {
+            if (
+              fresh.length !== prev.length ||
+              fresh[fresh.length - 1]?.id !== prev[prev.length - 1]?.id
+            ) {
+              return fresh
+            }
+            return prev
+          })
+        }
+      } catch {
+        // silent background poll
+      }
+    }, 4000)
+
+    return () => {
+      isMounted = false
+      clearInterval(pollInterval)
+    }
+  }, [conversationId, isSending])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -126,6 +126,13 @@ export async function getConversationDetails(
       return { conversation: null, messages: [] }
     }
 
+    if (userId) {
+      await db
+        .update(messages)
+        .set({ viewed: true })
+        .where(and(eq(messages.conversationId, conversationId), sql`${messages.senderId} != ${userId}`))
+    }
+
     const msgRows = await db
       .select({
         id: messages.id,

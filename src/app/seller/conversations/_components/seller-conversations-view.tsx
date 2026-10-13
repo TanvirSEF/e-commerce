@@ -1,9 +1,12 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Image from "next/image"
 import { MessageSquare, Loader2 } from "lucide-react"
-import { fetchSellerConversationThreadAction } from "@/app/actions/seller-actions"
+import {
+  fetchSellerConversationThreadAction,
+  refreshSellerConversationsAction,
+} from "@/app/actions/seller-actions"
 import type { SellerConversationRow, SellerConversationMessageItem } from "@/services/seller-panel-service"
 import { SellerConversationThread } from "./seller-conversation-thread"
 
@@ -21,6 +24,24 @@ export function SellerConversationsView({
     messages: SellerConversationMessageItem[]
   } | null>(null)
   const [loadingThreadId, setLoadingThreadId] = useState<number | null>(null)
+
+  // Live polling for conversations list every 8 seconds
+  useEffect(() => {
+    if (activeConvId) return // Pause index list poll when inside active thread
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await refreshSellerConversationsAction()
+        if (res.success && res.conversations) {
+          setConversations(res.conversations)
+        }
+      } catch {
+        // silent background poll
+      }
+    }, 8000)
+
+    return () => clearInterval(interval)
+  }, [activeConvId])
 
   const handleOpenConversation = async (conv: SellerConversationRow) => {
     setActiveConvId(conv.id)

@@ -1,10 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowLeft, MessageSquare, Send } from "lucide-react"
-import { sendConversationMessageAction } from "@/app/actions/conversation-actions"
+import {
+  sendConversationMessageAction,
+  fetchConversationMessagesAction,
+} from "@/app/actions/conversation-actions"
 import type { ConversationItem, MessageItem } from "@/services/conversation-service"
 
 interface ConversationThreadViewProps {
@@ -21,6 +24,44 @@ export function ConversationThreadView({
   const [messages, setMessages] = useState<MessageItem[]>(initialMessages)
   const [replyText, setReplyText] = useState("")
   const [isSending, setIsSending] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
+
+  // Real-time live sync polling every 4 seconds
+  useEffect(() => {
+    let isMounted = true
+    const numericConvId = parseInt(conversation.id, 10)
+
+    const interval = setInterval(async () => {
+      if (isSending) return
+
+      try {
+        const res = await fetchConversationMessagesAction(numericConvId)
+        if (isMounted && res.success && res.messages) {
+          const fresh = res.messages
+          setMessages((prev) => {
+            if (
+              fresh.length !== prev.length ||
+              fresh[fresh.length - 1]?.id !== prev[prev.length - 1]?.id
+            ) {
+              return fresh
+            }
+            return prev
+          })
+        }
+      } catch {
+        // silent background poll
+      }
+    }, 4000)
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
+  }, [conversation.id, isSending])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
