@@ -40,7 +40,10 @@ export async function updateSellerShopAction(
   try {
     const res = await updateSellerShop(shopId, data)
     revalidatePath("/seller/shop")
-    revalidatePath(`/shop`)
+    revalidatePath("/shop")
+    if (res.shop?.slug) {
+      revalidatePath(`/shop/${res.shop.slug}`)
+    }
     return { success: true }
   } catch (err) {
     return { success: false, error: (err as Error).message }

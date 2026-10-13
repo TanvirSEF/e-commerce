@@ -477,6 +477,7 @@ export interface SeedShop {
   instagram?: string
   twitter?: string
   youtube?: string
+  google?: string
   cashPaymentStatus?: boolean
   bankPaymentStatus?: boolean
   bankName?: string

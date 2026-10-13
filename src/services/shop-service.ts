@@ -26,6 +26,7 @@ export async function getShops(): Promise<SeedShop[]> {
         instagram: s.instagram || undefined,
         twitter: s.twitter || undefined,
         youtube: s.youtube || undefined,
+        google: s.google || undefined,
       }))
     }
   } catch (err) {
@@ -56,6 +57,7 @@ export async function getShopBySlug(slug: string): Promise<SeedShop | null> {
         instagram: row.instagram || undefined,
         twitter: row.twitter || undefined,
         youtube: row.youtube || undefined,
+        google: row.google || undefined,
         cashPaymentStatus: row.cashPaymentStatus ?? true,
         bankPaymentStatus: row.bankPaymentStatus ?? true,
         bankName: row.bankName || "",

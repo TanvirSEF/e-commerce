@@ -390,8 +390,12 @@ export async function updateSellerShop(
   if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle
   if (data.metaDescription !== undefined) updateData.metaDescription = data.metaDescription
 
-  await db.update(shops).set(updateData).where(eq(shops.id, shopId))
-  return { success: true }
+  const [updated] = await db
+    .update(shops)
+    .set(updateData)
+    .where(eq(shops.id, shopId))
+    .returning({ id: shops.id, slug: shops.slug })
+  return { success: true, shop: updated }
 }
 
 /* -------------------------- Seller Addresses --------------------------- */
