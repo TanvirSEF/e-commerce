@@ -148,7 +148,7 @@ export function SellerBasicInfo({
             <input
               type="text"
               required
-              value={name}
+              value={name ?? ""}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your Name"
               className="w-full rounded border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#d43533] focus:outline-none"
@@ -162,7 +162,7 @@ export function SellerBasicInfo({
           <div className="md:col-span-9">
             <input
               type="tel"
-              value={phone}
+              value={phone ?? ""}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Your Phone"
               className="w-full rounded border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:border-[#d43533] focus:outline-none"

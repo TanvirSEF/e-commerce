@@ -12,7 +12,7 @@ interface ShopBannerSettingsProps {
 }
 
 export function ShopBannerSettings({ shopId, initialTopBanner }: ShopBannerSettingsProps) {
-  const [topBanner, setTopBanner] = useState(initialTopBanner || "")
+  const [topBanner, setTopBanner] = useState(initialTopBanner ?? "")
   const [pickerOpen, setPickerOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)

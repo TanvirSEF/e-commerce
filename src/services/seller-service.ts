@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { shops, sellerWithdrawRequests, products, orders, orderItems, users, shopFollowers, categories } from "../db/schema"
-import { eq, desc, sql, and, or } from "drizzle-orm"
+import { eq, desc, asc, sql, and, or } from "drizzle-orm"
 import { SEED_SHOPS, SeedShop, SEED_PRODUCTS, SeedProduct } from "../db/seed/data"
 
 export interface SellerDashboardStats {
@@ -182,7 +182,7 @@ export async function getSellerFullDashboardData(params: {
     shop = found
   }
   if (!shop && params.userId) {
-    const [found] = await db.select().from(shops).where(eq(shops.userId, params.userId)).limit(1)
+    const [found] = await db.select().from(shops).where(eq(shops.userId, params.userId)).orderBy(asc(shops.id)).limit(1)
     shop = found
   }
   if (!shop && params.shopSlug) {
@@ -190,7 +190,7 @@ export async function getSellerFullDashboardData(params: {
     shop = found
   }
   if (!shop) {
-    const [found] = await db.select().from(shops).where(sql`${shops.slug} != 'inhouse-products'`).limit(1)
+    const [found] = await db.select().from(shops).where(sql`${shops.slug} != 'inhouse-products'`).orderBy(asc(shops.id)).limit(1)
     shop = found || {
       id: 1,
       userId: params.userId || "usr_seller_default_01",

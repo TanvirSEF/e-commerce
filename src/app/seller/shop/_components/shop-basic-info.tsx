@@ -25,12 +25,12 @@ export function ShopBasicInfo({
   initialMetaTitle,
   initialMetaDescription,
 }: ShopBasicInfoProps) {
-  const [name, setName] = useState(initialName)
-  const [logo, setLogo] = useState(initialLogo || "")
-  const [phone, setPhone] = useState(initialPhone || "")
-  const [address, setAddress] = useState(initialAddress || "")
-  const [metaTitle, setMetaTitle] = useState(initialMetaTitle || initialName)
-  const [metaDescription, setMetaDescription] = useState(initialMetaDescription || "")
+  const [name, setName] = useState(initialName ?? "")
+  const [logo, setLogo] = useState(initialLogo ?? "")
+  const [phone, setPhone] = useState(initialPhone ?? "")
+  const [address, setAddress] = useState(initialAddress ?? "")
+  const [metaTitle, setMetaTitle] = useState(initialMetaTitle ?? initialName ?? "")
+  const [metaDescription, setMetaDescription] = useState(initialMetaDescription ?? "")
 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -90,7 +90,7 @@ export function ShopBasicInfo({
               <input
                 type="text"
                 required
-                value={name}
+                value={name ?? ""}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Shop Name"
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded focus:border-[#d43533] focus:outline-none"
@@ -143,7 +143,7 @@ export function ShopBasicInfo({
               <input
                 type="text"
                 required
-                value={phone}
+                value={phone ?? ""}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Phone"
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded focus:border-[#d43533] focus:outline-none"
@@ -160,7 +160,7 @@ export function ShopBasicInfo({
               <input
                 type="text"
                 required
-                value={address}
+                value={address ?? ""}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Address"
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded focus:border-[#d43533] focus:outline-none"
@@ -177,7 +177,7 @@ export function ShopBasicInfo({
               <input
                 type="text"
                 required
-                value={metaTitle}
+                value={metaTitle ?? ""}
                 onChange={(e) => setMetaTitle(e.target.value)}
                 placeholder="Meta Title"
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded focus:border-[#d43533] focus:outline-none"
@@ -194,7 +194,7 @@ export function ShopBasicInfo({
               <textarea
                 rows={3}
                 required
-                value={metaDescription}
+                value={metaDescription ?? ""}
                 onChange={(e) => setMetaDescription(e.target.value)}
                 placeholder="Meta Description"
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded focus:border-[#d43533] focus:outline-none"

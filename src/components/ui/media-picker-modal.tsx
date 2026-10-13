@@ -10,7 +10,7 @@ import {
   Loader2,
   Image as ImageIcon,
 } from "lucide-react"
-import { type Upload } from "@/db/schema/uploads"
+import { type Upload } from "@/db/schema"
 
 interface MediaPickerModalProps {
   isOpen: boolean
@@ -42,6 +42,7 @@ export function MediaPickerModal({
     if (isOpen) {
       loadFiles()
       setSelectedUrls([])
+      setSearch("")
     }
   }, [isOpen])
 
@@ -166,11 +167,12 @@ export function MediaPickerModal({
         {/* Tab Contents */}
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === "select" ? (
-            <div className="space-y-4">
+            <div key="media-select-tab" className="space-y-4">
               <div className="relative">
                 <input
+                  key="media-search-input"
                   type="text"
-                  value={search}
+                  value={search ?? ""}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search files by name..."
                   className="w-full text-xs pl-8 pr-3 py-2 border border-gray-200 rounded-lg outline-none focus:border-[#d43533]"
@@ -235,7 +237,7 @@ export function MediaPickerModal({
               )}
             </div>
           ) : (
-            <div className="h-full flex flex-col justify-center">
+            <div key="media-upload-tab" className="h-full flex flex-col justify-center">
               <div
                 onDragOver={(e) => {
                   e.preventDefault()
@@ -253,6 +255,7 @@ export function MediaPickerModal({
                 }`}
               >
                 <input
+                  key="media-file-input"
                   ref={fileInputRef}
                   type="file"
                   multiple={multiple}

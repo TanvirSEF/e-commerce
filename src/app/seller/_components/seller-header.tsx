@@ -20,7 +20,19 @@ interface SellerHeaderProps {
 
 export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [shopSlug, setShopSlug] = useState("active-fashion-outlet")
   const { user } = useAuth()
+
+  React.useEffect(() => {
+    fetch("/api/seller/shop")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.shopSlug) {
+          setShopSlug(data.shopSlug)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const avatar = user?.avatar
   const displayName = user?.name || "Active Fashion"
@@ -49,7 +61,7 @@ export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
       <div className="flex items-center gap-2">
         {/* Visit Store */}
         <Link
-          href="/shop/active-fashion-outlet"
+          href={`/shop/${shopSlug}`}
           target="_blank"
           className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded hover:bg-slate-50 transition-colors"
         >

@@ -32,7 +32,7 @@ async function syncSellerDatabase() {
   await db
     .update(shops)
     .set({
-      userId: "usr_seller_default_01",
+      userId: "usr_seller_gadget_02",
       verificationStatus: false,
       verificationInfo: {
         nidNumber: "19922699887766554",
@@ -49,7 +49,7 @@ async function syncSellerDatabase() {
   await db
     .update(shops)
     .set({
-      userId: "usr_seller_default_01",
+      userId: "usr_seller_home_03",
       verificationStatus: false,
       verificationInfo: {
         nidNumber: "19885566778899001",

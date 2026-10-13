@@ -36,14 +36,14 @@ export async function getCurrentSeller(): Promise<CurrentSeller | null> {
 
   let shop: typeof shops.$inferSelect | undefined
   if (userId) {
-    ;[shop] = await db.select().from(shops).where(eq(shops.userId, userId)).limit(1)
+    ;[shop] = await db.select().from(shops).where(eq(shops.userId, userId)).orderBy(asc(shops.id)).limit(1)
   }
   if (!shop) {
     ;[shop] = await db
       .select()
       .from(shops)
       .where(sql`${shops.slug} != 'inhouse-products'`)
-      .orderBy(shops.id)
+      .orderBy(asc(shops.id))
       .limit(1)
   }
   if (!shop) return null

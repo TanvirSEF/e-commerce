@@ -21,11 +21,11 @@ export function ShopSocialLinks({
   initialGoogle,
   initialYoutube,
 }: ShopSocialLinksProps) {
-  const [facebook, setFacebook] = useState(initialFacebook || "")
-  const [instagram, setInstagram] = useState(initialInstagram || "")
-  const [twitter, setTwitter] = useState(initialTwitter || "")
-  const [google, setGoogle] = useState(initialGoogle || "")
-  const [youtube, setYoutube] = useState(initialYoutube || "")
+  const [facebook, setFacebook] = useState(initialFacebook ?? "")
+  const [instagram, setInstagram] = useState(initialInstagram ?? "")
+  const [twitter, setTwitter] = useState(initialTwitter ?? "")
+  const [google, setGoogle] = useState(initialGoogle ?? "")
+  const [youtube, setYoutube] = useState(initialYoutube ?? "")
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -90,7 +90,7 @@ export function ShopSocialLinks({
               <div className="md:col-span-10">
                 <input
                   type="text"
-                  value={field.value}
+                  value={field.value ?? ""}
                   onChange={(e) => field.setter(e.target.value)}
                   placeholder={field.placeholder}
                   className="w-full px-3 py-2 text-xs border border-gray-300 rounded focus:border-[#d43533] focus:outline-none"
