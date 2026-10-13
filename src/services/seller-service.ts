@@ -208,7 +208,7 @@ export async function getSellerFullDashboardData(params: {
   const prodCountRes = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(products)
-    .where(or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)))
+    .where(eq(products.shopId, shopId))
   const totalProducts = Number(prodCountRes[0]?.count || 0)
 
   // 3. Shop Rating & Followers
@@ -228,7 +228,7 @@ export async function getSellerFullDashboardData(params: {
     .innerJoin(products, eq(orderItems.productId, products.id))
     .where(
       and(
-        or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)),
+        eq(products.shopId, shopId),
         eq(orders.deliveryStatus, "delivered")
       )
     )
@@ -242,7 +242,7 @@ export async function getSellerFullDashboardData(params: {
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
-        or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)),
+        eq(products.shopId, shopId),
         eq(orders.paymentStatus, "paid")
       )
     )
@@ -263,7 +263,7 @@ export async function getSellerFullDashboardData(params: {
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
-        or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)),
+        eq(products.shopId, shopId),
         eq(orders.paymentStatus, "paid"),
         sql`${orders.createdAt} >= ${startOfCurrentMonth}`
       )
@@ -278,7 +278,7 @@ export async function getSellerFullDashboardData(params: {
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
-        or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)),
+        eq(products.shopId, shopId),
         eq(orders.paymentStatus, "paid"),
         sql`${orders.createdAt} >= ${startOfPrevMonth} AND ${orders.createdAt} < ${startOfCurrentMonth}`
       )
@@ -308,7 +308,7 @@ export async function getSellerFullDashboardData(params: {
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
     .where(
       and(
-        or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)),
+        eq(products.shopId, shopId),
         eq(orders.deliveryStatus, "delivered"),
         sql`${orders.createdAt} >= ${sevenDaysAgo}`
       )
@@ -334,7 +334,7 @@ export async function getSellerFullDashboardData(params: {
     })
     .from(categories)
     .innerJoin(products, eq(products.categoryId, categories.id))
-    .where(or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)))
+    .where(eq(products.shopId, shopId))
     .groupBy(categories.id, categories.name)
     .orderBy(desc(sql`count(${products.id})`))
 
@@ -355,7 +355,7 @@ export async function getSellerFullDashboardData(params: {
     .innerJoin(products, eq(orderItems.productId, products.id))
     .where(
       and(
-        or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)),
+        eq(products.shopId, shopId),
         sql`${orders.createdAt} >= ${startOfCurrentMonth}`
       )
     )
@@ -389,7 +389,7 @@ export async function getSellerFullDashboardData(params: {
       numOfSale: products.numOfSale,
     })
     .from(products)
-    .where(or(eq(products.shopId, shopId), eq(products.userId, sellerUserId)))
+    .where(eq(products.shopId, shopId))
     .orderBy(desc(products.numOfSale))
     .limit(12)
 
