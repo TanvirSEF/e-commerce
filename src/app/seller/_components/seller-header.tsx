@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react"
 import { NotificationBell } from "@/components/layout/notification-bell"
-
+import { useAuth } from "@/lib/context/auth-context"
 
 interface SellerHeaderProps {
   onToggleSidebar: () => void
@@ -20,6 +20,11 @@ interface SellerHeaderProps {
 
 export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const { user } = useAuth()
+
+  const avatar = user?.avatar
+  const displayName = user?.name || "Active Fashion"
+  const initial = (displayName.charAt(0) || "S").toUpperCase()
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-200 shadow-xs flex items-center justify-between px-4 lg:px-6">
@@ -64,11 +69,21 @@ export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
             onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors"
           >
-            <div className="w-7 h-7 rounded-full bg-[#d43533] flex items-center justify-center text-white font-bold text-xs">
-              S
-            </div>
+            {avatar && avatar !== "/assets/img/avatar-place.png" ? (
+              <img
+                src={avatar}
+                alt={displayName}
+                className="w-7 h-7 rounded-full object-cover border border-slate-200"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-[#d43533] flex items-center justify-center text-white font-bold text-xs">
+                {initial}
+              </div>
+            )}
             <div className="hidden sm:block text-left">
-              <div className="text-xs font-bold text-slate-800 leading-tight">Active Fashion</div>
+              <div className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[130px]">
+                {displayName}
+              </div>
               <div className="text-[10px] text-slate-400 leading-tight">Seller Account</div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />

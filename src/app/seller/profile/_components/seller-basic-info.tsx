@@ -48,6 +48,7 @@ export function SellerBasicInfo({
         const url = data.url || data.secure_url || (data.files && data.files[0]?.url)
         if (url) {
           setAvatar(url)
+          updateProfile({ avatar: url })
           setUploadingPhoto(false)
           return
         }
@@ -58,6 +59,7 @@ export function SellerBasicInfo({
       reader.onload = () => {
         if (typeof reader.result === "string") {
           setAvatar(reader.result)
+          updateProfile({ avatar: reader.result })
         }
         setUploadingPhoto(false)
       }
@@ -67,6 +69,7 @@ export function SellerBasicInfo({
       reader.onload = () => {
         if (typeof reader.result === "string") {
           setAvatar(reader.result)
+          updateProfile({ avatar: reader.result })
         }
         setUploadingPhoto(false)
       }
@@ -205,7 +208,10 @@ export function SellerBasicInfo({
                 />
                 <button
                   type="button"
-                  onClick={() => setAvatar("")}
+                  onClick={() => {
+                    setAvatar("")
+                    updateProfile({ avatar: "" })
+                  }}
                   className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Remove Photo"
                 >

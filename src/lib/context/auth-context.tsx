@@ -240,7 +240,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updateProfile = (data: Partial<UserProfile>) => {
-    setUser((prev) => (prev ? { ...prev, ...data } : null))
+    setUser((prev) => {
+      const base = prev || DEFAULT_USER
+      const updated = { ...base, ...data }
+      try {
+        localStorage.setItem("active_ecom_user", JSON.stringify(updated))
+      } catch {}
+      return updated
+    })
   }
 
   const toggleWishlist = (productId: string) => {

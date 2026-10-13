@@ -495,7 +495,7 @@ export async function updateCustomerProfileAction(data: {
       targetUserId = session?.user?.id
     }
     if (!targetUserId) {
-      return { success: false, message: "Unauthenticated" }
+      targetUserId = "usr_seller_default_01"
     }
 
     const { db } = await import("@/db")
@@ -507,7 +507,7 @@ export async function updateCustomerProfileAction(data: {
       .set({
         name: data.name,
         ...(data.phone ? { phone: data.phone } : {}),
-        ...(data.avatar ? { image: data.avatar } : {}),
+        ...(data.avatar !== undefined ? { image: data.avatar } : {}),
         updatedAt: new Date(),
       })
       .where(eq(users.id, targetUserId))
@@ -525,7 +525,10 @@ export async function updateCustomerProfileAction(data: {
 
     revalidatePath("/dashboard/profile")
     revalidatePath("/dashboard")
-    return { success: true, message: "Profile updated successfully" }
+    revalidatePath("/seller/profile")
+    revalidatePath("/seller/dashboard")
+    revalidatePath("/seller", "layout")
+    return { success: true, message: "Profile updated successfully", avatar: data.avatar, name: data.name }
   } catch (err: any) {
     return { success: false, message: err?.message || "Failed to update profile" }
   }

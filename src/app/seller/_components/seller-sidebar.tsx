@@ -28,6 +28,7 @@ import {
   RotateCcw,
   User,
 } from "lucide-react"
+import { useAuth } from "@/lib/context/auth-context"
 
 interface NavItem {
   title: string
@@ -180,6 +181,7 @@ interface SellerSidebarProps {
 
 export function SellerSidebar({ isOpen, onClose }: SellerSidebarProps) {
   const pathname = usePathname()
+  const { user } = useAuth()
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Products: true })
   const [disabledAddons, setDisabledAddons] = useState<string[]>([])
 
@@ -337,12 +339,24 @@ export function SellerSidebar({ isOpen, onClose }: SellerSidebarProps) {
         {/* Bottom profile shortcut */}
         <div className="border-t border-slate-800 p-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#d43533] flex items-center justify-center text-white font-bold text-sm">
-              S
-            </div>
+            {user?.avatar && user.avatar !== "/assets/img/avatar-place.png" ? (
+              <img
+                src={user.avatar}
+                alt={user.name || "Seller"}
+                className="w-8 h-8 rounded-full object-cover border border-slate-700 shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-[#d43533] flex items-center justify-center text-white font-bold text-sm shrink-0">
+                {(user?.name?.charAt(0) || "S").toUpperCase()}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-bold text-white truncate">Active Fashion Outlet</div>
-              <div className="text-[10px] text-slate-400 truncate">seller@example.com</div>
+              <div className="text-xs font-bold text-white truncate">
+                {user?.name || "Active Fashion Outlet"}
+              </div>
+              <div className="text-[10px] text-slate-400 truncate">
+                {user?.email || "seller@example.com"}
+              </div>
             </div>
           </div>
         </div>
