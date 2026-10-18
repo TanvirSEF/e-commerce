@@ -27,7 +27,9 @@ interface AuthContextType {
     email: string,
     pass: string,
     phone?: string,
-    role?: string
+    role?: string,
+    shopName?: string,
+    shopAddress?: string
   ) => Promise<{ success: boolean; error?: string; redirectTo?: string }>
   logout: () => void
   updateProfile: (data: Partial<UserProfile>) => void
@@ -186,7 +188,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     pass: string,
     phone?: string,
-    role: string = "customer"
+    role: string = "customer",
+    shopName?: string,
+    shopAddress?: string
   ): Promise<{ success: boolean; error?: string; redirectTo?: string }> => {
     try {
       const { registerAction } = await import("@/app/actions/ecommerce-actions")
@@ -196,6 +200,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password: pass,
         phone,
         role,
+        shopName,
+        shopAddress,
       })
 
       if (result.success && result.user) {

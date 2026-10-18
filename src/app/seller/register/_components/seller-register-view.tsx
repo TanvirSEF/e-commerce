@@ -4,11 +4,14 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Store, Eye, EyeOff, CheckCircle, XCircle } from "lucide-react"
+import { useAuth } from "@/lib/context/auth-context"
 
 export function SellerRegisterView() {
   const router = useRouter()
+  const { register } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
   // Form states
@@ -35,26 +38,36 @@ export function SellerRegisterView() {
       return
     }
 
+    if (!formData.shopName.trim()) {
+      setError("Shop name is required.")
+      return
+    }
+
     try {
-      const { registerAction } = await import("@/app/actions/ecommerce-actions")
-      const res = await registerAction({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone,
-        role: "seller",
-      })
+      setIsSubmitting(true)
+      const res = await register(
+        formData.name,
+        formData.email,
+        formData.password,
+        formData.phone,
+        "seller",
+        formData.shopName,
+        formData.address
+      )
 
       if (res.success) {
         setSubmitted(true)
         setTimeout(() => {
-          router.push("/seller/login")
-        }, 1500)
+          router.push(res.redirectTo || "/seller/dashboard")
+          router.refresh()
+        }, 1200)
       } else {
         setError(res.error || "Failed to register shop. Please try again.")
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred during registration.")
+    } catch (err: unknown) {
+      setError((err as Error).message || "An error occurred during registration.")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -75,10 +88,20 @@ export function SellerRegisterView() {
         </div>
 
         {submitted ? (
-          <div className="py-12 text-center space-y-3">
+          <div className="py-12 text-center space-y-4">
             <CheckCircle className="size-14 text-green-500 mx-auto" />
-            <h2 className="text-lg font-bold text-gray-900">Application Submitted!</h2>
-            <p className="text-xs text-gray-500">Our merchant onboarding team will review and verify your store. Redirecting to login...</p>
+            <h2 className="text-lg font-bold text-gray-900">Shop Registered Successfully!</h2>
+            <p className="text-xs text-gray-500 max-w-sm mx-auto">
+              Your merchant account for <span className="font-semibold text-gray-800">{formData.shopName}</span> has been created. Redirecting to your seller dashboard...
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/seller/dashboard"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-sm"
+              >
+                Go to Dashboard
+              </Link>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -217,9 +240,17 @@ export function SellerRegisterView() {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full py-3 rounded text-xs font-bold bg-primary hover:bg-primary/90 text-white uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full py-3 rounded text-xs font-bold bg-primary hover:bg-primary/90 text-white uppercase tracking-wider shadow-sm transition-all cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                Register Your Shop
+                {isSubmitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Registering Your Shop...</span>
+                  </>
+                ) : (
+                  <span>Register Your Shop</span>
+                )}
               </button>
             </div>
 
