@@ -2,8 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
-import Image from "next/image"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -26,10 +25,24 @@ import { useAuth } from "@/lib/context/auth-context"
 import { AccountDeleteModal } from "./account-delete-modal"
 
 export function CustomerSidebar() {
+  const router = useRouter()
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const [deleteModalOpen, setDeleteModalOpen] = React.useState(false)
   const [disabledAddons, setDisabledAddons] = React.useState<string[]>([])
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false)
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true)
+      await logout()
+      router.push("/login")
+      router.refresh()
+    } catch (err) {
+      console.error("Customer logout error:", err)
+      router.push("/login")
+    }
+  }
 
   React.useEffect(() => {
     fetch("/api/addons")
@@ -124,11 +137,12 @@ export function CustomerSidebar() {
 
         <button
           type="button"
-          onClick={logout}
-          className="flex w-full items-center gap-3 px-4 py-3 rounded text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors text-left"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="flex w-full items-center gap-3 px-4 py-3 rounded text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors text-left disabled:opacity-50 cursor-pointer"
         >
           <LogOut className="h-4 w-4 text-gray-500" />
-          <span>Logout</span>
+          <span>{isLoggingOut ? "Logging out..." : "Logout"}</span>
         </button>
 
         <button

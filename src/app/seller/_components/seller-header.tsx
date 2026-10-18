@@ -2,9 +2,9 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Menu,
-  Bell,
   ChevronDown,
   LogOut,
   User,
@@ -19,9 +19,11 @@ interface SellerHeaderProps {
 }
 
 export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
+  const router = useRouter()
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [shopSlug, setShopSlug] = useState("active-fashion-outlet")
-  const { user } = useAuth()
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const { user, logout } = useAuth()
 
   React.useEffect(() => {
     fetch("/api/seller/shop")
@@ -33,6 +35,19 @@ export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
       })
       .catch(() => {})
   }, [])
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true)
+      setProfileMenuOpen(false)
+      await logout()
+      router.push("/seller/login")
+      router.refresh()
+    } catch (err) {
+      console.error("Seller sign out error:", err)
+      router.push("/seller/login")
+    }
+  }
 
   const avatar = user?.avatar
   const displayName = user?.name || "Active Fashion"
@@ -125,13 +140,15 @@ export function SellerHeader({ onToggleSidebar }: SellerHeaderProps) {
                   Manage Profile
                 </Link>
                 <div className="border-t border-slate-100" />
-                <Link
-                  href="/login"
-                  className="flex items-center gap-2 px-4 py-2.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="flex items-center gap-2 px-4 py-2.5 text-xs text-red-600 hover:bg-red-50 transition-colors w-full text-left disabled:opacity-50 cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  Sign Out
-                </Link>
+                  <span>{isSigningOut ? "Signing Out..." : "Sign Out"}</span>
+                </button>
               </div>
             </>
           )}

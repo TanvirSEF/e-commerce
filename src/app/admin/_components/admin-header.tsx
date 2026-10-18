@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Menu, Globe, LogOut, User, ShieldCheck } from "lucide-react"
 import { NotificationBell } from "@/components/layout/notification-bell"
+import { useAuth } from "@/lib/context/auth-context"
 import type { AdminProfileData } from "@/services/admin-profile-service"
 
 interface AdminHeaderProps {
@@ -13,10 +14,26 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ onToggleSidebar, initialProfile }: AdminHeaderProps) {
+  const router = useRouter()
   const pathname = usePathname()
   const [profile, setProfile] = useState<AdminProfileData | undefined>(initialProfile)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [imgError, setImgError] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const { logout } = useAuth()
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true)
+      setShowProfileMenu(false)
+      await logout()
+      router.push("/login")
+      router.refresh()
+    } catch (err) {
+      console.error("Admin sign out error:", err)
+      router.push("/login")
+    }
+  }
 
   const getBreadcrumbs = () => {
     if (!pathname || pathname === "/admin") return ["Overview"]
@@ -57,6 +74,7 @@ export function AdminHeader({ onToggleSidebar, initialProfile }: AdminHeaderProp
 
   useEffect(() => {
     if (initialProfile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProfile(initialProfile)
     }
   }, [initialProfile])
@@ -182,14 +200,15 @@ export function AdminHeader({ onToggleSidebar, initialProfile }: AdminHeaderProp
                   <ShieldCheck className="w-3.5 h-3.5 mr-2 text-gray-400" />
                   General Settings
                 </Link>
-                <Link
-                  href="/login"
-                  onClick={() => setShowProfileMenu(false)}
-                  className="flex items-center px-4 py-2 text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100"
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="flex items-center px-4 py-2 text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 w-full text-left disabled:opacity-50 cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5 mr-2 text-red-400" />
-                  Sign Out
-                </Link>
+                  <span>{isSigningOut ? "Signing Out..." : "Sign Out"}</span>
+                </button>
               </div>
             </>
           )}

@@ -2541,34 +2541,60 @@ export async function registerAction(data: {
 
 export async function logoutAction(): Promise<{ success: boolean }> {
   try {
-    const { cookies, headers } = await import("next/headers")
-    const { auth } = await import("@/lib/auth/auth")
-    const { db } = await import("@/db")
-    const { sessions } = await import("@/db/schema")
-    const { eq } = await import("drizzle-orm")
+    let cookieStore: any = null
+    try {
+      const { cookies } = await import("next/headers")
+      cookieStore = await cookies()
+    } catch {
+      // Safe fallback if invoked outside active Next.js request context (e.g. testing)
+    }
 
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get("better-auth.session_token")?.value
+    const sessionCookie =
+      cookieStore?.get("better-auth.session_token")?.value ||
+      cookieStore?.get("__Secure-better-auth.session_token")?.value
 
     if (sessionCookie) {
-      const rawToken = decodeURIComponent(sessionCookie).split(".")[0]
       try {
+        const { db } = await import("@/db")
+        const { sessions } = await import("@/db/schema")
+        const { eq } = await import("drizzle-orm")
+        const rawToken = decodeURIComponent(sessionCookie).split(".")[0]
         await db.delete(sessions).where(eq(sessions.token, rawToken))
       } catch {}
     }
 
     try {
+      const { headers } = await import("next/headers")
+      const { auth } = await import("@/lib/auth/auth")
       const h = await headers()
       await auth.api.signOut({ headers: h })
     } catch {}
 
-    cookieStore.delete("better-auth.session_token")
+    if (cookieStore) {
+      const deleteCookie = (name: string) => {
+        try {
+          cookieStore.delete(name)
+          cookieStore.set(name, "", { maxAge: 0, path: "/" })
+        } catch {}
+      }
 
-    revalidatePath("/")
-    revalidatePath("/dashboard")
-    revalidatePath("/dashboard/wishlist")
-    revalidatePath("/dashboard/notifications")
-    revalidatePath("/login")
+      deleteCookie("better-auth.session_token")
+      deleteCookie("__Secure-better-auth.session_token")
+      deleteCookie("better-auth.session_data")
+      deleteCookie("__Secure-better-auth.session_data")
+    }
+
+    try {
+      revalidatePath("/", "layout")
+      revalidatePath("/dashboard")
+      revalidatePath("/dashboard/wishlist")
+      revalidatePath("/dashboard/notifications")
+      revalidatePath("/seller")
+      revalidatePath("/seller/dashboard")
+      revalidatePath("/seller/login")
+      revalidatePath("/admin")
+      revalidatePath("/login")
+    } catch {}
 
     return { success: true }
   } catch {

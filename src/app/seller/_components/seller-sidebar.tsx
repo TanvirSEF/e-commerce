@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   Package,
@@ -27,6 +27,7 @@ import {
   FolderOpen,
   RotateCcw,
   User,
+  LogOut,
 } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
 
@@ -180,8 +181,9 @@ interface SellerSidebarProps {
 }
 
 export function SellerSidebar({ isOpen, onClose }: SellerSidebarProps) {
+  const router = useRouter()
   const pathname = usePathname()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Products: true })
   const [disabledAddons, setDisabledAddons] = useState<string[]>([])
 
@@ -358,6 +360,18 @@ export function SellerSidebar({ isOpen, onClose }: SellerSidebarProps) {
                 {user?.email || "seller@example.com"}
               </div>
             </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await logout()
+                router.push("/seller/login")
+                router.refresh()
+              }}
+              title="Sign Out"
+              className="text-slate-400 hover:text-red-400 p-1.5 rounded hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
