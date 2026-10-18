@@ -20,7 +20,8 @@ interface AuthContextType {
   isLoggedIn: boolean
   login: (
     email: string,
-    pass: string
+    pass: string,
+    captchaToken?: string
   ) => Promise<{ success: boolean; error?: string; redirectTo?: string }>
   register: (
     name: string,
@@ -29,7 +30,8 @@ interface AuthContextType {
     phone?: string,
     role?: string,
     shopName?: string,
-    shopAddress?: string
+    shopAddress?: string,
+    captchaToken?: string
   ) => Promise<{ success: boolean; error?: string; redirectTo?: string }>
   logout: () => void
   updateProfile: (data: Partial<UserProfile>) => void
@@ -151,11 +153,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (
     email: string,
-    pass: string
+    pass: string,
+    captchaToken?: string
   ): Promise<{ success: boolean; error?: string; redirectTo?: string }> => {
     try {
       const { loginAction } = await import("@/app/actions/ecommerce-actions")
-      const result = await loginAction({ email, password: pass })
+      const result = await loginAction({ email, password: pass, captchaToken })
 
       if (result.success && result.user) {
         const loggedUser: UserProfile = {
@@ -190,7 +193,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     phone?: string,
     role: string = "customer",
     shopName?: string,
-    shopAddress?: string
+    shopAddress?: string,
+    captchaToken?: string
   ): Promise<{ success: boolean; error?: string; redirectTo?: string }> => {
     try {
       const { registerAction } = await import("@/app/actions/ecommerce-actions")
@@ -202,6 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         shopName,
         shopAddress,
+        captchaToken,
       })
 
       if (result.success && result.user) {

@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { getThirdPartySettings } from "@/services/settings-service"
 import { RegisterView } from "./_components/register-view"
 
 export const metadata: Metadata = {
@@ -6,6 +7,7 @@ export const metadata: Metadata = {
   description: "Create an account to start shopping and enjoying customer benefits.",
 }
 
-export default function RegisterPage() {
-  return <RegisterView />
+export default async function RegisterPage() {
+  const thirdParty = await getThirdPartySettings().catch(() => null)
+  return <RegisterView recaptchaSettings={thirdParty} />
 }

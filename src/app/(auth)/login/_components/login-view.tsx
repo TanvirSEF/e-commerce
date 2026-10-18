@@ -5,8 +5,14 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, Mail } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
+import { GoogleRecaptcha } from "@/components/ui/google-recaptcha"
+import type { ThirdPartySettings } from "@/services/settings-service"
 
-export function LoginView() {
+interface LoginViewProps {
+  recaptchaSettings?: ThirdPartySettings | null
+}
+
+export function LoginView({ recaptchaSettings }: LoginViewProps) {
   const router = useRouter()
   const { login } = useAuth()
 
@@ -14,6 +20,7 @@ export function LoginView() {
   const [password, setPassword] = useState("password123")
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
+  const [captchaToken, setCaptchaToken] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
@@ -23,7 +30,7 @@ export function LoginView() {
     setErrorMessage("")
 
     try {
-      const res = await login(email, password)
+      const res = await login(email, password, captchaToken)
       if (res.success) {
         window.location.href = res.redirectTo || "/dashboard"
       } else {
@@ -207,6 +214,17 @@ export function LoginView() {
                   Forgot password?
                 </Link>
               </div>
+
+              {/* reCAPTCHA Security Verification */}
+              {recaptchaSettings?.recaptchaActive && recaptchaSettings?.recaptchaSiteKey && (
+                <GoogleRecaptcha
+                  siteKey={recaptchaSettings.recaptchaSiteKey}
+                  version={recaptchaSettings.recaptchaVersion}
+                  active={recaptchaSettings.recaptchaActive}
+                  onVerify={(token) => setCaptchaToken(token)}
+                  onExpired={() => setCaptchaToken("")}
+                />
+              )}
 
               {/* Submit */}
               <button

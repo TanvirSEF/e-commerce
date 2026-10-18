@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getServerSession } from "@/lib/auth/session-helper"
+import { getThirdPartySettings } from "@/services/settings-service"
 import { LoginView } from "./_components/login-view"
 
 export const metadata: Metadata = {
@@ -9,7 +10,11 @@ export const metadata: Metadata = {
 }
 
 export default async function LoginPage() {
-  const session = await getServerSession()
+  const [session, thirdParty] = await Promise.all([
+    getServerSession().catch(() => null),
+    getThirdPartySettings().catch(() => null),
+  ])
+
   if (session?.user) {
     if (session.user.role === "admin" || session.user.role === "staff") {
       redirect("/admin/products")
@@ -20,5 +25,5 @@ export default async function LoginPage() {
     }
   }
 
-  return <LoginView />
+  return <LoginView recaptchaSettings={thirdParty} />
 }

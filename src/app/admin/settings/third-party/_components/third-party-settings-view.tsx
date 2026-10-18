@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useState, useTransition } from "react"
-import { Globe, Shield, Activity, Save, CheckCircle, Flame, MapPin, Loader2 } from "lucide-react"
-import { updateThirdPartyAction } from "@/app/actions/settings-actions"
+import { Globe, Shield, Activity, Save, CheckCircle, Flame, MapPin, Loader2, Sparkles, AlertCircle } from "lucide-react"
+import { updateThirdPartyAction, testRecaptchaCredentialsAction } from "@/app/actions/settings-actions"
 import type { ThirdPartySettings } from "@/services/settings-service"
 
 interface ThirdPartySettingsViewProps {
@@ -13,6 +13,8 @@ export function ThirdPartySettingsView({ initialSettings }: ThirdPartySettingsVi
   const [activeTab, setActiveTab] = useState<"google" | "facebook" | "recaptcha">("google")
   const [saved, setSaved] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [isTesting, setIsTesting] = useState(false)
 
   // Google State
   const [gaId, setGaId] = useState(initialSettings.googleAnalyticsId)
@@ -30,6 +32,23 @@ export function ThirdPartySettingsView({ initialSettings }: ThirdPartySettingsVi
   const [recaptchaSiteKey, setRecaptchaSiteKey] = useState(initialSettings.recaptchaSiteKey)
   const [recaptchaSecret, setRecaptchaSecret] = useState(initialSettings.recaptchaSecretKey)
   const [recaptchaActive, setRecaptchaActive] = useState(initialSettings.recaptchaActive)
+
+  const handleTestSecret = async () => {
+    setIsTesting(true)
+    setTestResult(null)
+    try {
+      const res = await testRecaptchaCredentialsAction(recaptchaSecret)
+      if (res.success) {
+        setTestResult({ success: true, message: res.message || "Valid Google Secret Key!" })
+      } else {
+        setTestResult({ success: false, message: res.error || "Invalid Secret Key" })
+      }
+    } catch {
+      setTestResult({ success: false, message: "Network error while connecting to Google" })
+    } finally {
+      setIsTesting(false)
+    }
+  }
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
@@ -222,9 +241,36 @@ export function ThirdPartySettingsView({ initialSettings }: ThirdPartySettingsVi
                 <input type="password" value={recaptchaSecret} onChange={(e) => setRecaptchaSecret(e.target.value)} className={inputCls} />
               </div>
             </div>
+
+            {testResult && (
+              <div
+                className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 border ${
+                  testResult.success
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-red-50 text-red-700 border-red-200"
+                }`}
+              >
+                {testResult.success ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                )}
+                <span>{testResult.message}</span>
+              </div>
+            )}
           </div>
 
-          <div className="text-right pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={handleTestSecret}
+              disabled={isTesting || !recaptchaSecret}
+              className="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-amber-500" />}
+              {isTesting ? "Testing Key..." : "Test Secret Key"}
+            </button>
+
             <button type="submit" disabled={isPending} className="px-5 py-2.5 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-bold rounded-lg shadow-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60">
               {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {isPending ? "Saving..." : "Save reCAPTCHA Settings"}

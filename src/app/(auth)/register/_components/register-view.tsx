@@ -5,8 +5,14 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Lock, Mail, User, Phone } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
+import { GoogleRecaptcha } from "@/components/ui/google-recaptcha"
+import type { ThirdPartySettings } from "@/services/settings-service"
 
-export function RegisterView() {
+interface RegisterViewProps {
+  recaptchaSettings?: ThirdPartySettings | null
+}
+
+export function RegisterView({ recaptchaSettings }: RegisterViewProps) {
   const router = useRouter()
   const { register } = useAuth()
 
@@ -17,6 +23,7 @@ export function RegisterView() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [agreed, setAgreed] = useState(true)
+  const [captchaToken, setCaptchaToken] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
 
@@ -36,7 +43,16 @@ export function RegisterView() {
 
     setIsSubmitting(true)
     try {
-      const res = await register(name, email, password, phone, "customer")
+      const res = await register(
+        name,
+        email,
+        password,
+        phone,
+        "customer",
+        undefined,
+        undefined,
+        captchaToken
+      )
       if (res.success) {
         router.push(res.redirectTo || "/dashboard")
         router.refresh()
@@ -214,6 +230,17 @@ export function RegisterView() {
                   </span>
                 </label>
               </div>
+
+              {/* reCAPTCHA Security Verification */}
+              {recaptchaSettings?.recaptchaActive && recaptchaSettings?.recaptchaSiteKey && (
+                <GoogleRecaptcha
+                  siteKey={recaptchaSettings.recaptchaSiteKey}
+                  version={recaptchaSettings.recaptchaVersion}
+                  active={recaptchaSettings.recaptchaActive}
+                  onVerify={(token) => setCaptchaToken(token)}
+                  onExpired={() => setCaptchaToken("")}
+                />
+              )}
 
               {/* Submit */}
               <button

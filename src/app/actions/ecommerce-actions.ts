@@ -2438,8 +2438,16 @@ export const inMemoryUsers: InMemoryUser[] = [
 export async function loginAction(data: {
   email: string
   password: string
+  captchaToken?: string
 }): Promise<AuthActionResult> {
   try {
+    // 0. Verify Google reCAPTCHA if active
+    const { verifyRecaptchaToken } = await import("@/services/recaptcha-service")
+    const captchaCheck = await verifyRecaptchaToken(data.captchaToken)
+    if (!captchaCheck.success) {
+      return { success: false, error: captchaCheck.error || "reCAPTCHA security check failed." }
+    }
+
     const { db } = await import("@/db")
     const { users, accounts, sessions } = await import("@/db/schema")
     const { eq, or } = await import("drizzle-orm")
@@ -2620,8 +2628,16 @@ export async function registerAction(data: {
   role?: string
   shopName?: string
   shopAddress?: string
+  captchaToken?: string
 }): Promise<AuthActionResult> {
   try {
+    // 0. Verify Google reCAPTCHA if active
+    const { verifyRecaptchaToken } = await import("@/services/recaptcha-service")
+    const captchaCheck = await verifyRecaptchaToken(data.captchaToken)
+    if (!captchaCheck.success) {
+      return { success: false, error: captchaCheck.error || "reCAPTCHA security check failed." }
+    }
+
     const { db } = await import("@/db")
     const { users, accounts, sessions, shops } = await import("@/db/schema")
     const { eq } = await import("drizzle-orm")

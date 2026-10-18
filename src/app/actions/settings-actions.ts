@@ -67,8 +67,48 @@ export async function testCloudinaryConnectionAction(credentials?: {
 // ---------------------------------------------------------------------------
 export async function updateThirdPartyAction(data: Partial<ThirdPartySettings>) {
   const result = await updateThirdPartySettings(data)
-  revalidatePath("/admin/settings/third-party")
+  safeRevalidate("/admin/settings/third-party")
+  safeRevalidate("/", "layout")
   return result
+}
+
+export async function testRecaptchaCredentialsAction(secretKey: string) {
+  try {
+    if (!secretKey || secretKey.trim() === "") {
+      return { success: false, error: "Please enter a reCAPTCHA Secret Key to test." }
+    }
+
+    const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        secret: secretKey.trim(),
+        response: "dummy_test_token_huipper",
+      }),
+      cache: "no-store",
+    })
+
+    if (!res.ok) {
+      return { success: false, error: `Google API responded with HTTP status ${res.status}` }
+    }
+
+    const data = await res.json()
+    const errorCodes = Array.isArray(data["error-codes"]) ? data["error-codes"] : []
+
+    // If Google rejects secret key specifically:
+    if (errorCodes.includes("invalid-input-secret")) {
+      return { success: false, error: "Invalid reCAPTCHA Secret Key according to Google." }
+    }
+
+    // When secret is valid, Google accepts it and complains about the dummy response token:
+    if (errorCodes.includes("invalid-input-response") || errorCodes.includes("timeout-or-duplicate")) {
+      return { success: true, message: "Valid Secret Key! Google successfully accepted the credentials." }
+    }
+
+    return { success: true, message: "Google accepted your Secret Key." }
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to connect to Google reCAPTCHA servers." }
+  }
 }
 
 // ---------------------------------------------------------------------------
