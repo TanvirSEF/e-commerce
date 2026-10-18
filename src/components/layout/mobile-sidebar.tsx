@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { X, ChevronRight, User, ShieldCheck, LogOut, LayoutDashboard, ShoppingBag, Heart, Bell } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
+import { useTranslation } from "@/lib/context/language-context"
 
 interface MobileSidebarProps {
   isOpen: boolean
@@ -24,6 +25,7 @@ const CATEGORIES = [
 export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const router = useRouter()
   const { user, isLoggedIn, logout } = useAuth()
+  const { t } = useTranslation()
 
   if (!isOpen) return null
 
@@ -74,11 +76,11 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                     <div className="text-xs text-gray-500">Welcome to ActiveShop</div>
                     <div className="flex items-center gap-2 text-xs font-bold text-[#d43533]">
                       <Link href="/login" onClick={onClose} className="hover:underline">
-                        Login
+                        {t("Login")}
                       </Link>
                       <span className="text-gray-300">|</span>
                       <Link href="/register" onClick={onClose} className="hover:underline">
-                        Register
+                        {t("Register")}
                       </Link>
                     </div>
                   </div>
@@ -283,7 +285,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 className="flex items-center gap-2 rounded bg-yellow-50 px-3 py-2 text-xs font-semibold text-yellow-800"
               >
                 <ShieldCheck className="h-4 w-4 text-yellow-600" />
-                <span>Become a Seller</span>
+                <span>{t("Become a Seller !")}</span>
               </Link>
             </div>
           </div>

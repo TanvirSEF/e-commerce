@@ -8,7 +8,15 @@ import { MiddleHeader } from "./middle-header"
 import { BottomNavbar } from "./bottom-navbar"
 import { MobileSidebar } from "./mobile-sidebar"
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  showLanguageSwitcher?: boolean
+  showCurrencySwitcher?: boolean
+}
+
+export function SiteHeader({
+  showLanguageSwitcher = true,
+  showCurrencySwitcher = true,
+}: SiteHeaderProps) {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -27,7 +35,10 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 w-full shadow-sm">
       <TopBanner />
-      <TopBar />
+      <TopBar
+        showLanguageSwitcher={showLanguageSwitcher}
+        showCurrencySwitcher={showCurrencySwitcher}
+      />
       <MiddleHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} />
       <BottomNavbar />
       <MobileSidebar

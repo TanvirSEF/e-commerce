@@ -14,9 +14,15 @@ import { cn } from "@/lib/utils"
 
 interface StorefrontChromeProps {
   children: React.ReactNode
+  showLanguageSwitcher?: boolean
+  showCurrencySwitcher?: boolean
 }
 
-export function StorefrontChrome({ children }: StorefrontChromeProps) {
+export function StorefrontChrome({
+  children,
+  showLanguageSwitcher = true,
+  showCurrencySwitcher = true,
+}: StorefrontChromeProps) {
   const pathname = usePathname()
 
   // Clean document views: Invoices, shipping labels, thermal prints, and receipts
@@ -50,7 +56,10 @@ export function StorefrontChrome({ children }: StorefrontChromeProps) {
   // Standard Storefront
   return (
     <>
-      <SiteHeader />
+      <SiteHeader
+        showLanguageSwitcher={showLanguageSwitcher}
+        showCurrencySwitcher={showCurrencySwitcher}
+      />
       <main className={cn("flex-1 pb-14 lg:pb-0")}>{children}</main>
       <Footer />
       <MobileBottomNav />

@@ -6,12 +6,14 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Search, Heart, RefreshCw, Bell, User, Menu, X, LogOut, LayoutDashboard, ShoppingBag, Download, Wallet, LifeBuoy, MessageSquare } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
+import { useTranslation } from "@/lib/context/language-context"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { SearchDropdown } from "./search-dropdown"
 
 export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void }) {
   const router = useRouter()
   const { user, isLoggedIn, logout, wishlist } = useAuth()
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
@@ -90,7 +92,7 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
                 onChange={(e) => setKeyword(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                placeholder="I am shopping for..."
+                placeholder={t("I am shopping for...")}
                 className="h-[44px] w-full rounded-md border border-[#dfdfe6] bg-white pr-12 pl-4 text-sm text-[#292933] transition-all placeholder:text-gray-400 focus:border-[#d43533] focus:ring-1 focus:ring-[#d43533] focus:outline-none"
               />
               <button
@@ -136,7 +138,7 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
               <Link
                 href="/compare"
                 className="group relative hidden items-center gap-1.5 text-[#292933] transition-colors hover:text-[#d43533] lg:flex"
-                title="Compare Products"
+                title={t("Compare")}
               >
                 <div className="relative">
                   <RefreshCw className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
@@ -146,14 +148,14 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
                     </span>
                   )}
                 </div>
-                <span className="hidden text-xs font-medium xl:inline">Compare</span>
+                <span className="hidden text-xs font-medium xl:inline">{t("Compare")}</span>
               </Link>
 
               {/* Wishlist (Desktop) */}
               <Link
                 href="/dashboard/wishlist"
                 className="group relative hidden items-center gap-1.5 text-[#292933] transition-colors hover:text-[#d43533] sm:flex"
-                title="My Wishlist"
+                title={t("Wishlist")}
               >
                 <div className="relative">
                   <Heart className="h-5 w-5 text-gray-500 group-hover:text-[#d43533]" />
@@ -163,7 +165,7 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
                     </span>
                   )}
                 </div>
-                <span className="hidden text-xs font-medium xl:inline">Wishlist</span>
+                <span className="hidden text-xs font-medium xl:inline">{t("Wishlist")}</span>
               </Link>
 
               {/* Notifications (100% Real-time Dropdown + Polling) */}
@@ -204,14 +206,14 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
                   <User className="h-4 w-4" />
                 </Link>
                 <div className="hidden text-left xl:block">
-                  <div className="text-[11px] text-gray-400">Welcome,</div>
+                  <div className="text-[11px] text-gray-400">{t("Welcome,")}</div>
                   <div className="flex items-center gap-1 text-xs font-semibold text-gray-800">
                     <Link href="/login" className="hover:text-[#d43533] transition-colors">
-                      Login
+                      {t("Login")}
                     </Link>
                     <span className="text-gray-400">/</span>
                     <Link href="/register" className="hover:text-[#d43533] transition-colors">
-                      Register
+                      {t("Register")}
                     </Link>
                   </div>
                 </div>

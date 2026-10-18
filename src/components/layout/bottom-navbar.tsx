@@ -5,16 +5,18 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, ChevronDown, ShoppingBag } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
+import { useTranslation } from "@/lib/context/language-context"
+import { useCurrency } from "@/lib/context/currency-context"
 
 const NAV_LINKS = [
   { label: "Home", href: "/" },
-  { label: "Flash Sale", href: "/flash-deals" },
+  { label: "Flash Deals", href: "/flash-deals" },
   { label: "Blogs", href: "/blogs" },
   { label: "All Sellers", href: "/sellers" },
   { label: "All Brands", href: "/brands" },
   { label: "All Categories", href: "/categories" },
   { label: "Classified Ads", href: "/customer-products" },
-  { label: "Contact Us", href: "/contact" },
+  { label: "Customer Support", href: "/contact" },
 ]
 
 const SAMPLE_CATEGORIES = [
@@ -31,6 +33,8 @@ const SAMPLE_CATEGORIES = [
 export function BottomNavbar() {
   const pathname = usePathname()
   const { totalCount, subtotal, toggleCart } = useCart()
+  const { t } = useTranslation()
+  const { formatPrice } = useCurrency()
   const [categoriesOpen, setCategoriesOpen] = useState(false)
 
   return (
@@ -45,7 +49,7 @@ export function BottomNavbar() {
           >
             <div className="flex items-center gap-2.5">
               <Menu className="h-4 w-4" />
-              <span className="text-sm">Categories</span>
+              <span className="text-sm">{t("Categories")}</span>
             </div>
             <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${categoriesOpen ? "rotate-180" : ""}`} />
           </button>
@@ -95,7 +99,7 @@ export function BottomNavbar() {
                   isActive ? "text-[#ffc519]" : "text-white/90 hover:text-white"
                 }`}
               >
-                <span>{link.label}</span>
+                <span>{t(link.label)}</span>
                 {isActive && (
                   <span className="absolute bottom-0 left-3.5 right-3.5 h-[3px] bg-[#ffc519]" />
                 )}
@@ -120,9 +124,9 @@ export function BottomNavbar() {
             </span>
           </div>
           <div className="text-left text-xs">
-            <div className="text-[10px] text-white/70">Cart</div>
+            <div className="text-[10px] text-white/70">{t("Cart")}</div>
             <div suppressHydrationWarning className="font-semibold text-white">
-              ৳{subtotal.toLocaleString("en-BD")}
+              {formatPrice(subtotal)}
             </div>
           </div>
         </button>

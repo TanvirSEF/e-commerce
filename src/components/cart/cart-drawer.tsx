@@ -5,9 +5,13 @@ import Link from "next/link"
 import Image from "next/image"
 import { X, Trash2, Plus, Minus, ShoppingBag } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
+import { useCurrency } from "@/lib/context/currency-context"
+import { useTranslation } from "@/lib/context/language-context"
 
 export function CartDrawer() {
   const { isOpen, closeCart, items, subtotal, removeItem, updateQuantity } = useCart()
+  const { formatPrice } = useCurrency()
+  const { t } = useTranslation()
 
   if (!isOpen) return null
 
@@ -26,7 +30,7 @@ export function CartDrawer() {
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5 text-[#d43533]" />
-              <h2 className="text-base font-bold text-gray-800">Shopping Cart</h2>
+              <h2 className="text-base font-bold text-gray-800">{t("Shopping Cart")}</h2>
               <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-[#d43533]">
                 {items.length}
               </span>
@@ -131,10 +135,10 @@ export function CartDrawer() {
                         {/* Price */}
                         <div className="text-right">
                           <div className="text-xs font-bold text-[#d43533]">
-                            ৳{(item.price * item.quantity).toLocaleString("en-BD")}
+                            {formatPrice(item.price * item.quantity)}
                           </div>
                           <div className="text-[10px] text-gray-400">
-                            ৳{item.price.toLocaleString("en-BD")} each
+                            {formatPrice(item.price)} each
                           </div>
                         </div>
                       </div>
@@ -149,9 +153,9 @@ export function CartDrawer() {
           {items.length > 0 && (
             <div className="border-t border-gray-100 bg-gray-50/70 p-5">
               <div className="mb-4 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">Subtotal</span>
+                <span className="text-sm font-medium text-gray-600">{t("Subtotal")}</span>
                 <span className="text-base font-bold text-gray-900">
-                  ৳{subtotal.toLocaleString("en-BD")}
+                  {formatPrice(subtotal)}
                 </span>
               </div>
 
@@ -161,14 +165,14 @@ export function CartDrawer() {
                   onClick={closeCart}
                   className="flex items-center justify-center rounded border border-[#d43533] bg-white py-2.5 text-xs font-bold text-[#d43533] transition-colors hover:bg-red-50"
                 >
-                  View Cart
+                  {t("View Cart")}
                 </Link>
                 <Link
                   href="/checkout"
                   onClick={closeCart}
                   className="flex items-center justify-center rounded bg-[#d43533] py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#9d1b1a]"
                 >
-                  Checkout Now
+                  {t("Checkout")}
                 </Link>
               </div>
             </div>

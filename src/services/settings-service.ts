@@ -476,6 +476,8 @@ const DEFAULT_CURRENCY_SETTINGS: CurrencySettings = {
   ],
 }
 
+let inMemoryCurrencySettings: CurrencySettings = { ...DEFAULT_CURRENCY_SETTINGS }
+
 export async function getCurrencySettings(): Promise<CurrencySettings> {
   try {
     const raw = await getSetting("currency_settings")
@@ -483,10 +485,11 @@ export async function getCurrencySettings(): Promise<CurrencySettings> {
   } catch (err) {
     console.warn("DB getCurrencySettings fallback:", (err as Error).message)
   }
-  return DEFAULT_CURRENCY_SETTINGS
+  return inMemoryCurrencySettings
 }
 
 export async function updateCurrencySettings(data: CurrencySettings) {
+  inMemoryCurrencySettings = { ...data }
   try {
     const jsonVal = JSON.stringify(data)
     const [existing] = await db

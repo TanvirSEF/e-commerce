@@ -19,6 +19,8 @@ import {
 } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
 import { useAuth } from "@/lib/context/auth-context"
+import { useCurrency } from "@/lib/context/currency-context"
+import { useTranslation } from "@/lib/context/language-context"
 import { SizeGuideModal } from "./size-guide-modal"
 import { SocialShareModal } from "./social-share-modal"
 import { ProductSellerBox } from "./product-seller-box"
@@ -63,6 +65,8 @@ export function ProductInfo({
 }) {
   const router = useRouter()
   const { addItem } = useCart()
+  const { formatPrice } = useCurrency()
+  const { t } = useTranslation()
 
   const [selectedColor, setSelectedColor] = useState(
     product.colors && product.colors.length > 0 ? product.colors[0].name : ""
@@ -264,7 +268,7 @@ export function ProductInfo({
       <div className="rounded-md border border-gray-100 bg-gray-50/70 p-4">
         <div className="flex items-baseline gap-3">
           <span className="text-2xl font-extrabold text-[#d43533]">
-            ৳{effectivePrice.toLocaleString("en-BD")}
+            {formatPrice(effectivePrice)}
           </span>
           {activeWholesaleTier ? (
             <span className="rounded bg-indigo-600 px-2 py-0.5 text-[11px] font-bold text-white">
@@ -274,7 +278,7 @@ export function ProductInfo({
             <>
               {product.originalPrice && product.originalPrice > product.price && (
                 <span className="text-sm text-gray-400 line-through">
-                  ৳{product.originalPrice.toLocaleString("en-BD")}
+                  {formatPrice(product.originalPrice)}
                 </span>
               )}
               {product.discountPercent && product.discountPercent > 0 && (
@@ -388,9 +392,9 @@ export function ProductInfo({
 
       {/* Subtotal preview */}
       <div className="border-t border-gray-100 pt-3">
-        <span className="text-gray-500">Total Price: </span>
+        <span className="text-gray-500">{t("Total")}: </span>
         <span className="text-base font-extrabold text-[#d43533]">
-          ৳{(product.price * quantity).toLocaleString("en-BD")}
+          {formatPrice(effectivePrice * quantity)}
         </span>
       </div>
 
@@ -402,7 +406,7 @@ export function ProductInfo({
           className="flex items-center justify-center gap-2 rounded bg-[#d43533] py-3 text-xs font-bold text-white shadow-md transition-all hover:bg-[#9d1b1a]"
         >
           <ShoppingBag className="h-4 w-4" />
-          <span>Add to Cart</span>
+          <span>{t("Add to Cart")}</span>
         </button>
         <button
           type="button"
@@ -410,7 +414,7 @@ export function ProductInfo({
           className="flex items-center justify-center gap-2 rounded bg-[#ffc519] py-3 text-xs font-bold text-gray-950 shadow-md transition-all hover:bg-[#dbaa17]"
         >
           <Zap className="h-4 w-4 fill-current" />
-          <span>Buy Now</span>
+          <span>{t("Buy Now")}</span>
         </button>
       </div>
 

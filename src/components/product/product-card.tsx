@@ -6,6 +6,8 @@ import Image from "next/image"
 import { Star, Heart, Eye, ShoppingBag, Shuffle } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
 import { useAuth } from "@/lib/context/auth-context"
+import { useCurrency } from "@/lib/context/currency-context"
+import { useTranslation } from "@/lib/context/language-context"
 import { QuickViewModal } from "./quick-view-modal"
 
 export interface ProductCardProps {
@@ -37,6 +39,8 @@ export function ProductCard({
 }: ProductCardProps) {
   const { addItem } = useCart()
   const { toggleWishlist, isInWishlist } = useAuth()
+  const { formatPrice } = useCurrency()
+  const { t } = useTranslation()
   const inWishlist = isInWishlist(id)
   const [quickViewOpen, setQuickViewOpen] = useState(false)
   const [inCompare, setInCompare] = useState(false)
@@ -59,7 +63,7 @@ export function ProductCard({
     e.stopPropagation()
     try {
       const stored = localStorage.getItem("active_compare_list")
-      let list: any[] = stored ? JSON.parse(stored) : []
+      let list: Record<string, unknown>[] = stored ? JSON.parse(stored) : []
       const exists = list.some((item) => item.id === id)
       if (exists) {
         list = list.filter((item) => item.id !== id)
@@ -197,11 +201,11 @@ export function ProductCard({
           <div className="mt-auto flex items-center justify-between pt-1">
             <div>
               <div className="text-sm font-bold text-[#d43533]">
-                ৳{price.toLocaleString("en-BD")}
+                {formatPrice(price)}
               </div>
               {originalPrice && originalPrice > price && (
                 <div className="text-[11px] text-gray-400 line-through">
-                  ৳{originalPrice.toLocaleString("en-BD")}
+                  {formatPrice(originalPrice)}
                 </div>
               )}
             </div>
@@ -210,7 +214,7 @@ export function ProductCard({
             <button
               type="button"
               onClick={handleAddToCart}
-              title="Add to Cart"
+              title={t("Add to Cart")}
               className="flex h-8 w-8 items-center justify-center rounded bg-red-50 text-[#d43533] transition-colors hover:bg-[#d43533] hover:text-white"
             >
               <ShoppingBag className="h-4 w-4" />

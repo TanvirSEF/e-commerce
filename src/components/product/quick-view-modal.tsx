@@ -6,7 +6,8 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { X, Star, ShoppingBag, Zap, ExternalLink, Plus, Minus, Check } from "lucide-react"
 import { useCart } from "@/lib/context/cart-context"
-import { formatPrice } from "@/lib/utils"
+import { useCurrency } from "@/lib/context/currency-context"
+import { useTranslation } from "@/lib/context/language-context"
 
 export interface QuickViewProduct {
   id: string
@@ -30,6 +31,8 @@ interface QuickViewModalProps {
 export function QuickViewModal({ isOpen, onClose, product }: QuickViewModalProps) {
   const router = useRouter()
   const { addItem } = useCart()
+  const { formatPrice } = useCurrency()
+  const { t } = useTranslation()
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
 
@@ -173,7 +176,7 @@ export function QuickViewModal({ isOpen, onClose, product }: QuickViewModalProps
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded bg-red-50 border border-[#d43533] py-2 text-xs font-bold text-[#d43533] hover:bg-[#d43533] hover:text-white transition-colors"
                 >
                   {added ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
-                  {added ? "Added to Cart!" : "Add to Cart"}
+                  {added ? "Added to Cart!" : t("Add to Cart")}
                 </button>
 
                 <button
@@ -182,7 +185,7 @@ export function QuickViewModal({ isOpen, onClose, product }: QuickViewModalProps
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded bg-[#d43533] py-2 text-xs font-bold text-white hover:bg-[#b82a28] shadow-sm transition-colors"
                 >
                   <Zap className="h-4 w-4" />
-                  Buy Now
+                  {t("Buy Now")}
                 </button>
               </div>
 

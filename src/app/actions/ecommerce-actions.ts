@@ -454,7 +454,9 @@ export async function updatePaymentGatewaysAction(data: any) {
 
 export async function updateCurrencySettingsAction(data: any) {
   const { updateCurrencySettings } = await import("@/services/settings-service")
-  return await updateCurrencySettings(data)
+  const res = await updateCurrencySettings(data)
+  revalidatePath("/", "layout")
+  return res
 }
 
 export async function updateSmtpSettingsAction(data: any) {
@@ -674,7 +676,9 @@ export async function updateSellerPaymentSettingsAction(data: {
 
 export async function updateAppearanceSettingsAction(data: any) {
   const { updateAppearanceSettings } = await import("@/services/appearance-service")
-  return await updateAppearanceSettings(data)
+  const res = await updateAppearanceSettings(data)
+  revalidatePath("/", "layout")
+  return res
 }
 
 export async function updateAnalyticsSettingsAction(data: any) {
@@ -1359,32 +1363,44 @@ export async function sendBulkSmsAction(recipientGroup: string, message: string)
 // Language Actions
 export async function createLanguageAction(data: { name: string; code: string; appLangCode?: string }) {
   const { createLanguage } = await import("@/services/language-service")
-  return await createLanguage(data)
+  const res = await createLanguage(data)
+  revalidatePath("/", "layout")
+  return res
 }
 
 export async function updateLanguageAction(id: number, data: { name?: string; code?: string; appLangCode?: string }) {
   const { updateLanguage } = await import("@/services/language-service")
-  return await updateLanguage(id, data)
+  const res = await updateLanguage(id, data)
+  revalidatePath("/", "layout")
+  return res
 }
 
 export async function toggleLanguageStatusAction(id: number, status: boolean) {
   const { toggleLanguageStatus } = await import("@/services/language-service")
-  return await toggleLanguageStatus(id, status)
+  const res = await toggleLanguageStatus(id, status)
+  revalidatePath("/", "layout")
+  return res
 }
 
 export async function toggleLanguageRtlAction(id: number, rtl: boolean) {
   const { toggleLanguageRtl } = await import("@/services/language-service")
-  return await toggleLanguageRtl(id, rtl)
+  const res = await toggleLanguageRtl(id, rtl)
+  revalidatePath("/", "layout")
+  return res
 }
 
 export async function setDefaultLanguageAction(id: number) {
   const { setDefaultLanguage } = await import("@/services/language-service")
-  return await setDefaultLanguage(id)
+  const res = await setDefaultLanguage(id)
+  revalidatePath("/", "layout")
+  return res
 }
 
 export async function saveTranslationsAction(langCode: string, values: Record<string, string>) {
   const { saveTranslationsForLanguage } = await import("@/services/language-service")
-  return await saveTranslationsForLanguage(langCode, values)
+  const res = await saveTranslationsForLanguage(langCode, values)
+  revalidatePath("/", "layout")
+  return res
 }
 
 // Geographic Actions

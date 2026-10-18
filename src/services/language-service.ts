@@ -308,3 +308,33 @@ export async function saveTranslationsForLanguage(
   Object.assign(inMemoryTranslations[langCode], values)
   return true
 }
+
+export async function getAllTranslationsMap(): Promise<Record<string, Record<string, string>>> {
+  const result: Record<string, Record<string, string>> = {}
+  // Seed fallback first
+  for (const [lang, map] of Object.entries(SEED_TRANSLATIONS)) {
+    result[lang] = { ...map }
+  }
+  // Memory updates
+  for (const [lang, map] of Object.entries(inMemoryTranslations)) {
+    if (!result[lang]) result[lang] = {}
+    Object.assign(result[lang], map)
+  }
+  try {
+    const rows = await db.select().from(translations)
+    if (rows && rows.length > 0) {
+      for (const row of rows) {
+        if (!result[row.lang]) {
+          result[row.lang] = {}
+        }
+        if (row.langKey && row.langValue) {
+          result[row.lang][row.langKey] = row.langValue
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("getAllTranslationsMap DB fallback:", (err as Error).message)
+  }
+  return result
+}
+
