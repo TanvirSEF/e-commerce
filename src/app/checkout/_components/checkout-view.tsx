@@ -10,6 +10,13 @@ import { DeliveryStep } from "./delivery-step"
 import { PaymentStep } from "./payment-step"
 import { placeOrderAction } from "@/app/actions/ecommerce-actions"
 import { ChevronRight, MapPin, Truck, CreditCard, ChevronDown } from "lucide-react"
+import type { PaymentGatewaysSettings } from "@/services/settings-service"
+import type { CouriersMasterSettings } from "@/services/courier-config-service"
+
+interface CheckoutViewProps {
+  paymentSettings?: PaymentGatewaysSettings | null
+  courierSettings?: CouriersMasterSettings | null
+}
 
 const DEFAULT_ADDRESSES: AddressData[] = [
   {
@@ -36,7 +43,7 @@ const DEFAULT_ADDRESSES: AddressData[] = [
   },
 ]
 
-export function CheckoutView() {
+export function CheckoutView({ paymentSettings, courierSettings }: CheckoutViewProps) {
   const router = useRouter()
   const {
     items,
@@ -69,7 +76,20 @@ export function CheckoutView() {
   const [carrier, setCarrier] = useState("Steadfast Courier")
 
   // Payment state
-  const [paymentOption, setPaymentOption] = useState("cash_on_delivery")
+  const initialPayment =
+    paymentSettings?.cod?.active !== false
+      ? "cash_on_delivery"
+      : paymentSettings?.bkash?.active
+      ? "bkash"
+      : paymentSettings?.nagad?.active
+      ? "nagad"
+      : paymentSettings?.sslcommerz?.active
+      ? "sslcommerz"
+      : paymentSettings?.stripe?.active
+      ? "stripe"
+      : "wallet"
+
+  const [paymentOption, setPaymentOption] = useState(initialPayment)
   const [additionalNotes, setAdditionalNotes] = useState("")
   const [agreed, setAgreed] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -278,6 +298,7 @@ export function CheckoutView() {
                     setPickupPoint={setPickupPoint}
                     carrier={carrier}
                     setCarrier={setCarrier}
+                    courierSettings={courierSettings}
                   />
                 </div>
               )}
@@ -316,6 +337,7 @@ export function CheckoutView() {
                     setAgreed={setAgreed}
                     isSubmitting={isSubmitting}
                     onSubmitOrder={handleSubmitOrder}
+                    paymentSettings={paymentSettings}
                   />
                 </div>
               )}

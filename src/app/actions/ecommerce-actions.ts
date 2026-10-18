@@ -449,7 +449,13 @@ export async function deleteProductQueryAction(id: number) {
 
 export async function updatePaymentGatewaysAction(data: any) {
   const { updatePaymentGatewaysSettings } = await import("@/services/settings-service")
-  return await updatePaymentGatewaysSettings(data)
+  const res = await updatePaymentGatewaysSettings(data)
+  try {
+    revalidatePath("/admin/settings/payments")
+    revalidatePath("/checkout")
+    revalidatePath("/", "layout")
+  } catch {}
+  return res
 }
 
 export async function updateCurrencySettingsAction(data: any) {
@@ -762,7 +768,18 @@ export async function deleteCustomerProductAction(id: number) {
 
 export async function updateCouriersSettingsAction(data: any) {
   const { updateCouriersSettings } = await import("@/services/courier-config-service")
-  return await updateCouriersSettings(data)
+  const res = await updateCouriersSettings(data)
+  try {
+    revalidatePath("/admin/settings/couriers")
+    revalidatePath("/checkout")
+    revalidatePath("/", "layout")
+  } catch {}
+  return res
+}
+
+export async function testCourierPingAction(courier: any) {
+  const { pingCourierApi } = await import("@/services/courier-config-service")
+  return await pingCourierApi(courier)
 }
 
 export async function createColorAction(data: { name: string; code: string }) {

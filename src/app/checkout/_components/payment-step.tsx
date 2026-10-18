@@ -4,6 +4,7 @@ import React from "react"
 import Image from "next/image"
 import NextLink from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
+import type { PaymentGatewaysSettings } from "@/services/settings-service"
 
 interface PaymentStepProps {
   paymentOption: string
@@ -14,20 +15,8 @@ interface PaymentStepProps {
   setAgreed: (val: boolean) => void
   isSubmitting: boolean
   onSubmitOrder: () => void
+  paymentSettings?: PaymentGatewaysSettings | null
 }
-
-const PAYMENT_METHODS = [
-  { id: "cash_on_delivery", label: "Cash on Delivery", image: "/assets/img/cards/cod.png" },
-  { id: "wallet", label: "Wallet Balance", image: "/assets/img/cards/wallet.png" },
-  { id: "stripe", label: "Debit / Credit Card (Stripe)", image: "/assets/img/cards/stripe.png" },
-  { id: "paypal", label: "PayPal", image: "/assets/img/cards/paypal.png" },
-  { id: "razorpay", label: "Razorpay", image: "/assets/img/cards/razorpay.png" },
-  { id: "bkash", label: "bKash", image: "/assets/img/cards/bkash.png" },
-  { id: "nagad", label: "Nagad", image: "/assets/img/cards/nagad.png" },
-  { id: "uddoktapay", label: "UddoktaPay", image: "/assets/img/cards/uddoktapay.png" },
-  { id: "sslcommerz", label: "SSLCommerz", image: "/assets/img/cards/sslcommerz.png" },
-  { id: "manual_payment", label: "Manual / Bank / Send Money", image: "/assets/img/cards/cod.png" },
-]
 
 export function PaymentStep({
   paymentOption,
@@ -38,7 +27,64 @@ export function PaymentStep({
   setAgreed,
   isSubmitting,
   onSubmitOrder,
+  paymentSettings,
 }: PaymentStepProps) {
+  const dynamicMethods = [
+    {
+      id: "cash_on_delivery",
+      label: "Cash on Delivery",
+      image: "/assets/img/cards/cod.png",
+      active: paymentSettings ? paymentSettings.cod.active : true,
+    },
+    {
+      id: "wallet",
+      label: "Wallet Balance",
+      image: "/assets/img/cards/wallet.png",
+      active: true,
+    },
+    {
+      id: "bkash",
+      label: "bKash Online",
+      image: "/assets/img/cards/bkash.png",
+      active: paymentSettings ? paymentSettings.bkash.active : true,
+    },
+    {
+      id: "nagad",
+      label: "Nagad Direct",
+      image: "/assets/img/cards/nagad.png",
+      active: paymentSettings ? paymentSettings.nagad.active : true,
+    },
+    {
+      id: "sslcommerz",
+      label: "SSLCommerz (Cards & NetBanking)",
+      image: "/assets/img/cards/sslcommerz.png",
+      active: paymentSettings ? paymentSettings.sslcommerz.active : true,
+    },
+    {
+      id: "stripe",
+      label: "Debit / Credit Card (Stripe)",
+      image: "/assets/img/cards/stripe.png",
+      active: paymentSettings ? paymentSettings.stripe.active : true,
+    },
+    {
+      id: "manual_payment",
+      label: "Manual Bank / MFS Wire",
+      image: "/assets/img/cards/cod.png",
+      active: paymentSettings ? paymentSettings.offline.active : true,
+    },
+  ].filter((pm) => pm.active)
+
+  const methodsToRender =
+    dynamicMethods.length > 0
+      ? dynamicMethods
+      : [
+          {
+            id: "cash_on_delivery",
+            label: "Cash on Delivery",
+            image: "/assets/img/cards/cod.png",
+            active: true,
+          },
+        ]
   return (
     <div className="space-y-6">
       {/* Additional Notes */}
@@ -57,7 +103,7 @@ export function PaymentStep({
       <div>
         <h4 className="text-sm font-bold text-gray-800 mb-3">Select a payment option</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {PAYMENT_METHODS.map((pm) => {
+          {methodsToRender.map((pm) => {
             const isSelected = paymentOption === pm.id
             return (
               <label
@@ -102,9 +148,20 @@ export function PaymentStep({
               Manual Offline Payment Instructions
             </h5>
             <div className="text-xs text-amber-800 leading-relaxed space-y-1">
-              <p>• <strong>bKash Personal (Send Money):</strong> 01700-000000</p>
-              <p>• <strong>Nagad Personal (Send Money):</strong> 01800-000000</p>
-              <p>• <strong>Bank Deposit:</strong> City Bank PLC, A/C: 1102948192001 (Active eCommerce)</p>
+              <p>• <strong>bKash Personal (Send Money):</strong> {paymentSettings?.offline?.bkashPersonal || "01700-000000"}</p>
+              {paymentSettings?.offline?.nagadPersonal && (
+                <p>• <strong>Nagad Personal:</strong> {paymentSettings.offline.nagadPersonal}</p>
+              )}
+              <p>
+                • <strong>Bank Deposit:</strong> {paymentSettings?.offline?.bankName || "City Bank PLC"}, 
+                A/C: {paymentSettings?.offline?.accountNumber || "1102948192001"} 
+                {paymentSettings?.offline?.accountName ? ` (${paymentSettings.offline.accountName})` : " (Active eCommerce)"}
+              </p>
+              {paymentSettings?.offline?.instructions && (
+                <p className="pt-1 text-[11px] text-amber-900 italic">
+                  Note: {paymentSettings.offline.instructions}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>

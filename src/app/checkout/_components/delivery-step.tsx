@@ -4,6 +4,7 @@ import React from "react"
 import Image from "next/image"
 import { CartItem } from "@/lib/context/cart-context"
 import { Truck, Store } from "lucide-react"
+import type { CouriersMasterSettings } from "@/services/courier-config-service"
 
 interface DeliveryStepProps {
   items: CartItem[]
@@ -13,18 +14,13 @@ interface DeliveryStepProps {
   setPickupPoint: (val: string) => void
   carrier: string
   setCarrier: (val: string) => void
+  courierSettings?: CouriersMasterSettings | null
 }
 
 const PICKUP_POINTS = [
   { id: "hub-1", name: "Dhanmondi Hub (Road 27)", phone: "+880 1711 001122" },
   { id: "hub-2", name: "Banani Hub (Kemal Ataturk Ave)", phone: "+880 1711 334455" },
   { id: "hub-3", name: "Uttara Sector 7 Hub", phone: "+880 1711 667788" },
-]
-
-const CARRIERS = [
-  { id: "steadfast", name: "Steadfast Courier", logo: "/assets/img/cards/steadfast.png", transit: "1-2 Days", price: 70 },
-  { id: "pathao", name: "Pathao Express", logo: "/assets/img/cards/pathao.png", transit: "Same/Next Day", price: 85 },
-  { id: "redx", name: "RedX Logistics", logo: "/assets/img/cards/redx.png", transit: "2-3 Days", price: 60 },
 ]
 
 export function DeliveryStep({
@@ -35,7 +31,56 @@ export function DeliveryStep({
   setPickupPoint,
   carrier,
   setCarrier,
+  courierSettings,
 }: DeliveryStepProps) {
+  const dynamicCarriers = [
+    {
+      id: "steadfast",
+      name: "Steadfast Courier",
+      logo: "/assets/img/cards/steadfast.png",
+      transit: "1-2 Days",
+      price: 70,
+      active: courierSettings ? courierSettings.steadfast.active : true,
+    },
+    {
+      id: "pathao",
+      name: "Pathao Express",
+      logo: "/assets/img/cards/pathao.png",
+      transit: "Same/Next Day",
+      price: 85,
+      active: courierSettings ? courierSettings.pathao.active : true,
+    },
+    {
+      id: "redx",
+      name: "RedX Logistics",
+      logo: "/assets/img/cards/redx.png",
+      transit: "2-3 Days",
+      price: 60,
+      active: courierSettings ? courierSettings.redx.active : false,
+    },
+    {
+      id: "paperfly",
+      name: "Paperfly Doorstep",
+      logo: "/assets/img/cards/paperfly.png",
+      transit: "2-4 Days",
+      price: 65,
+      active: courierSettings ? courierSettings.paperfly.active : false,
+    },
+  ].filter((c) => c.active)
+
+  const carriersToRender =
+    dynamicCarriers.length > 0
+      ? dynamicCarriers
+      : [
+          {
+            id: "standard",
+            name: "Standard Delivery",
+            logo: "/assets/img/cards/cod.png",
+            transit: "2-3 Days",
+            price: 60,
+            active: true,
+          },
+        ]
   return (
     <div className="space-y-6">
       {/* Products in this delivery batch */}
@@ -173,7 +218,7 @@ export function DeliveryStep({
             Choose Preferred Courier:
           </label>
           <div className="space-y-2">
-            {CARRIERS.map((c) => (
+            {carriersToRender.map((c) => (
               <label
                 key={c.id}
                 onClick={() => setCarrier(c.name)}
