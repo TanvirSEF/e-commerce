@@ -87,10 +87,23 @@ export async function POST(request: NextRequest) {
       let fileUrl = ""
       let publicId = ""
 
-      if (isCloudinaryConfigured()) {
+      const { getFileSystemSettings } = await import("@/services/settings-service")
+      const fsSettings = await getFileSystemSettings()
+      const useCloudinary = fsSettings.driver === "cloudinary" && isCloudinaryConfigured({
+        cloudName: fsSettings.cloudinaryCloudName,
+        apiKey: fsSettings.cloudinaryApiKey,
+        apiSecret: fsSettings.cloudinaryApiSecret,
+      })
+
+      if (useCloudinary) {
         const cloudResult = await uploadToCloudinary(buffer, {
           folder: "active-ecommerce/uploads",
           resourceType,
+          credentials: {
+            cloudName: fsSettings.cloudinaryCloudName,
+            apiKey: fsSettings.cloudinaryApiKey,
+            apiSecret: fsSettings.cloudinaryApiSecret,
+          },
         })
         fileUrl = cloudResult.secureUrl
         publicId = cloudResult.publicId

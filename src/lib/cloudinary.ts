@@ -1,24 +1,108 @@
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary"
 
-const cloudName = process.env.CLOUDINARY_CLOUD_NAME
-const apiKey = process.env.CLOUDINARY_API_KEY
-const apiSecret = process.env.CLOUDINARY_API_SECRET
+const envCloudName = process.env.CLOUDINARY_CLOUD_NAME
+const envApiKey = process.env.CLOUDINARY_API_KEY
+const envApiSecret = process.env.CLOUDINARY_API_SECRET
 
-if (cloudName && apiKey && apiSecret) {
+if (envCloudName && envApiKey && envApiSecret) {
   cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret,
+    cloud_name: envCloudName,
+    api_key: envApiKey,
+    api_secret: envApiSecret,
     secure: true,
   })
 }
 
-export function isCloudinaryConfigured(): boolean {
+export async function getActiveCloudinaryConfig(override?: {
+  cloudName?: string
+  apiKey?: string
+  apiSecret?: string
+}) {
+  if (override?.cloudName && override?.apiKey && override?.apiSecret) {
+    return {
+      cloud_name: override.cloudName,
+      api_key: override.apiKey,
+      api_secret: override.apiSecret,
+    }
+  }
+
+  try {
+    const { getFileSystemSettings } = await import("@/services/settings-service")
+    const fsSettings = await getFileSystemSettings()
+    if (fsSettings.cloudinaryCloudName && fsSettings.cloudinaryApiKey && fsSettings.cloudinaryApiSecret) {
+      return {
+        cloud_name: fsSettings.cloudinaryCloudName,
+        api_key: fsSettings.cloudinaryApiKey,
+        api_secret: fsSettings.cloudinaryApiSecret,
+      }
+    }
+  } catch {}
+
+  return {
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "",
+    api_key: process.env.CLOUDINARY_API_KEY || "",
+    api_secret: process.env.CLOUDINARY_API_SECRET || "",
+  }
+}
+
+export function isCloudinaryConfigured(override?: {
+  cloudName?: string
+  apiKey?: string
+  apiSecret?: string
+}): boolean {
+  if (override?.cloudName && override?.apiKey && override?.apiSecret) {
+    return true
+  }
   return Boolean(
     process.env.CLOUDINARY_CLOUD_NAME &&
     process.env.CLOUDINARY_API_KEY &&
     process.env.CLOUDINARY_API_SECRET
   )
+}
+
+export async function testCloudinaryConnection(override?: {
+  cloudName?: string
+  apiKey?: string
+  apiSecret?: string
+}): Promise<{ success: boolean; message: string; details?: any }> {
+  try {
+    const conf = await getActiveCloudinaryConfig(override)
+    if (!conf.cloud_name || !conf.api_key || !conf.api_secret) {
+      return {
+        success: false,
+        message: "Cloudinary credentials (Cloud Name, API Key, and API Secret) are required.",
+      }
+    }
+
+    cloudinary.config({
+      cloud_name: conf.cloud_name,
+      api_key: conf.api_key,
+      api_secret: conf.api_secret,
+      secure: true,
+    })
+
+    const res = await cloudinary.api.ping()
+    if (res && res.status === "ok") {
+      return {
+        success: true,
+        message: `Cloudinary API connected successfully! (Cloud: ${conf.cloud_name}, Status: OK)`,
+      }
+    }
+    return {
+      success: false,
+      message: "Cloudinary responded with an unexpected status.",
+      details: res,
+    }
+  } catch (err: any) {
+    let msg = err?.message || "Failed to connect to Cloudinary"
+    if (err?.error?.message) {
+      msg = err.error.message
+    }
+    return {
+      success: false,
+      message: `Cloudinary connection failed: ${msg}`,
+    }
+  }
 }
 
 export interface CloudinaryUploadResult {
@@ -41,13 +125,22 @@ export async function uploadToCloudinary(
     publicId?: string
     filename?: string
     resourceType?: "auto" | "image" | "video" | "raw"
+    credentials?: { cloudName?: string; apiKey?: string; apiSecret?: string }
   }
 ): Promise<CloudinaryUploadResult> {
-  if (!isCloudinaryConfigured()) {
+  const conf = await getActiveCloudinaryConfig(options?.credentials)
+  if (!conf.cloud_name || !conf.api_key || !conf.api_secret) {
     throw new Error(
-      "Cloudinary is not properly configured. Please check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in .env.local"
+      "Cloudinary is not properly configured. Please check Cloudinary credentials in Admin File System settings or .env"
     )
   }
+
+  cloudinary.config({
+    cloud_name: conf.cloud_name,
+    api_key: conf.api_key,
+    api_secret: conf.api_secret,
+    secure: true,
+  })
 
   const folder = options?.folder || "active-ecommerce"
   const resourceType = options?.resourceType || "auto"
@@ -91,9 +184,17 @@ export async function deleteFromCloudinary(
   publicId: string,
   resourceType: "image" | "video" | "raw" = "image"
 ): Promise<{ result: string }> {
-  if (!isCloudinaryConfigured()) {
+  const conf = await getActiveCloudinaryConfig()
+  if (!conf.cloud_name || !conf.api_key || !conf.api_secret) {
     return { result: "not_configured" }
   }
+
+  cloudinary.config({
+    cloud_name: conf.cloud_name,
+    api_key: conf.api_key,
+    api_secret: conf.api_secret,
+    secure: true,
+  })
 
   try {
     const res = await cloudinary.uploader.destroy(publicId, {

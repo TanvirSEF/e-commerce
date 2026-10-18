@@ -1,8 +1,23 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
-import { Cloud, HardDrive, Database, CheckCircle, Save, Check, RefreshCw, Loader2 } from "lucide-react"
-import { updateFileSystemAction } from "@/app/actions/settings-actions"
+import React, { useState, useEffect, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import {
+  Cloud,
+  HardDrive,
+  Database,
+  CheckCircle,
+  AlertCircle,
+  Save,
+  Check,
+  RefreshCw,
+  Loader2,
+  Info,
+} from "lucide-react"
+import {
+  updateFileSystemAction,
+  testCloudinaryConnectionAction,
+} from "@/app/actions/settings-actions"
 import type { FileSystemSettings } from "@/services/settings-service"
 
 interface FileSystemSettingsViewProps {
@@ -10,6 +25,7 @@ interface FileSystemSettingsViewProps {
 }
 
 export function FileSystemSettingsView({ initialSettings }: FileSystemSettingsViewProps) {
+  const router = useRouter()
   const [driver, setDriver] = useState<FileSystemSettings["driver"]>(initialSettings.driver)
   const [cloudName, setCloudName] = useState(initialSettings.cloudinaryCloudName)
   const [apiKey, setApiKey] = useState(initialSettings.cloudinaryApiKey)
@@ -21,23 +37,38 @@ export function FileSystemSettingsView({ initialSettings }: FileSystemSettingsVi
 
   const [saved, setSaved] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setDriver(initialSettings.driver)
+    setCloudName(initialSettings.cloudinaryCloudName)
+    setApiKey(initialSettings.cloudinaryApiKey)
+    setApiSecret(initialSettings.cloudinaryApiSecret)
+    setAwsKey(initialSettings.awsAccessKey)
+    setAwsSecret(initialSettings.awsSecretKey)
+    setAwsRegion(initialSettings.awsRegion)
+    setAwsBucket(initialSettings.awsBucket)
+  }, [initialSettings])
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
     startTransition(async () => {
       await updateFileSystemAction({
         driver,
-        cloudinaryCloudName: cloudName,
-        cloudinaryApiKey: apiKey,
-        cloudinaryApiSecret: apiSecret,
-        awsAccessKey: awsKey,
-        awsSecretKey: awsSecret,
-        awsRegion,
-        awsBucket,
+        cloudinaryCloudName: cloudName.trim(),
+        cloudinaryApiKey: apiKey.trim(),
+        cloudinaryApiSecret: apiSecret.trim(),
+        awsAccessKey: awsKey.trim(),
+        awsSecretKey: awsSecret.trim(),
+        awsRegion: awsRegion.trim(),
+        awsBucket: awsBucket.trim(),
       })
       setSaved(true)
+      router.refresh()
       setTimeout(() => setSaved(false), 3000)
     })
   }
@@ -46,10 +77,21 @@ export function FileSystemSettingsView({ initialSettings }: FileSystemSettingsVi
     setTesting(true)
     setTestResult(null)
     try {
-      const res = await fetch("/api/uploader")
-      setTestResult(res.ok ? "success" : "error")
-    } catch {
-      setTestResult("error")
+      const res = await testCloudinaryConnectionAction({
+        cloudName: cloudName.trim(),
+        apiKey: apiKey.trim(),
+        apiSecret: apiSecret.trim(),
+      })
+      if (res.success) {
+        setTestResult({ type: "success", text: res.message })
+      } else {
+        setTestResult({ type: "error", text: res.message })
+      }
+    } catch (err: any) {
+      setTestResult({
+        type: "error",
+        text: err?.message || "Failed to establish test connection to Cloudinary.",
+      })
     } finally {
       setTesting(false)
     }
@@ -74,16 +116,31 @@ export function FileSystemSettingsView({ initialSettings }: FileSystemSettingsVi
 
       {/* Driver Selector Card */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-gray-800 mb-3">Active Storage Driver</h3>
+        <h3 className="text-sm font-bold text-gray-800 mb-2">Active Storage Driver</h3>
         <p className="text-xs text-gray-500 mb-4">
           Select where uploaded product images, banners, and documents are stored
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {([
-            { key: "cloudinary" as const, icon: <Cloud className="w-6 h-6 text-[#d43533]" />, label: "Cloudinary CDN (Recommended)", desc: "Ultra-fast worldwide CDN, automatic image optimization & resizing" },
-            { key: "aws_s3" as const, icon: <Database className="w-6 h-6 text-amber-600" />, label: "AWS S3 / Wasabi", desc: "Amazon Web Services S3 object storage for enterprise scaling" },
-            { key: "local" as const, icon: <HardDrive className="w-6 h-6 text-slate-600" />, label: "Local Storage", desc: "Store uploaded files on web server local disk filesystem" },
+            {
+              key: "cloudinary" as const,
+              icon: <Cloud className="w-6 h-6 text-[#d43533]" />,
+              label: "Cloudinary CDN (Recommended)",
+              desc: "Ultra-fast worldwide CDN, automatic image optimization & resizing",
+            },
+            {
+              key: "aws_s3" as const,
+              icon: <Database className="w-6 h-6 text-amber-600" />,
+              label: "AWS S3 / Wasabi",
+              desc: "Amazon Web Services S3 object storage for enterprise scaling",
+            },
+            {
+              key: "local" as const,
+              icon: <HardDrive className="w-6 h-6 text-slate-600" />,
+              label: "Local Storage",
+              desc: "Store uploaded files on web server local disk filesystem",
+            },
           ] as const).map(({ key, icon, label, desc }) => (
             <div
               key={key}
@@ -97,7 +154,9 @@ export function FileSystemSettingsView({ initialSettings }: FileSystemSettingsVi
               <div className="flex items-center justify-between mb-2">
                 {icon}
                 {driver === key && (
-                  <span className="px-2 py-0.5 bg-[#d43533] text-white text-[10px] font-bold rounded-full">ACTIVE</span>
+                  <span className="px-2 py-0.5 bg-[#d43533] text-white text-[10px] font-bold rounded-full">
+                    ACTIVE
+                  </span>
                 )}
               </div>
               <h4 className="text-xs font-bold text-gray-800">{label}</h4>
@@ -119,36 +178,66 @@ export function FileSystemSettingsView({ initialSettings }: FileSystemSettingsVi
               type="button"
               onClick={handleTestCloudinary}
               disabled={testing}
-              className="text-xs text-[#d43533] font-semibold hover:underline flex items-center gap-1"
+              className="text-xs text-[#d43533] font-semibold hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${testing ? "animate-spin" : ""}`} />
-              Test Connection
+              {testing ? "Testing..." : "Test Connection"}
             </button>
           </div>
 
-          {testResult === "success" && (
-            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600" /> Cloudinary API connected & responding normally.
-            </div>
-          )}
-          {testResult === "error" && (
-            <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
-              Connection failed. Check your credentials and try again.
+          {testResult && (
+            <div
+              className={`p-3 rounded-lg text-xs flex items-start gap-2 border ${
+                testResult.type === "success"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  : "bg-red-50 border-red-200 text-red-800"
+              }`}
+            >
+              {testResult.type === "success" ? (
+                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              )}
+              <span>{testResult.text}</span>
             </div>
           )}
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Cloudinary Cloud Name</label>
-              <input type="text" value={cloudName} onChange={(e) => setCloudName(e.target.value)} placeholder="e.g. wumsaw2a" className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]" />
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Cloudinary Cloud Name
+              </label>
+              <input
+                type="text"
+                value={cloudName}
+                onChange={(e) => setCloudName(e.target.value)}
+                placeholder="e.g. wumsaw2a"
+                className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533] font-mono"
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Cloudinary API Key</label>
-              <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="276828639658817" className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]" />
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Cloudinary API Key
+              </label>
+              <input
+                type="text"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="276828639658817"
+                className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533] font-mono"
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Cloudinary API Secret</label>
-              <input type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} placeholder="••••••••••••••••••••••••" className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]" />
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Cloudinary API Secret
+              </label>
+              <input
+                type="password"
+                value={apiSecret}
+                onChange={(e) => setApiSecret(e.target.value)}
+                placeholder="••••••••••••••••••••••••"
+                className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533] font-mono"
+              />
             </div>
           </div>
         </div>
@@ -162,32 +251,64 @@ export function FileSystemSettingsView({ initialSettings }: FileSystemSettingsVi
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">AWS Access Key ID</label>
-              <input type="text" value={awsKey} onChange={(e) => setAwsKey(e.target.value)} placeholder="AKIAIOSFODNN7EXAMPLE" className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]" />
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                AWS Access Key ID
+              </label>
+              <input
+                type="text"
+                value={awsKey}
+                onChange={(e) => setAwsKey(e.target.value)}
+                placeholder="AKIAIOSFODNN7EXAMPLE"
+                className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533] font-mono"
+              />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">AWS Secret Access Key</label>
-              <input type="password" value={awsSecret} onChange={(e) => setAwsSecret(e.target.value)} placeholder="wJalrXUtnFEMI/K7MDENG/..." className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]" />
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                AWS Secret Access Key
+              </label>
+              <input
+                type="password"
+                value={awsSecret}
+                onChange={(e) => setAwsSecret(e.target.value)}
+                placeholder="wJalrXUtnFEMI/K7MDENG/..."
+                className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533] font-mono"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Region</label>
-                <input type="text" value={awsRegion} onChange={(e) => setAwsRegion(e.target.value)} placeholder="us-east-1" className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]" />
+                <input
+                  type="text"
+                  value={awsRegion}
+                  onChange={(e) => setAwsRegion(e.target.value)}
+                  placeholder="us-east-1"
+                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Bucket Name</label>
-                <input type="text" value={awsBucket} onChange={(e) => setAwsBucket(e.target.value)} placeholder="my-ecommerce-bucket" className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]" />
+                <input
+                  type="text"
+                  value={awsBucket}
+                  onChange={(e) => setAwsBucket(e.target.value)}
+                  placeholder="my-ecommerce-bucket"
+                  className="w-full text-xs px-3 py-2 border border-gray-300 rounded-lg outline-none focus:border-[#d43533]"
+                />
               </div>
             </div>
           </div>
         </div>
 
         {/* Save button */}
-        <div className="lg:col-span-2 flex justify-end">
+        <div className="lg:col-span-2 flex items-center justify-between bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Info className="w-4 h-4 text-sky-600" />
+            <span>Currently Active: <strong className="text-gray-900 uppercase font-mono">{driver}</strong></span>
+          </div>
           <button
             type="submit"
             disabled={isPending}
-            className="px-5 py-2.5 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-bold rounded-lg shadow-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60"
+            className="px-6 py-2.5 bg-[#d43533] hover:bg-[#b82d2b] text-white text-xs font-bold rounded-lg shadow-sm transition-colors inline-flex items-center gap-2 disabled:opacity-60 cursor-pointer"
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {isPending ? "Saving..." : "Save Storage Configuration"}

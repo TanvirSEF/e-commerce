@@ -53,6 +53,15 @@ export async function updateFileSystemAction(data: Partial<FileSystemSettings>) 
   return result
 }
 
+export async function testCloudinaryConnectionAction(credentials?: {
+  cloudName?: string
+  apiKey?: string
+  apiSecret?: string
+}) {
+  const { testCloudinaryConnection } = await import("@/lib/cloudinary")
+  return await testCloudinaryConnection(credentials)
+}
+
 // ---------------------------------------------------------------------------
 // Third-Party & Analytics Settings
 // ---------------------------------------------------------------------------

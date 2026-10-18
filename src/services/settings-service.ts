@@ -1347,24 +1347,44 @@ export interface FileSystemSettings {
 }
 
 export const DEFAULT_FILE_SYSTEM_SETTINGS: FileSystemSettings = {
-  driver: "local",
-  cloudinaryCloudName: "",
-  cloudinaryApiKey: "",
-  cloudinaryApiSecret: "",
-  awsAccessKey: "",
-  awsSecretKey: "",
-  awsRegion: "us-east-1",
-  awsBucket: "",
+  driver: (process.env.STORAGE_DRIVER as any) || (process.env.CLOUDINARY_CLOUD_NAME ? "cloudinary" : "local"),
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || "",
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || "",
+  awsAccessKey: process.env.AWS_ACCESS_KEY_ID || "",
+  awsSecretKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  awsRegion: process.env.AWS_DEFAULT_REGION || "us-east-1",
+  awsBucket: process.env.AWS_BUCKET || "",
 }
 
 export async function getFileSystemSettings(): Promise<FileSystemSettings> {
+  const defaults: FileSystemSettings = {
+    driver: (process.env.STORAGE_DRIVER as any) || (process.env.CLOUDINARY_CLOUD_NAME ? "cloudinary" : "local"),
+    cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
+    cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || "",
+    cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || "",
+    awsAccessKey: process.env.AWS_ACCESS_KEY_ID || "",
+    awsSecretKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+    awsRegion: process.env.AWS_DEFAULT_REGION || "us-east-1",
+    awsBucket: process.env.AWS_BUCKET || "",
+  }
+
   try {
     const raw = await getSetting("file_system_settings")
-    if (raw) return { ...DEFAULT_FILE_SYSTEM_SETTINGS, ...JSON.parse(raw) }
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return {
+        ...defaults,
+        ...parsed,
+        cloudinaryCloudName: parsed.cloudinaryCloudName || defaults.cloudinaryCloudName,
+        cloudinaryApiKey: parsed.cloudinaryApiKey || defaults.cloudinaryApiKey,
+        cloudinaryApiSecret: parsed.cloudinaryApiSecret || defaults.cloudinaryApiSecret,
+      }
+    }
   } catch (err) {
     console.warn("getFileSystemSettings fallback:", err)
   }
-  return DEFAULT_FILE_SYSTEM_SETTINGS
+  return defaults
 }
 
 export async function updateFileSystemSettings(data: Partial<FileSystemSettings>) {
