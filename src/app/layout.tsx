@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Inter, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { cn } from "@/lib/utils"
-import { getCurrencySettings, getGeneralSettings } from "@/services/settings-service"
+import { getCurrencySettings, getGeneralSettings, getChatWidgetsSettings } from "@/services/settings-service"
 import { getAllLanguages, getAllTranslationsMap } from "@/services/language-service"
 import { getAppearanceSettings } from "@/services/appearance-service"
 import { CartProvider } from "@/lib/context/cart-context"
@@ -37,13 +37,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const [currencySettings, allLanguages, translationsMap, appearanceSettings, generalSettings] =
+  const [currencySettings, allLanguages, translationsMap, appearanceSettings, generalSettings, chatWidgetsSettings] =
     await Promise.all([
       getCurrencySettings().catch(() => null),
       getAllLanguages().catch(() => []),
       getAllTranslationsMap().catch(() => ({})),
       getAppearanceSettings().catch(() => null),
       getGeneralSettings().catch(() => null),
+      getChatWidgetsSettings().catch(() => null),
     ])
 
   // Filter only active currencies & active languages configured by admin
@@ -75,6 +76,7 @@ export default async function RootLayout({
                   showLanguageSwitcher={appearanceSettings?.showLanguageSwitcher ?? true}
                   showCurrencySwitcher={appearanceSettings?.showCurrencySwitcher ?? true}
                   generalSettings={generalSettings}
+                  chatWidgetsSettings={chatWidgetsSettings}
                 >
                   {children}
                 </StorefrontChrome>

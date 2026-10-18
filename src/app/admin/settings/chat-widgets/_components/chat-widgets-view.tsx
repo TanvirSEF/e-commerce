@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
+import React, { useState, useEffect, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { MessageCircle, Save, CheckCircle2, AlertCircle } from "lucide-react"
-import { updateGenericSettingAction } from "@/app/actions/ecommerce-actions"
+import { updateChatWidgetsAction } from "@/app/actions/ecommerce-actions"
 import type { ChatWidgetsSettings } from "@/services/settings-service"
 
 interface ChatWidgetsViewProps {
@@ -10,16 +11,22 @@ interface ChatWidgetsViewProps {
 }
 
 export function ChatWidgetsView({ initialSettings }: ChatWidgetsViewProps) {
+  const router = useRouter()
   const [settings, setSettings] = useState<ChatWidgetsSettings>(initialSettings)
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  useEffect(() => {
+    setSettings(initialSettings)
+  }, [initialSettings])
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
     startTransition(async () => {
-      const ok = await updateGenericSettingAction("chat_widgets_settings", JSON.stringify(settings))
-      if (ok) {
-        setFeedback({ type: "success", text: "Chat widget settings saved successfully" })
+      const res = await updateChatWidgetsAction(settings)
+      if (res && res.success) {
+        setFeedback({ type: "success", text: "Chat widget settings saved & storefront updated successfully" })
+        router.refresh()
       } else {
         setFeedback({ type: "error", text: "Failed to update chat widgets" })
       }

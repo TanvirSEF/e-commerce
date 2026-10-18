@@ -1514,7 +1514,22 @@ export async function toggleEmailTemplateStatusAction(id: number, status: boolea
 // Generic Settings Action
 export async function updateGenericSettingAction(type: string, value: string) {
   const { updateSetting } = await import("@/services/settings-service")
-  return await updateSetting(type, value)
+  const res = await updateSetting(type, value)
+  try {
+    revalidatePath("/", "layout")
+  } catch {}
+  return res
+}
+
+// Chat Widgets Settings Action
+export async function updateChatWidgetsAction(data: any) {
+  const { updateChatWidgetsSettings } = await import("@/services/settings-service")
+  const res = await updateChatWidgetsSettings(data)
+  try {
+    revalidatePath("/admin/settings/chat-widgets")
+    revalidatePath("/", "layout")
+  } catch {}
+  return res
 }
 
 // Package Actions

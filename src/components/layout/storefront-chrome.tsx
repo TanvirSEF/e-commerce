@@ -10,15 +10,17 @@ import { StorefrontSaleAlert } from "./storefront-sale-alert"
 import { StorefrontDynamicPopup } from "./storefront-dynamic-popup"
 import { FloatingButtons } from "./floating-buttons"
 import { CookieAlert } from "./cookie-alert"
+import { StorefrontChatWidgets } from "./storefront-chat-widgets"
 import { cn } from "@/lib/utils"
 
-import type { GeneralSettings } from "@/services/settings-service"
+import type { GeneralSettings, ChatWidgetsSettings } from "@/services/settings-service"
 
 interface StorefrontChromeProps {
   children: React.ReactNode
   showLanguageSwitcher?: boolean
   showCurrencySwitcher?: boolean
   generalSettings?: GeneralSettings | null
+  chatWidgetsSettings?: ChatWidgetsSettings | null
 }
 
 export function StorefrontChrome({
@@ -26,6 +28,7 @@ export function StorefrontChrome({
   showLanguageSwitcher = true,
   showCurrencySwitcher = true,
   generalSettings,
+  chatWidgetsSettings,
 }: StorefrontChromeProps) {
   const pathname = usePathname()
 
@@ -70,6 +73,7 @@ export function StorefrontChrome({
       <MobileBottomNav />
       <CartDrawer />
       <FloatingButtons />
+      <StorefrontChatWidgets settings={chatWidgetsSettings} />
       <StorefrontSaleAlert />
       <StorefrontDynamicPopup />
       <CookieAlert />
