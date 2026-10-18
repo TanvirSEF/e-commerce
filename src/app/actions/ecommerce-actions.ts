@@ -1364,42 +1364,70 @@ export async function sendBulkSmsAction(recipientGroup: string, message: string)
 export async function createLanguageAction(data: { name: string; code: string; appLangCode?: string }) {
   const { createLanguage } = await import("@/services/language-service")
   const res = await createLanguage(data)
-  revalidatePath("/", "layout")
+  try {
+    revalidatePath("/admin/languages")
+    revalidatePath("/", "layout")
+  } catch {}
   return res
 }
 
 export async function updateLanguageAction(id: number, data: { name?: string; code?: string; appLangCode?: string }) {
   const { updateLanguage } = await import("@/services/language-service")
   const res = await updateLanguage(id, data)
-  revalidatePath("/", "layout")
+  try {
+    revalidatePath("/admin/languages")
+    revalidatePath("/", "layout")
+  } catch {}
   return res
 }
 
 export async function toggleLanguageStatusAction(id: number, status: boolean) {
   const { toggleLanguageStatus } = await import("@/services/language-service")
   const res = await toggleLanguageStatus(id, status)
-  revalidatePath("/", "layout")
+  try {
+    revalidatePath("/admin/languages")
+    revalidatePath("/", "layout")
+  } catch {}
   return res
 }
 
 export async function toggleLanguageRtlAction(id: number, rtl: boolean) {
   const { toggleLanguageRtl } = await import("@/services/language-service")
   const res = await toggleLanguageRtl(id, rtl)
-  revalidatePath("/", "layout")
+  try {
+    revalidatePath("/admin/languages")
+    revalidatePath("/", "layout")
+  } catch {}
   return res
 }
 
 export async function setDefaultLanguageAction(id: number) {
   const { setDefaultLanguage } = await import("@/services/language-service")
   const res = await setDefaultLanguage(id)
-  revalidatePath("/", "layout")
+  try {
+    revalidatePath("/admin/languages")
+    revalidatePath("/", "layout")
+  } catch {}
+  return res
+}
+
+export async function deleteLanguageAction(id: number) {
+  const { deleteLanguage } = await import("@/services/language-service")
+  const res = await deleteLanguage(id)
+  try {
+    revalidatePath("/admin/languages")
+    revalidatePath("/", "layout")
+  } catch {}
   return res
 }
 
 export async function saveTranslationsAction(langCode: string, values: Record<string, string>) {
   const { saveTranslationsForLanguage } = await import("@/services/language-service")
   const res = await saveTranslationsForLanguage(langCode, values)
-  revalidatePath("/", "layout")
+  try {
+    revalidatePath("/admin/languages")
+    revalidatePath("/", "layout")
+  } catch {}
   return res
 }
 

@@ -8,14 +8,18 @@ import { MiddleHeader } from "./middle-header"
 import { BottomNavbar } from "./bottom-navbar"
 import { MobileSidebar } from "./mobile-sidebar"
 
+import type { GeneralSettings } from "@/services/settings-service"
+
 interface SiteHeaderProps {
   showLanguageSwitcher?: boolean
   showCurrencySwitcher?: boolean
+  generalSettings?: GeneralSettings | null
 }
 
 export function SiteHeader({
   showLanguageSwitcher = true,
   showCurrencySwitcher = true,
+  generalSettings,
 }: SiteHeaderProps) {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -38,8 +42,13 @@ export function SiteHeader({
       <TopBar
         showLanguageSwitcher={showLanguageSwitcher}
         showCurrencySwitcher={showCurrencySwitcher}
+        helpline={generalSettings?.systemPhone}
       />
-      <MiddleHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} />
+      <MiddleHeader
+        onToggleMobileMenu={() => setMobileMenuOpen(true)}
+        systemName={generalSettings?.systemName}
+        systemLogo={generalSettings?.systemLogo}
+      />
       <BottomNavbar />
       <MobileSidebar
         isOpen={mobileMenuOpen}

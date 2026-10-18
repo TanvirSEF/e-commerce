@@ -1,6 +1,4 @@
-import { db } from "../db"
-import { businessSettings } from "../db/schema"
-import { eq } from "drizzle-orm"
+import { getSetting, updateSetting } from "./settings-service"
 
 export interface WebsiteAppearanceSettings {
   primaryColor: string
@@ -47,14 +45,9 @@ const DEFAULT_APPEARANCE: WebsiteAppearanceSettings = {
 
 export async function getAppearanceSettings(): Promise<WebsiteAppearanceSettings> {
   try {
-    const [row] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "website_appearance"))
-      .limit(1)
-
-    if (row?.value) {
-      return JSON.parse(row.value) as WebsiteAppearanceSettings
+    const raw = await getSetting("website_appearance")
+    if (raw) {
+      return { ...DEFAULT_APPEARANCE, ...JSON.parse(raw) } as WebsiteAppearanceSettings
     }
   } catch (err) {
     console.warn("DB getAppearanceSettings fallback:", (err as Error).message)
@@ -64,24 +57,7 @@ export async function getAppearanceSettings(): Promise<WebsiteAppearanceSettings
 
 export async function updateAppearanceSettings(data: WebsiteAppearanceSettings) {
   try {
-    const jsonVal = JSON.stringify(data)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "website_appearance"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "website_appearance",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("website_appearance", JSON.stringify(data))
     return { success: true }
   } catch (err) {
     console.warn("updateAppearanceSettings error:", (err as Error).message)

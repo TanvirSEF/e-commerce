@@ -12,16 +12,20 @@ import { FloatingButtons } from "./floating-buttons"
 import { CookieAlert } from "./cookie-alert"
 import { cn } from "@/lib/utils"
 
+import type { GeneralSettings } from "@/services/settings-service"
+
 interface StorefrontChromeProps {
   children: React.ReactNode
   showLanguageSwitcher?: boolean
   showCurrencySwitcher?: boolean
+  generalSettings?: GeneralSettings | null
 }
 
 export function StorefrontChrome({
   children,
   showLanguageSwitcher = true,
   showCurrencySwitcher = true,
+  generalSettings,
 }: StorefrontChromeProps) {
   const pathname = usePathname()
 
@@ -59,9 +63,10 @@ export function StorefrontChrome({
       <SiteHeader
         showLanguageSwitcher={showLanguageSwitcher}
         showCurrencySwitcher={showCurrencySwitcher}
+        generalSettings={generalSettings}
       />
       <main className={cn("flex-1 pb-14 lg:pb-0")}>{children}</main>
-      <Footer />
+      <Footer generalSettings={generalSettings} />
       <MobileBottomNav />
       <CartDrawer />
       <FloatingButtons />

@@ -5,7 +5,13 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Mail, Phone, MapPin, Send } from "lucide-react"
 
-export function Footer() {
+import type { GeneralSettings } from "@/services/settings-service"
+
+interface FooterProps {
+  generalSettings?: GeneralSettings | null
+}
+
+export function Footer({ generalSettings }: FooterProps = {}) {
   const pathname = usePathname()
   const [email, setEmail] = useState("")
   const [subscribed, setSubscribed] = useState(false)
@@ -73,24 +79,27 @@ export function Footer() {
           <div>
             <div className="mb-4 flex items-center gap-2">
               <span className="text-xl font-bold tracking-tight text-[#d43533]">
-                Active<span className="text-white">Shop</span>
+                {generalSettings?.systemName || (
+                  <>Active<span className="text-white">Shop</span></>
+                )}
               </span>
             </div>
             <p className="mb-4 text-xs leading-relaxed text-gray-400">
-              Complete eCommerce business solution with multi-vendor support, verified products, express delivery, and 24/7 dedicated customer care.
+              {generalSettings?.systemMotto ||
+                "Complete eCommerce business solution with multi-vendor support, verified products, express delivery, and 24/7 dedicated customer care."}
             </p>
             <div className="flex flex-col gap-2 text-xs text-gray-300">
               <div className="flex items-start gap-2.5">
                 <MapPin className="h-4 w-4 shrink-0 text-[#d43533]" />
-                <span>House #12, Road #4, Dhanmondi, Dhaka-1205</span>
+                <span>{generalSettings?.address || "House #12, Road #4, Dhanmondi, Dhaka-1205"}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="h-4 w-4 shrink-0 text-[#d43533]" />
-                <span>+880 1700-000000</span>
+                <span>{generalSettings?.systemPhone || "+880 1700-000000"}</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="h-4 w-4 shrink-0 text-[#d43533]" />
-                <span>support@active-ecom.com</span>
+                <span>{generalSettings?.systemEmail || "support@active-ecom.com"}</span>
               </div>
             </div>
           </div>
@@ -227,7 +236,7 @@ export function Footer() {
       <div className="border-t border-gray-800 bg-[#101018] py-4 text-xs">
         <div className="mx-auto flex max-w-[1240px] flex-col items-center justify-between gap-3 px-4 sm:flex-row">
           <div className="text-gray-500">
-            © {new Date().getFullYear()} Active eCommerce CMS. All Rights Reserved.
+            © {new Date().getFullYear()} {generalSettings?.systemName || "Active eCommerce CMS"}. All Rights Reserved.
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-gray-500">Secured Payments with</span>

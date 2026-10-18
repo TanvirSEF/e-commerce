@@ -13,12 +13,25 @@ import {
   type ThirdPartySettings,
 } from "@/services/settings-service"
 
+function safeRevalidate(path: string, type?: "page" | "layout") {
+  try {
+    if (type) {
+      revalidatePath(path, type)
+    } else {
+      revalidatePath(path)
+    }
+  } catch {
+    // Graceful fallback outside Next.js request lifecycle
+  }
+}
+
 // ---------------------------------------------------------------------------
 // General Settings
 // ---------------------------------------------------------------------------
 export async function updateGeneralSettingsAction(data: Partial<GeneralSettings>) {
   const result = await updateGeneralSettings(data)
-  revalidatePath("/admin/settings")
+  safeRevalidate("/admin/settings")
+  safeRevalidate("/", "layout")
   return result
 }
 

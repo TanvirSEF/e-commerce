@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
+import React, { useState, useEffect, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Save, Check, Loader2 } from "lucide-react"
 import { updateGeneralSettingsAction } from "@/app/actions/settings-actions"
 import type { GeneralSettings } from "@/services/settings-service"
@@ -10,9 +11,14 @@ interface AdminSettingsViewProps {
 }
 
 export function AdminSettingsView({ initialSettings }: AdminSettingsViewProps) {
+  const router = useRouter()
   const [settings, setSettings] = useState(initialSettings)
   const [saved, setSaved] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setSettings(initialSettings)
+  }, [initialSettings])
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -24,8 +30,12 @@ export function AdminSettingsView({ initialSettings }: AdminSettingsViewProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     startTransition(async () => {
-      await updateGeneralSettingsAction(settings)
+      const res = await updateGeneralSettingsAction(settings)
+      if (res?.success && res.settings) {
+        setSettings(res.settings)
+      }
       setSaved(true)
+      router.refresh()
       setTimeout(() => setSaved(false), 3000)
     })
   }

@@ -1,7 +1,49 @@
+import fs from "node:fs"
+import path from "node:path"
 import { db } from "../db"
 import { businessSettings, flashDeals } from "../db/schema"
 import { eq, inArray } from "drizzle-orm"
 import { SEED_FLASH_DEALS } from "../db/seed/data"
+
+const CACHE_FILE = path.join(process.cwd(), "src", "db", "settings_cache.json")
+
+let inMemorySettings: Record<string, string> | null = null
+let lastCacheMtime = 0
+
+function loadSettingsCache(): Record<string, string> {
+  try {
+    if (fs.existsSync(CACHE_FILE)) {
+      const stat = fs.statSync(CACHE_FILE)
+      if (inMemorySettings === null || stat.mtimeMs > lastCacheMtime) {
+        const data = fs.readFileSync(CACHE_FILE, "utf-8")
+        inMemorySettings = JSON.parse(data)
+        lastCacheMtime = stat.mtimeMs
+      }
+      return inMemorySettings!
+    }
+  } catch (err) {
+    console.warn("Failed to read settings cache file:", (err as Error).message)
+  }
+  if (!inMemorySettings) {
+    inMemorySettings = {}
+  }
+  return inMemorySettings
+}
+
+function saveSettingsCache(settings: Record<string, string>) {
+  inMemorySettings = settings
+  try {
+    const dir = path.dirname(CACHE_FILE)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(settings, null, 2), "utf-8")
+    const stat = fs.statSync(CACHE_FILE)
+    lastCacheMtime = stat.mtimeMs
+  } catch (err) {
+    console.warn("Failed to write settings cache file:", (err as Error).message)
+  }
+}
 
 export async function getSetting(type: string): Promise<string | null> {
   try {
@@ -11,14 +53,28 @@ export async function getSetting(type: string): Promise<string | null> {
       .where(eq(businessSettings.type, type))
       .limit(1)
 
-    return row?.value || null
-  } catch (err) {
-    console.warn("DB getSetting fallback:", (err as Error).message)
-    return null
+    if (row?.value !== undefined && row?.value !== null) {
+      const cache = loadSettingsCache()
+      if (cache[type] !== row.value) {
+        cache[type] = row.value
+        saveSettingsCache(cache)
+      }
+      return row.value
+    }
+  } catch {
+    // DB unreachable or table missing, fallback to cache
   }
+
+  const cache = loadSettingsCache()
+  return cache[type] ?? null
 }
 
 export async function updateSetting(type: string, value: string): Promise<boolean> {
+  // Always update cache first to ensure immediate persistence
+  const cache = loadSettingsCache()
+  cache[type] = value
+  saveSettingsCache(cache)
+
   try {
     const [existing] = await db
       .select()
@@ -39,8 +95,8 @@ export async function updateSetting(type: string, value: string): Promise<boolea
     }
     return true
   } catch (err) {
-    console.warn(`updateSetting(${type}) error:`, (err as Error).message)
-    return false
+    console.warn(`updateSetting(${type}) DB update failed, preserved in cache:`, (err as Error).message)
+    return true
   }
 }
 
@@ -203,24 +259,7 @@ export async function getShippingSettings(): Promise<ShippingSettings> {
 
 export async function updateShippingSettings(data: ShippingSettings) {
   try {
-    const jsonVal = JSON.stringify(data)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "shipping_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "shipping_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("shipping_settings", JSON.stringify(data))
     return { success: true }
   } catch (err) {
     console.warn("updateShippingSettings error:", (err as Error).message)
@@ -254,24 +293,7 @@ export async function getSellerCommissionSettings(): Promise<SellerCommissionSet
 
 export async function updateSellerCommissionSettings(data: SellerCommissionSettings) {
   try {
-    const jsonVal = JSON.stringify(data)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "seller_commission_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "seller_commission_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("seller_commission_settings", JSON.stringify(data))
     return { success: true }
   } catch (err) {
     console.warn("updateSellerCommissionSettings error:", (err as Error).message)
@@ -303,24 +325,7 @@ export async function getClubPointsSettings(): Promise<ClubPointsSettings> {
 
 export async function updateClubPointsSettings(data: ClubPointsSettings) {
   try {
-    const jsonVal = JSON.stringify(data)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "club_points_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "club_points_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("club_points_settings", JSON.stringify(data))
     return { success: true }
   } catch (err) {
     console.warn("updateClubPointsSettings error:", (err as Error).message)
@@ -420,24 +425,7 @@ export async function getPaymentGatewaysSettings(): Promise<PaymentGatewaysSetti
 
 export async function updatePaymentGatewaysSettings(data: PaymentGatewaysSettings) {
   try {
-    const jsonVal = JSON.stringify(data)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "payment_gateways_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "payment_gateways_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("payment_gateways_settings", JSON.stringify(data))
     return { success: true }
   } catch (err) {
     console.warn("updatePaymentGatewaysSettings error:", (err as Error).message)
@@ -491,24 +479,7 @@ export async function getCurrencySettings(): Promise<CurrencySettings> {
 export async function updateCurrencySettings(data: CurrencySettings) {
   inMemoryCurrencySettings = { ...data }
   try {
-    const jsonVal = JSON.stringify(data)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "currency_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "currency_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("currency_settings", JSON.stringify(data))
     return { success: true }
   } catch (err) {
     console.warn("updateCurrencySettings error:", (err as Error).message)
@@ -550,24 +521,7 @@ export async function getSmtpSettings(): Promise<SmtpSettings> {
 
 export async function updateSmtpSettings(data: SmtpSettings) {
   try {
-    const jsonVal = JSON.stringify(data)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "smtp_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "smtp_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("smtp_settings", JSON.stringify(data))
     return { success: true }
   } catch (err) {
     console.warn("updateSmtpSettings error:", (err as Error).message)
@@ -739,25 +693,7 @@ export async function updateFeatureActivations(data: Partial<FeatureActivations>
   try {
     const current = await getFeatureActivations()
     const updated = { ...current, ...data }
-    const jsonVal = JSON.stringify(updated)
-
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "feature_activations"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "feature_activations",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("feature_activations", JSON.stringify(updated))
     return { success: true, updated }
   } catch (err) {
     console.warn("updateFeatureActivations error:", (err as Error).message)
@@ -801,25 +737,7 @@ export async function updateShippingLabelSettings(data: Partial<ShippingLabelSet
   try {
     const current = await getShippingLabelSettings()
     const updated = { ...current, ...data }
-    const jsonVal = JSON.stringify(updated)
-
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "shipping_label_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "shipping_label_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("shipping_label_settings", JSON.stringify(updated))
     return { success: true, updated }
   } catch (err) {
     console.warn("updateShippingLabelSettings error:", (err as Error).message)
@@ -855,25 +773,7 @@ export async function updateSaleAlertSettings(data: Partial<CustomSaleAlertSetti
   try {
     const current = await getSaleAlertSettings()
     const updated = { ...current, ...data }
-    const jsonVal = JSON.stringify(updated)
-
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "custom_sale_alert_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "custom_sale_alert_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("custom_sale_alert_settings", JSON.stringify(updated))
     return { success: true, updated }
   } catch (err) {
     console.warn("updateSaleAlertSettings error:", (err as Error).message)
@@ -913,25 +813,7 @@ export async function updateCategoryCommissions(commissions: Record<string, numb
   try {
     const current = await getCategoryCommissions()
     const updated = { ...current, ...commissions }
-    const jsonVal = JSON.stringify(updated)
-
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "category_commissions"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "category_commissions",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("category_commissions", JSON.stringify(updated))
     return { success: true, updated }
   } catch (err) {
     console.warn("updateCategoryCommissions error:", err)
@@ -956,25 +838,7 @@ export async function updateSellerCommissionOverride(sellerId: string, rate: num
   try {
     const current = await getSellerCommissionOverrides()
     const updated = { ...current, [sellerId]: rate }
-    const jsonVal = JSON.stringify(updated)
-
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "seller_commission_overrides"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "seller_commission_overrides",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("seller_commission_overrides", JSON.stringify(updated))
     return { success: true, updated }
   } catch (err) {
     console.warn("updateSellerCommissionOverride error:", err)
@@ -1009,24 +873,7 @@ export async function getCategoryDiscounts(): Promise<Record<string, CategoryDis
 
 export async function updateCategoryDiscounts(discounts: Record<string, CategoryDiscountRule>) {
   try {
-    const jsonVal = JSON.stringify(discounts)
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "category_discounts"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "category_discounts",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("category_discounts", JSON.stringify(discounts))
     return { success: true, discounts }
   } catch (err) {
     console.warn("updateCategoryDiscounts error:", err)
@@ -1071,25 +918,7 @@ export async function updateCustomAlertSettings(data: Partial<CustomAlertSetting
   try {
     const current = await getCustomAlertSettings()
     const updated = { ...current, ...data }
-    const jsonVal = JSON.stringify(updated)
-
-    const [existing] = await db
-      .select()
-      .from(businessSettings)
-      .where(eq(businessSettings.type, "custom_alert_settings"))
-      .limit(1)
-
-    if (existing) {
-      await db
-        .update(businessSettings)
-        .set({ value: jsonVal, updatedAt: new Date() })
-        .where(eq(businessSettings.id, existing.id))
-    } else {
-      await db.insert(businessSettings).values({
-        type: "custom_alert_settings",
-        value: jsonVal,
-      })
-    }
+    await updateSetting("custom_alert_settings", JSON.stringify(updated))
     return { success: true, updated }
   } catch (err) {
     console.warn("updateCustomAlertSettings error:", err)
@@ -1433,6 +1262,29 @@ export async function updateGeneralSettings(data: Partial<GeneralSettings>) {
   const current = await getGeneralSettings()
   const merged = { ...current, ...data }
   await updateSetting("general_settings", JSON.stringify(merged))
+
+  if (data.systemName) {
+    await updateSetting("site_name", data.systemName)
+  }
+  if (data.systemMotto) {
+    await updateSetting("site_motto", data.systemMotto)
+  }
+  if (data.systemEmail) {
+    await updateSetting("contact_email", data.systemEmail)
+  }
+  if (data.systemPhone) {
+    await updateSetting("contact_phone", data.systemPhone)
+  }
+  if (data.address) {
+    await updateSetting("contact_address", data.address)
+  }
+  if (data.systemLogo) {
+    await updateSetting("system_logo", data.systemLogo)
+  }
+  if (data.systemIcon) {
+    await updateSetting("system_icon", data.systemIcon)
+  }
+
   return { success: true, settings: merged }
 }
 

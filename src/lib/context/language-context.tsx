@@ -92,6 +92,7 @@ export const EXTENDED_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Purchase History": "Purchase History",
     "Sent Refund Request": "Sent Refund Request",
     "Notifications": "Notifications",
+    "Classified Ads": "Classified Ads",
   },
   bn: {
     "All Products": "সব পণ্য",
@@ -143,6 +144,7 @@ export const EXTENDED_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Purchase History": "ক্রয় ইতিহাস",
     "Sent Refund Request": "রিফান্ড অনুরোধ",
     "Notifications": "বিজ্ঞপ্তি",
+    "Classified Ads": "শ্রেণীবদ্ধ বিজ্ঞাপন",
   },
   ar: {
     "All Products": "جميع المنتجات",
@@ -194,6 +196,7 @@ export const EXTENDED_TRANSLATIONS: Record<string, Record<string, string>> = {
     "Purchase History": "سجل المشتريات",
     "Sent Refund Request": "طلب استرداد",
     "Notifications": "الإشعارات",
+    "Classified Ads": "الإعلانات المبوبة",
   },
 }
 

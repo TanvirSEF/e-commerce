@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
+import React, { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Globe,
   Plus,
@@ -11,11 +12,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Check,
+  Trash2,
 } from "lucide-react"
 import {
   toggleLanguageStatusAction,
   toggleLanguageRtlAction,
   setDefaultLanguageAction,
+  deleteLanguageAction,
 } from "@/app/actions/ecommerce-actions"
 import type { Language } from "@/db/schema"
 
@@ -24,9 +27,14 @@ interface LanguagesViewProps {
 }
 
 export function LanguagesView({ initialLanguages }: LanguagesViewProps) {
+  const router = useRouter()
   const [langs, setLangs] = useState<Language[]>(initialLanguages)
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setLangs(initialLanguages)
+  }, [initialLanguages])
 
   const handleToggleStatus = (id: number, current: boolean) => {
     startTransition(async () => {
@@ -34,6 +42,7 @@ export function LanguagesView({ initialLanguages }: LanguagesViewProps) {
       if (ok) {
         setLangs((prev) => prev.map((l) => (l.id === id ? { ...l, status: !current } : l)))
         setFeedback({ type: "success", text: "Language status updated successfully" })
+        router.refresh()
       } else {
         setFeedback({ type: "error", text: "Failed to update status" })
       }
@@ -47,6 +56,7 @@ export function LanguagesView({ initialLanguages }: LanguagesViewProps) {
       if (ok) {
         setLangs((prev) => prev.map((l) => (l.id === id ? { ...l, rtl: !current } : l)))
         setFeedback({ type: "success", text: "Language RTL direction updated" })
+        router.refresh()
       } else {
         setFeedback({ type: "error", text: "Failed to update RTL direction" })
       }
@@ -60,10 +70,29 @@ export function LanguagesView({ initialLanguages }: LanguagesViewProps) {
       if (ok) {
         setLangs((prev) => prev.map((l) => ({ ...l, isDefault: l.id === id })))
         setFeedback({ type: "success", text: "System default language updated" })
+        router.refresh()
       } else {
         setFeedback({ type: "error", text: "Failed to update default language" })
       }
       setTimeout(() => setFeedback(null), 3000)
+    })
+  }
+
+  const handleDelete = (id: number, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${name}"? All its custom translations will also be permanently removed.`)) {
+      return
+    }
+
+    startTransition(async () => {
+      const ok = await deleteLanguageAction(id)
+      if (ok) {
+        setLangs((prev) => prev.filter((l) => l.id !== id))
+        setFeedback({ type: "success", text: `Language "${name}" deleted successfully` })
+        router.refresh()
+      } else {
+        setFeedback({ type: "error", text: "Failed to delete language" })
+      }
+      setTimeout(() => setFeedback(null), 3500)
     })
   }
 
@@ -223,6 +252,17 @@ export function LanguagesView({ initialLanguages }: LanguagesViewProps) {
                       >
                         <Edit className="w-4 h-4" />
                       </Link>
+                      {!lang.isDefault && lang.code !== "en" && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(lang.id, lang.name)}
+                          disabled={isPending}
+                          className="p-1.5 rounded-md text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete Language"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

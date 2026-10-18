@@ -9,11 +9,13 @@ import { useCurrency } from "@/lib/context/currency-context"
 interface TopBarProps {
   showLanguageSwitcher?: boolean
   showCurrencySwitcher?: boolean
+  helpline?: string
 }
 
 export function TopBar({
   showLanguageSwitcher = true,
   showCurrencySwitcher = true,
+  helpline,
 }: TopBarProps) {
   const { currentLanguage, languages, setLanguage, t } = useLanguage()
   const { currentCurrency, currencies, setCurrency } = useCurrency()
@@ -147,12 +149,12 @@ export function TopBar({
 
           {/* Helpline Phone */}
           <a
-            href="tel:+880170000000"
+            href={`tel:${(helpline || "+880 1700-000000").replace(/[^+\d]/g, "")}`}
             className="flex items-center gap-1.5 text-gray-600 transition-colors hover:text-[#d43533]"
           >
             <Phone className="h-3.5 w-3.5 text-[#d43533]" />
             <span className="hidden md:inline text-gray-500">{t("Helpline:")}</span>
-            <span className="font-semibold text-gray-800">+880 1700-000000</span>
+            <span className="font-semibold text-gray-800">{helpline || "+880 1700-000000"}</span>
           </a>
         </div>
       </div>

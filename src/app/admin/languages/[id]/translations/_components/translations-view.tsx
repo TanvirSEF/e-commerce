@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
+import React, { useState, useEffect, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Languages,
   ArrowLeft,
@@ -20,10 +21,15 @@ interface TranslationsViewProps {
 }
 
 export function TranslationsView({ language, initialTranslations }: TranslationsViewProps) {
+  const router = useRouter()
   const [translations, setTranslations] = useState<{ key: string; value: string }[]>(initialTranslations)
   const [search, setSearch] = useState("")
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setTranslations(initialTranslations)
+  }, [initialTranslations])
 
   const handleValueChange = (key: string, val: string) => {
     setTranslations((prev) =>
@@ -48,6 +54,7 @@ export function TranslationsView({ language, initialTranslations }: Translations
       const ok = await saveTranslationsAction(language.code, payload)
       if (ok) {
         setFeedback({ type: "success", text: `Translations saved for ${language.name}` })
+        router.refresh()
       } else {
         setFeedback({ type: "error", text: "Failed to save translations" })
       }

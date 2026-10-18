@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Inter, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { cn } from "@/lib/utils"
-import { getCurrencySettings } from "@/services/settings-service"
+import { getCurrencySettings, getGeneralSettings } from "@/services/settings-service"
 import { getAllLanguages, getAllTranslationsMap } from "@/services/language-service"
 import { getAppearanceSettings } from "@/services/appearance-service"
 import { CartProvider } from "@/lib/context/cart-context"
@@ -14,12 +14,22 @@ import { StorefrontChrome } from "@/components/layout/storefront-chrome"
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
-export const metadata: Metadata = {
-  title: "Active eCommerce | Complete Shopping Solution",
-  description: "A complete solution for E-commerce Business with exclusive features & super responsive layout.",
-  icons: {
-    icon: "/assets/img/logo.png",
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const general = await getGeneralSettings().catch(() => null)
+  const systemName = general?.systemName || "Active eCommerce"
+  const motto = general?.systemMotto || "Complete Shopping Solution"
+  const icon = general?.systemIcon || "/assets/img/logo.png"
+
+  return {
+    title: {
+      default: `${systemName} | ${motto}`,
+      template: `%s | ${systemName}`,
+    },
+    description: motto,
+    icons: {
+      icon,
+    },
+  }
 }
 
 export default async function RootLayout({
@@ -27,12 +37,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const [currencySettings, allLanguages, translationsMap, appearanceSettings] = await Promise.all([
-    getCurrencySettings().catch(() => null),
-    getAllLanguages().catch(() => []),
-    getAllTranslationsMap().catch(() => ({})),
-    getAppearanceSettings().catch(() => null),
-  ])
+  const [currencySettings, allLanguages, translationsMap, appearanceSettings, generalSettings] =
+    await Promise.all([
+      getCurrencySettings().catch(() => null),
+      getAllLanguages().catch(() => []),
+      getAllTranslationsMap().catch(() => ({})),
+      getAppearanceSettings().catch(() => null),
+      getGeneralSettings().catch(() => null),
+    ])
 
   // Filter only active currencies & active languages configured by admin
   const activeCurrencies = (currencySettings?.currencies || []).filter((c) => c.status !== false)
@@ -62,6 +74,7 @@ export default async function RootLayout({
                 <StorefrontChrome
                   showLanguageSwitcher={appearanceSettings?.showLanguageSwitcher ?? true}
                   showCurrencySwitcher={appearanceSettings?.showCurrencySwitcher ?? true}
+                  generalSettings={generalSettings}
                 >
                   {children}
                 </StorefrontChrome>

@@ -10,7 +10,13 @@ import { useTranslation } from "@/lib/context/language-context"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { SearchDropdown } from "./search-dropdown"
 
-export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void }) {
+interface MiddleHeaderProps {
+  onToggleMobileMenu?: () => void
+  systemName?: string
+  systemLogo?: string
+}
+
+export function MiddleHeader({ onToggleMobileMenu, systemName, systemLogo }: MiddleHeaderProps) {
   const router = useRouter()
   const { user, isLoggedIn, logout, wishlist } = useAuth()
   const { t } = useTranslation()
@@ -65,8 +71,8 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
           <Link href="/" className="flex items-center gap-2">
             <div className="relative h-9 w-36 sm:h-10 sm:w-44">
               <Image
-                src="/assets/img/logo.png"
-                alt="Active eCommerce"
+                src={systemLogo || "/assets/img/logo.png"}
+                alt={systemName || "Active eCommerce"}
                 fill
                 priority
                 className="object-contain"
@@ -77,7 +83,9 @@ export function MiddleHeader({ onToggleMobileMenu }: { onToggleMobileMenu?: () =
               />
             </div>
             <span className="hidden text-xl font-bold tracking-tight text-[#d43533] sm:inline-block">
-              Active<span className="text-[#292933]">Shop</span>
+              {systemName || (
+                <>Active<span className="text-[#292933]">Shop</span></>
+              )}
             </span>
           </Link>
         </div>
