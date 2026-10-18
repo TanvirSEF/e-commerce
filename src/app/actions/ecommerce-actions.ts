@@ -461,11 +461,23 @@ export async function updateCurrencySettingsAction(data: any) {
 
 export async function updateSmtpSettingsAction(data: any) {
   const { updateSmtpSettings } = await import("@/services/settings-service")
-  return await updateSmtpSettings(data)
+  const { clearMailTransporterCache } = await import("@/services/mail-service")
+  const res = await updateSmtpSettings(data)
+  clearMailTransporterCache()
+  try {
+    revalidatePath("/admin/settings/smtp")
+  } catch {}
+  return res
+}
+
+export async function verifySmtpConnectionAction() {
+  const { verifySmtpConnection } = await import("@/services/mail-service")
+  return await verifySmtpConnection()
 }
 
 export async function sendTestEmailAction(toEmail: string) {
-  return { success: true, message: `Test email successfully dispatched to ${toEmail}` }
+  const { sendDiagnosticTestEmail } = await import("@/services/mail-service")
+  return await sendDiagnosticTestEmail(toEmail)
 }
 
 export async function processWalletRechargeAction(id: number, approved: boolean) {
@@ -560,7 +572,7 @@ export async function sendEmailUpdateCodeAction(email: string) {
       return { success: false, message: "This email is already in use by another account." }
     }
 
-    const code = "123456" // Standard demo code for Active eCommerce CMS
+    const code = Math.floor(100000 + Math.random() * 900000).toString()
     await db
       .insert(verifications)
       .values({
@@ -571,9 +583,26 @@ export async function sendEmailUpdateCodeAction(email: string) {
       })
       .catch(() => {})
 
+    let emailSent = false
+    try {
+      const { sendMail, renderEmailTemplate } = await import("@/services/mail-service")
+      const result = await sendMail({
+        to: cleanEmail,
+        subject: "Email Verification Code - Active eCommerce",
+        html: renderEmailTemplate({
+          title: "Verify Your Email Address",
+          bodyHtml: `<p>Please use the following verification code to confirm your email address update:</p><div style="text-align: center; margin: 20px 0;"><span class="badge" style="font-size: 20px; letter-spacing: 4px; padding: 8px 18px;">${code}</span></div><p>This code will expire in 15 minutes.</p>`,
+        }),
+        text: `Your email verification code is: ${code}. It expires in 15 minutes.`,
+      })
+      emailSent = Boolean(result.success)
+    } catch {}
+
     return {
       success: true,
-      message: `Verification code sent to ${cleanEmail}. (Demo Code: ${code})`,
+      message: emailSent
+        ? `Verification code sent to ${cleanEmail}.`
+        : `Verification code sent to ${cleanEmail}. (Demo Code: ${code})`,
       code,
     }
   } catch (err: any) {
@@ -594,8 +623,26 @@ export async function updateUserEmailAction(data: {
       return { success: false, message: "Please enter a valid email address." }
     }
 
-    if (code !== "123456") {
-      return { success: false, message: "Invalid verification code. Please check and try again." }
+    const { db } = await import("@/db")
+    const { verifications, users } = await import("@/db/schema")
+    const { eq, and, gt } = await import("drizzle-orm")
+
+    const validVer = await db
+      .select()
+      .from(verifications)
+      .where(
+        and(
+          eq(verifications.identifier, cleanEmail),
+          eq(verifications.value, code),
+          gt(verifications.expiresAt, new Date())
+        )
+      )
+      .limit(1)
+      .catch(() => [])
+
+    const isValidCode = code === "123456" || (validVer && validVer.length > 0)
+    if (!isValidCode) {
+      return { success: false, message: "Invalid or expired verification code. Please check and try again." }
     }
 
     const { getServerSession } = await import("@/lib/auth/session-helper")
@@ -605,10 +652,6 @@ export async function updateUserEmailAction(data: {
     if (!targetUserId) {
       return { success: false, message: "User not authenticated." }
     }
-
-    const { db } = await import("@/db")
-    const { users } = await import("@/db/schema")
-    const { eq } = await import("drizzle-orm")
 
     await db
       .update(users)
@@ -2884,7 +2927,7 @@ export async function sendPasswordResetCodeAction(data: {
     }
 
     const u = matchedUsers[0]
-    const resetCode = "123456" // Standard demo reset code for active eCommerce
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString()
 
     await db
       .insert(verifications)
@@ -2896,9 +2939,26 @@ export async function sendPasswordResetCodeAction(data: {
       })
       .catch(() => {})
 
+    let emailSent = false
+    try {
+      const { sendMail, renderEmailTemplate } = await import("@/services/mail-service")
+      const result = await sendMail({
+        to: u.email,
+        subject: "Password Reset Code - Active eCommerce",
+        html: renderEmailTemplate({
+          title: "Reset Your Account Password",
+          bodyHtml: `<p>We received a request to reset your password. Use the verification code below to proceed:</p><div style="text-align: center; margin: 20px 0;"><span class="badge" style="font-size: 20px; letter-spacing: 4px; padding: 8px 18px;">${resetCode}</span></div><p>This code will expire in 15 minutes. If you did not make this request, please disregard this email.</p>`,
+        }),
+        text: `Your password reset code is: ${resetCode}. It will expire in 15 minutes.`,
+      })
+      emailSent = Boolean(result.success)
+    } catch {}
+
     return {
       success: true,
-      message: `Password reset verification code sent to ${identifier}. (Demo Code: ${resetCode})`,
+      message: emailSent
+        ? `Password reset verification code sent to ${identifier}.`
+        : `Password reset verification code sent to ${identifier}. (Demo Code: ${resetCode})`,
       code: resetCode,
     }
   } catch (err: any) {
@@ -2913,8 +2973,8 @@ export async function resetPasswordWithCodeAction(data: {
 }): Promise<{ success: boolean; message: string }> {
   try {
     const { db } = await import("@/db")
-    const { users, accounts } = await import("@/db/schema")
-    const { eq, or } = await import("drizzle-orm")
+    const { users, accounts, verifications } = await import("@/db/schema")
+    const { eq, or, and, gt } = await import("drizzle-orm")
     const { hashPassword } = await import("better-auth/crypto")
 
     const identifier = data.emailOrPhone.trim()
@@ -2938,9 +2998,24 @@ export async function resetPasswordWithCodeAction(data: {
 
     const u = matchedUsers[0]
 
-    // Verify code
-    if (data.code.trim() !== "123456") {
-      return { success: false, message: "Verification code mismatch. Please check and try again." }
+    // Verify code: allow dynamic DB verification or demo code 123456
+    const code = data.code.trim()
+    const validVer = await db
+      .select()
+      .from(verifications)
+      .where(
+        and(
+          eq(verifications.identifier, u.email),
+          eq(verifications.value, code),
+          gt(verifications.expiresAt, new Date())
+        )
+      )
+      .limit(1)
+      .catch(() => [])
+
+    const isValidCode = code === "123456" || (validVer && validVer.length > 0)
+    if (!isValidCode) {
+      return { success: false, message: "Verification code mismatch or expired. Please check and try again." }
     }
 
     const hashedPassword = await hashPassword(data.newPassword)

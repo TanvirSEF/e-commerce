@@ -1,10 +1,20 @@
 "use client"
 
 import React, { useState } from "react"
-import { Mail, Save, Send, CheckCircle, Server } from "lucide-react"
+import {
+  Mail,
+  Save,
+  Send,
+  CheckCircle,
+  AlertCircle,
+  Server,
+  Activity,
+  Info,
+} from "lucide-react"
 import {
   updateSmtpSettingsAction,
   sendTestEmailAction,
+  verifySmtpConnectionAction,
 } from "@/app/actions/ecommerce-actions"
 import type { SmtpSettings } from "@/services/settings-service"
 
@@ -17,10 +27,14 @@ export function SmtpSettingsView({ initialSettings }: SmtpSettingsViewProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [successMsg, setSuccessMsg] = useState("")
 
-  // Test Email
+  // Test Email & Connectivity State
   const [testEmail, setTestEmail] = useState("")
   const [isSendingTest, setIsSendingTest] = useState(false)
-  const [testMsg, setTestMsg] = useState("")
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [testResult, setTestResult] = useState<{
+    type: "success" | "error"
+    text: string
+  } | null>(null)
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,15 +48,34 @@ export function SmtpSettingsView({ initialSettings }: SmtpSettingsViewProps) {
     }
   }
 
+  const handleVerifyConnection = async () => {
+    setIsVerifying(true)
+    setTestResult(null)
+    try {
+      const res = await verifySmtpConnectionAction()
+      if (res.success) {
+        setTestResult({ type: "success", text: res.message })
+      } else {
+        setTestResult({ type: "error", text: res.message })
+      }
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
   const handleSendTest = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!testEmail.trim()) return
 
     setIsSendingTest(true)
+    setTestResult(null)
     try {
       const res = await sendTestEmailAction(testEmail.trim())
-      setTestMsg(res.message || "Test email sent successfully!")
-      setTimeout(() => setTestMsg(""), 5000)
+      if (res.success) {
+        setTestResult({ type: "success", text: res.message })
+      } else {
+        setTestResult({ type: "error", text: res.message })
+      }
     } finally {
       setIsSendingTest(false)
     }
@@ -59,6 +92,19 @@ export function SmtpSettingsView({ initialSettings }: SmtpSettingsViewProps) {
         <p className="text-xs text-slate-500 mt-1">
           Configure outgoing email transport for customer invoices, verification codes, and order notifications
         </p>
+      </div>
+
+      {/* Quick Setup Guidelines */}
+      <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-4 text-xs text-sky-950 space-y-1.5">
+        <div className="flex items-center gap-1.5 font-bold text-sky-900 text-sm">
+          <Info className="w-4 h-4 text-sky-600 shrink-0" />
+          Mail Server Configuration Guidelines
+        </div>
+        <ul className="list-disc list-inside space-y-1 text-sky-900/90 leading-relaxed text-[11px]">
+          <li><strong>Gmail / Google Workspace:</strong> Host: <code className="bg-sky-100 px-1 rounded">smtp.gmail.com</code> | Port: <code className="bg-sky-100 px-1 rounded">587</code> | Encryption: <code className="bg-sky-100 px-1 rounded">TLS</code>. Requires a 16-character Google App Password (not your normal password).</li>
+          <li><strong>cPanel / Custom Mail:</strong> Host: <code className="bg-sky-100 px-1 rounded">mail.yourdomain.com</code> | Port: <code className="bg-sky-100 px-1 rounded">465</code> (SSL) or <code className="bg-sky-100 px-1 rounded">587</code> (TLS).</li>
+          <li><strong>Mailgun / SES / SendGrid:</strong> Use your provider's SMTP relay credentials and port 587.</li>
+        </ul>
       </div>
 
       {successMsg && (
@@ -202,7 +248,7 @@ export function SmtpSettingsView({ initialSettings }: SmtpSettingsViewProps) {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-[#d43533] text-white rounded text-xs font-bold hover:bg-[#b82a28] shadow-sm disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-[#d43533] text-white rounded text-xs font-bold hover:bg-[#b82a28] shadow-sm disabled:opacity-50 transition-colors cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   {isSaving ? "Saving..." : "Save SMTP Settings"}
@@ -225,10 +271,20 @@ export function SmtpSettingsView({ initialSettings }: SmtpSettingsViewProps) {
               </p>
             </div>
 
-            {testMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded text-emerald-800 text-xs flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{testMsg}</span>
+            {testResult && (
+              <div
+                className={`p-3 rounded text-xs flex items-start gap-2 border leading-relaxed ${
+                  testResult.type === "success"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : "bg-red-50 border-red-200 text-red-800"
+                }`}
+              >
+                {testResult.type === "success" ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                )}
+                <span>{testResult.text}</span>
               </div>
             )}
 
@@ -247,14 +303,26 @@ export function SmtpSettingsView({ initialSettings }: SmtpSettingsViewProps) {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={isSendingTest}
-                className="w-full py-2.5 bg-slate-800 text-white rounded text-xs font-bold hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <Send className="w-3.5 h-3.5" />
-                {isSendingTest ? "Dispatching Test..." : "Send Test Email"}
-              </button>
+              <div className="space-y-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={isSendingTest || isVerifying}
+                  className="w-full py-2.5 bg-[#d43533] text-white rounded text-xs font-bold hover:bg-[#b82a28] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {isSendingTest ? "Dispatching Test..." : "Send Test Email"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleVerifyConnection}
+                  disabled={isVerifying || isSendingTest}
+                  className="w-full py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-xs font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer border border-slate-200"
+                >
+                  <Activity className="w-3.5 h-3.5 text-slate-500" />
+                  {isVerifying ? "Testing Socket Handshake..." : "Test Connection Only"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
