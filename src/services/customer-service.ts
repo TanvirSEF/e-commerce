@@ -31,7 +31,7 @@ export async function getAllCustomersAdmin(params: {
 
     const statusWhere = buildStatusWhere(status)
 
-    const conditions = [searchWhere, statusWhere].filter(Boolean)
+    const conditions = [eq(users.role, "customer"), searchWhere, statusWhere].filter(Boolean)
 
     const baseQuery = conditions.length > 0 ? and(...(conditions as [ReturnType<typeof eq>])) : undefined
 
@@ -46,13 +46,13 @@ export async function getAllCustomersAdmin(params: {
       db.select({ c: count() }).from(users).where(baseQuery),
     ])
 
-    // Tab counts
+    // Tab counts (strictly scoped to customers)
     const [allCount, bannedCount, suspiciousCount, verifiedCount, unverifiedCount] = await Promise.all([
-      db.select({ c: count() }).from(users),
-      db.select({ c: count() }).from(users).where(eq(users.banned, true)),
-      db.select({ c: count() }).from(users).where(eq(users.isSuspicious, true)),
-      db.select({ c: count() }).from(users).where(eq(users.emailVerified, true)),
-      db.select({ c: count() }).from(users).where(eq(users.emailVerified, false)),
+      db.select({ c: count() }).from(users).where(eq(users.role, "customer")),
+      db.select({ c: count() }).from(users).where(and(eq(users.role, "customer"), eq(users.banned, true))),
+      db.select({ c: count() }).from(users).where(and(eq(users.role, "customer"), eq(users.isSuspicious, true))),
+      db.select({ c: count() }).from(users).where(and(eq(users.role, "customer"), eq(users.emailVerified, true))),
+      db.select({ c: count() }).from(users).where(and(eq(users.role, "customer"), eq(users.emailVerified, false))),
     ])
 
     const items: AdminCustomerItem[] = rows.map((u) => ({
@@ -120,3 +120,79 @@ export async function deleteCustomer(userId: string): Promise<void> {
     throw err
   }
 }
+
+export async function createCustomerAdmin(data: {
+  name: string
+  email: string
+  phone?: string
+  password?: string
+}): Promise<{ success: boolean; error?: string; user?: any }> {
+  try {
+    const existing = await db.select().from(users).where(eq(users.email, data.email.trim().toLowerCase())).limit(1)
+    if (existing.length > 0) {
+      return { success: false, error: "A user with this email address already exists." }
+    }
+
+    const { hashPassword } = await import("better-auth/crypto")
+    const hashedPassword = data.password ? await hashPassword(data.password) : await hashPassword("12345678")
+    const userId = `usr_cust_${Date.now()}`
+
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        id: userId,
+        name: data.name.trim(),
+        email: data.email.trim().toLowerCase(),
+        phone: data.phone?.trim() || null,
+        role: "customer",
+        emailVerified: true,
+        banned: false,
+        isSuspicious: false,
+        balance: "0.00",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+
+    const { accounts } = await import("@/db/schema/auth")
+    await db.insert(accounts).values({
+      id: `acc_${userId}`,
+      userId: userId,
+      accountId: userId,
+      providerId: "credential",
+      password: hashedPassword,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    return { success: true, user: newUser }
+  } catch (err: any) {
+    console.error("createCustomerAdmin error:", err)
+    return { success: false, error: err?.message || "Failed to create customer" }
+  }
+}
+
+export async function bulkDeleteCustomers(userIds: string[]): Promise<boolean> {
+  if (!userIds || userIds.length === 0) return true
+  try {
+    const { inArray } = await import("drizzle-orm")
+    await db.delete(users).where(inArray(users.id, userIds))
+    return true
+  } catch (err) {
+    console.error("bulkDeleteCustomers error:", err)
+    return false
+  }
+}
+
+export async function bulkBanCustomers(userIds: string[], banned: boolean): Promise<boolean> {
+  if (!userIds || userIds.length === 0) return true
+  try {
+    const { inArray } = await import("drizzle-orm")
+    await db.update(users).set({ banned }).where(inArray(users.id, userIds))
+    return true
+  } catch (err) {
+    console.error("bulkBanCustomers error:", err)
+    return false
+  }
+}
+

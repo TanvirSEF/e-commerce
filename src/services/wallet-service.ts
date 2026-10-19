@@ -50,6 +50,7 @@ export async function rechargeWallet(data: {
   paymentMethod: string
   paymentDetails?: string
   offlinePayment?: boolean
+  addedBy?: string
 }): Promise<{ success: boolean; newBalance: number }> {
   const userId = data.userId
   if (!userId) {
@@ -63,7 +64,7 @@ export async function rechargeWallet(data: {
       paymentDetails: data.paymentDetails || null,
       offlinePayment: !!data.offlinePayment,
       approval: !data.offlinePayment,
-      addedBy: "user",
+      addedBy: data.addedBy || "user",
     })
 
     const current = await getWalletBalance(userId)
