@@ -171,7 +171,10 @@ export function CheckoutView({
 
       const res = await placeOrderAction(orderPayload)
       if (res && res.success === false) {
-        alert(res.error || "Failed to place order. Please check your payment details and try again.")
+        setOrderError(res.error || "Failed to place order. Please check your payment details and try again.")
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0, behavior: "smooth" })
+        }
         setIsSubmitting(false)
         return
       }

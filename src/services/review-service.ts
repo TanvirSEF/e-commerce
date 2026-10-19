@@ -437,6 +437,18 @@ export async function submitReview(data: {
   photos?: string[]
 }) {
   try {
+    if (data.userId) {
+      const [existing] = await db
+        .select({ id: reviews.id })
+        .from(reviews)
+        .where(and(eq(reviews.productId, data.productId), eq(reviews.userId, data.userId)))
+        .limit(1)
+
+      if (existing) {
+        return { success: false, message: "You have already reviewed this product." }
+      }
+    }
+
     const [inserted] = await db
       .insert(reviews)
       .values({

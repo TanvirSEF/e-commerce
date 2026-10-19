@@ -87,6 +87,42 @@ export async function createOrder(data: CreateOrderInput) {
     }
   }
 
+  // 2. Physical Product Stock Pre-validation to prevent overselling
+  for (const item of data.items) {
+    if (item.productId) {
+      try {
+        const [prod] = await db
+          .select({
+            id: products.id,
+            name: products.name,
+            currentStock: products.currentStock,
+            isDigital: products.isDigital,
+          })
+          .from(products)
+          .where(eq(products.id, item.productId))
+          .limit(1)
+
+        if (prod && !prod.isDigital) {
+          const available = Number(prod.currentStock || 0)
+          if (available <= 0) {
+            return {
+              success: false,
+              error: `Sorry, "${prod.name}" is currently out of stock. Please remove it from your cart before proceeding.`,
+            }
+          }
+          if (available < item.quantity) {
+            return {
+              success: false,
+              error: `Only ${available} unit(s) available for "${prod.name}", but you requested ${item.quantity}. Please reduce the quantity.`,
+            }
+          }
+        }
+      } catch (stockCheckErr) {
+        console.warn("Stock pre-check notice:", stockCheckErr)
+      }
+    }
+  }
+
   try {
     const [newOrder] = await db
       .insert(orders)
@@ -161,6 +197,40 @@ export async function createOrder(data: CreateOrderInput) {
       }
     }
 
+    // Save address to customer address book if logged in and not already saved
+    if (data.userId && address && address.address) {
+      try {
+        const { customerAddresses } = await import("../db/schema")
+        const [existingAddr] = await db
+          .select({ id: customerAddresses.id })
+          .from(customerAddresses)
+          .where(
+            and(
+              eq(customerAddresses.userId, data.userId),
+              eq(customerAddresses.address, address.address)
+            )
+          )
+          .limit(1)
+
+        if (!existingAddr) {
+          await db
+            .insert(customerAddresses)
+            .values({
+              userId: data.userId,
+              address: address.address,
+              city: address.city || "Dhaka",
+              country: address.country || "Bangladesh",
+              postalCode: address.postal_code || null,
+              phone: address.phone || null,
+              setDefault: true,
+            })
+            .catch(() => {})
+        }
+      } catch (addrErr) {
+        console.warn("Address book auto-save notice:", addrErr)
+      }
+    }
+
     return {
       success: true,
       order: newOrder,
@@ -193,7 +263,27 @@ export async function getOrderByCode(codeOrTracking: string) {
       .limit(1)
 
     if (order) {
-      const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id))
+      const items = await db
+        .select({
+          id: orderItems.id,
+          productId: orderItems.productId,
+          price: orderItems.price,
+          quantity: orderItems.quantity,
+          variation: orderItems.variation,
+          productName: products.name,
+        })
+        .from(orderItems)
+        .leftJoin(products, eq(orderItems.productId, products.id))
+        .where(eq(orderItems.orderId, order.id))
+
+      const shippingCost = Number(order.shippingCost || 0)
+      const couponDiscount = Number(order.couponDiscount || 0)
+      const total = Number(order.grandTotal)
+      const subtotal = items.reduce(
+        (sum, it) => sum + Number(it.price) * (it.quantity || 1),
+        0
+      )
+
       return {
         id: String(order.id),
         code: order.code,
@@ -202,13 +292,19 @@ export async function getOrderByCode(codeOrTracking: string) {
         status: order.deliveryStatus,
         paymentStatus: order.paymentStatus,
         paymentMethod: order.paymentType,
-        total: Number(order.grandTotal),
+        subtotal,
+        shippingCost,
+        couponDiscount,
+        total,
         customerName: order.shippingAddress?.name || "Customer",
         customerPhone: order.shippingAddress?.phone || "",
         shippingAddress: order.shippingAddress?.address || "",
+        city: order.shippingAddress?.city || "Dhaka",
+        country: order.shippingAddress?.country || "Bangladesh",
         items: items.map((it) => ({
           id: String(it.id),
-          name: `Item #${it.productId || it.id}`,
+          name: it.productName || `Product #${it.productId || it.id}`,
+          variation: it.variation || undefined,
           quantity: it.quantity,
           price: Number(it.price),
         })),
@@ -347,8 +443,15 @@ export async function cancelCustomerOrder(
       return { success: false, message: "Order not found." }
     }
 
-    if (order.deliveryStatus !== "pending" || order.paymentStatus !== "unpaid") {
-      return { success: false, message: "Only pending and unpaid orders can be cancelled." }
+    if (order.deliveryStatus !== "pending") {
+      return { success: false, message: "Only pending orders can be cancelled." }
+    }
+
+    if (order.paymentStatus !== "unpaid" && order.paymentType !== "wallet") {
+      return {
+        success: false,
+        message: "Only unpaid orders or orders paid via wallet can be cancelled directly.",
+      }
     }
 
     await db

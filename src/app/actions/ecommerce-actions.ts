@@ -173,10 +173,12 @@ export async function processWithdrawRequestAction(data: {
 }) {
   const { processWithdrawRequestAdmin } = await import("@/services/seller-service")
   const res = await processWithdrawRequestAdmin(data)
-  revalidatePath("/admin/sellers/payout-requests")
-  revalidatePath("/admin/sellers")
-  revalidatePath("/seller/payouts")
-  revalidatePath("/seller/dashboard")
+  try {
+    revalidatePath("/admin/sellers/payout-requests")
+    revalidatePath("/admin/sellers")
+    revalidatePath("/seller/payouts")
+    revalidatePath("/seller/dashboard")
+  } catch {}
   return res
 }
 
@@ -189,10 +191,12 @@ export async function createSellerWithdrawAction(data: {
 }) {
   const { createSellerWithdrawRequest } = await import("@/services/seller-service")
   const res = await createSellerWithdrawRequest(data)
-  revalidatePath("/admin/sellers/payout-requests")
-  revalidatePath("/admin/sellers")
-  revalidatePath("/seller/payouts")
-  revalidatePath("/seller/dashboard")
+  try {
+    revalidatePath("/admin/sellers/payout-requests")
+    revalidatePath("/admin/sellers")
+    revalidatePath("/seller/payouts")
+    revalidatePath("/seller/dashboard")
+  } catch {}
   return res
 }
 
@@ -217,8 +221,10 @@ export async function paySellerDirectAction(data: {
       adminNote: "Direct settlement from Admin Sellers Panel",
     })
   }
-  revalidatePath("/admin/sellers")
-  revalidatePath("/admin/sellers/payout-requests")
+  try {
+    revalidatePath("/admin/sellers")
+    revalidatePath("/admin/sellers/payout-requests")
+  } catch {}
   return { success: true }
 }
 

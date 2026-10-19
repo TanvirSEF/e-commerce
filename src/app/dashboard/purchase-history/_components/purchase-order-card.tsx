@@ -146,7 +146,7 @@ export function PurchaseOrderCard({ order, onOpenReview, onOrderCancelled }: Pur
                   <Download className="h-3.5 w-3.5 text-gray-400" />
                   Invoice
                 </Link>
-                {deliveryStatus === "pending" && order.paymentStatus === "unpaid" && (
+                {deliveryStatus === "pending" && (order.paymentStatus === "unpaid" || order.paymentType === "wallet") && (
                   <button
                     type="button"
                     onClick={() => setCancelModalOpen(true)}

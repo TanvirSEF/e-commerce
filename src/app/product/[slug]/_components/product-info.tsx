@@ -27,6 +27,7 @@ import { ProductSellerBox } from "./product-seller-box"
 import { ProductWarrantyBadges } from "./product-warranty-badges"
 import { ProductVisitorsBadge } from "./product-visitors-badge"
 import { ProductWholesaleBox } from "./product-wholesale-box"
+import { ProductVariantPicker } from "./product-variant-picker"
 
 
 
@@ -148,6 +149,7 @@ export function ProductInfo({
     (t) => quantity >= t.minQty && quantity <= t.maxQty
   )
   const effectivePrice = activeWholesaleTier ? activeWholesaleTier.price : product.price
+  const isOutOfStock = Number(product.stock || 0) <= 0
 
   return (
     <div className="flex flex-col gap-4 text-xs">
@@ -303,65 +305,16 @@ export function ProductInfo({
         )}
       </div>
 
-      {/* Color Selection */}
-      {product.colors && product.colors.length > 0 && (
-        <div>
-          <div className="mb-2 font-semibold text-gray-700">
-            Color: <span className="font-bold text-gray-900">{selectedColor}</span>
-          </div>
-          <div className="flex gap-2">
-            {product.colors.map((c) => (
-              <button
-                key={c.name}
-                type="button"
-                onClick={() => setSelectedColor(c.name)}
-                style={{ backgroundColor: c.hex }}
-                title={c.name}
-                className={`h-7 w-7 rounded-full border border-gray-300 transition-all ${
-                  selectedColor === c.name
-                    ? "scale-110 ring-2 ring-[#d43533] ring-offset-2"
-                    : "hover:scale-105"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Size Selection */}
-      {product.sizes && product.sizes.length > 0 && (
-        <div>
-          <div className="mb-2 flex items-center justify-between font-semibold text-gray-700">
-            <div>
-              Size: <span className="font-bold text-gray-900">{selectedSize}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSizeGuide(true)}
-              className="flex items-center gap-1 text-[11px] font-medium text-[#d43533] hover:underline"
-            >
-              <Ruler className="h-3 w-3" />
-              <span>Size Guide</span>
-            </button>
-          </div>
-          <div className="flex gap-2">
-            {product.sizes.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSelectedSize(s)}
-                className={`rounded border px-3 py-1.5 font-semibold transition-all ${
-                  selectedSize === s
-                    ? "border-[#d43533] bg-red-50 text-[#d43533]"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Color & Size Variant Picker */}
+      <ProductVariantPicker
+        colors={product.colors}
+        selectedColor={selectedColor}
+        onSelectColor={setSelectedColor}
+        sizes={product.sizes}
+        selectedSize={selectedSize}
+        onSelectSize={setSelectedSize}
+        onOpenSizeGuide={() => setShowSizeGuide(true)}
+      />
 
       {/* Quantity & Stock Availability */}
       <div>
@@ -370,25 +323,33 @@ export function ProductInfo({
           <div className="flex items-center rounded border border-gray-300 bg-white">
             <button
               type="button"
+              disabled={isOutOfStock}
               onClick={() => handleQuantityChange(-1)}
-              className="px-3 py-2 text-gray-600 hover:bg-gray-100"
+              className="px-3 py-2 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
             <span className="w-10 text-center font-bold text-gray-900">
-              {quantity}
+              {isOutOfStock ? 0 : quantity}
             </span>
             <button
               type="button"
+              disabled={isOutOfStock || quantity >= product.stock}
               onClick={() => handleQuantityChange(1)}
-              className="px-3 py-2 text-gray-600 hover:bg-gray-100"
+              className="px-3 py-2 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
-          <span className="text-xs font-semibold text-emerald-600">
-            ({product.stock} available in stock)
-          </span>
+          {isOutOfStock ? (
+            <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded border border-rose-200">
+              Out of Stock
+            </span>
+          ) : (
+            <span className="text-xs font-semibold text-emerald-600">
+              ({product.stock} available in stock)
+            </span>
+          )}
         </div>
       </div>
 
@@ -396,7 +357,7 @@ export function ProductInfo({
       <div className="border-t border-gray-100 pt-3">
         <span className="text-gray-500">{t("Total")}: </span>
         <span className="text-base font-extrabold text-[#d43533]">
-          {formatPrice(effectivePrice * quantity)}
+          {formatPrice(effectivePrice * (isOutOfStock ? 0 : quantity))}
         </span>
       </div>
 
@@ -404,16 +365,26 @@ export function ProductInfo({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button
           type="button"
+          disabled={isOutOfStock}
           onClick={handleAddToCart}
-          className="flex items-center justify-center gap-2 rounded bg-[#d43533] py-3 text-xs font-bold text-white shadow-md transition-all hover:bg-[#9d1b1a]"
+          className={`flex items-center justify-center gap-2 rounded py-3 text-xs font-bold shadow-md transition-all ${
+            isOutOfStock
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300"
+              : "bg-[#d43533] text-white hover:bg-[#9d1b1a]"
+          }`}
         >
           <ShoppingBag className="h-4 w-4" />
-          <span>{t("Add to Cart")}</span>
+          <span>{isOutOfStock ? "Out of Stock" : t("Add to Cart")}</span>
         </button>
         <button
           type="button"
+          disabled={isOutOfStock}
           onClick={handleBuyNow}
-          className="flex items-center justify-center gap-2 rounded bg-[#ffc519] py-3 text-xs font-bold text-gray-950 shadow-md transition-all hover:bg-[#dbaa17]"
+          className={`flex items-center justify-center gap-2 rounded py-3 text-xs font-bold shadow-md transition-all ${
+            isOutOfStock
+              ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+              : "bg-[#ffc519] text-gray-950 hover:bg-[#dbaa17]"
+          }`}
         >
           <Zap className="h-4 w-4 fill-current" />
           <span>{t("Buy Now")}</span>

@@ -235,6 +235,15 @@ export async function updateOrderQuickManagement(
       })
       .where(eq(orders.id, orderId))
 
+    if (data.deliveryStatus === "delivered" && currentOrder?.deliveryStatus !== "delivered") {
+      try {
+        const { awardOrderClubPoints } = await import("./wallet-service")
+        await awardOrderClubPoints(orderId)
+      } catch (ptsErr) {
+        console.warn("Failed to award club points in updateOrderQuickManagement:", ptsErr)
+      }
+    }
+
     if (data.deliveryStatus === "cancelled" && currentOrder?.deliveryStatus !== "cancelled") {
       const { handleOrderCancellation } = await import("./order-service")
       await handleOrderCancellation(orderId, currentOrder)

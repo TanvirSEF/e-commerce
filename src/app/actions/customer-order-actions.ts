@@ -58,6 +58,17 @@ export async function submitProductReviewAction(data: {
       // fallback
     }
 
+    const { and } = await import("drizzle-orm")
+    const [existing] = await db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(and(eq(reviews.productId, data.productId), eq(reviews.userId, userId)))
+      .limit(1)
+
+    if (existing) {
+      return { success: false, message: "You have already reviewed this product." }
+    }
+
     await db.insert(reviews).values({
       productId: data.productId,
       userId,
@@ -88,11 +99,13 @@ export async function submitProductReviewAction(data: {
       })
       .where(eq(products.id, data.productId))
 
-    revalidatePath("/dashboard/purchase-history")
-    revalidatePath("/products")
-    revalidatePath("/product")
-    revalidatePath("/admin/products/reviews")
-    revalidatePath("/seller/product-reviews")
+    try {
+      revalidatePath("/dashboard/purchase-history")
+      revalidatePath("/products")
+      revalidatePath("/product")
+      revalidatePath("/admin/products/reviews")
+      revalidatePath("/seller/product-reviews")
+    } catch {}
 
     return { success: true, message: "Review submitted successfully." }
   } catch (err) {

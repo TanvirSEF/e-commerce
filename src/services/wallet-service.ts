@@ -333,7 +333,7 @@ export async function processWalletRechargeAdmin(id: number, approved: boolean) 
     const [row] = await db.select().from(wallets).where(eq(wallets.id, id)).limit(1)
     if (row) {
       await db.update(wallets).set({ approval: approved }).where(eq(wallets.id, id))
-      if (approved) {
+      if (approved && !row.approval) {
         const current = await getWalletBalance(row.userId)
         const updated = current + Number(row.amount)
         await db.update(users).set({ balance: updated.toFixed(2) }).where(eq(users.id, row.userId))

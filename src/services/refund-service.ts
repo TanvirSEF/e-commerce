@@ -306,7 +306,13 @@ export async function processRefundAdmin(data: {
       ? data.requestId
       : parseInt(String(data.requestId).replace(/\D/g, ""))
 
-    if (!numericId) throw new Error("Invalid refund request ID")
+    const [existing] = await db
+      .select()
+      .from(refundRequests)
+      .where(eq(refundRequests.id, numericId))
+      .limit(1)
+
+    if (!existing) throw new Error("Refund request not found")
 
     await db
       .update(refundRequests)
@@ -317,32 +323,28 @@ export async function processRefundAdmin(data: {
       })
       .where(eq(refundRequests.id, numericId))
 
-    // Automatically credit customer's wallet if approved
-    if (data.status === "approved") {
-      const [req] = await db
-        .select()
-        .from(refundRequests)
-        .where(eq(refundRequests.id, numericId))
-        .limit(1)
-
-      if (req && req.userId && req.amount) {
-        const refundAmt = Number(req.amount) || 0
+    // Automatically credit customer's wallet ONLY if transitioning to approved
+    if (data.status === "approved" && existing.status !== "approved") {
+      if (existing.userId && existing.amount) {
+        const refundAmt = Number(existing.amount) || 0
         if (refundAmt > 0) {
           await db.insert(wallets).values({
-            userId: req.userId,
+            userId: existing.userId,
             amount: String(refundAmt),
             paymentMethod: "Refund",
-            paymentDetails: `Refund approved for Order #${req.orderCode}`,
+            paymentDetails: `Refund approved for Order #${existing.orderCode}`,
             approval: true,
+            offlinePayment: false,
+            addedBy: "system",
           }).catch(() => {})
 
           await db
             .update(users)
             .set({
-              balance: sql`${users.balance} + ${refundAmt}`,
+              balance: sql`COALESCE(${users.balance}, 0) + ${refundAmt}`,
               updatedAt: new Date(),
             })
-            .where(eq(users.id, req.userId))
+            .where(eq(users.id, existing.userId))
             .catch(() => {})
         }
       }
