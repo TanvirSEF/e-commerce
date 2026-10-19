@@ -172,6 +172,35 @@ export async function getAffiliateUserByEmail(email: string): Promise<AffiliateU
   return rows[0] || null
 }
 
+export async function getOrCreateAffiliateUser(data: {
+  email: string
+  name: string
+  userId?: string
+  phone?: string
+}): Promise<AffiliateUser> {
+  const existing = await getAffiliateUserByEmail(data.email)
+  if (existing) return existing
+
+  const cleanName = data.name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 5).toUpperCase() || "AFF"
+  const referralCode = `REF-${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`
+  const [created] = await db
+    .insert(affiliateUsers)
+    .values({
+      userId: data.userId || null,
+      userName: data.name,
+      userEmail: data.email,
+      phone: data.phone || null,
+      balance: "0.00",
+      status: true,
+      approved: true,
+      referralCode,
+      createdAt: new Date(),
+    })
+    .returning()
+
+  return created
+}
+
 // Toggle affiliate user approval
 export async function updateAffiliateUserApproval(
   id: number,
@@ -278,19 +307,31 @@ export async function getAllAffiliateWithdrawRequests(): Promise<AffiliateWithdr
 
 // Create affiliate withdraw request
 export async function createAffiliateWithdrawRequest(data: {
-  affiliateUserId: number
-  userName: string
+  affiliateUserId?: number
+  userName?: string
   userEmail: string
   amount: number
   paymentMethod?: string
   paymentDetails?: string
-}): Promise<{ success: boolean; id?: number }> {
+}): Promise<{ success: boolean; id?: number; message?: string }> {
   try {
+    let affUserId = data.affiliateUserId
+    let name = data.userName || data.userEmail.split("@")[0]
+
+    if (!affUserId) {
+      const aff = await getOrCreateAffiliateUser({
+        email: data.userEmail,
+        name,
+      })
+      affUserId = aff.id
+      name = aff.userName
+    }
+
     const [inserted] = await db
       .insert(affiliateWithdrawRequests)
       .values({
-        affiliateUserId: data.affiliateUserId,
-        userName: data.userName,
+        affiliateUserId: affUserId,
+        userName: name,
         userEmail: data.userEmail,
         amount: String(data.amount),
         paymentMethod: data.paymentMethod || "Bank Transfer",
@@ -301,9 +342,9 @@ export async function createAffiliateWithdrawRequest(data: {
       .returning()
 
     return { success: true, id: inserted?.id }
-  } catch (err) {
+  } catch (err: any) {
     console.error("createAffiliateWithdrawRequest error:", err)
-    return { success: false }
+    return { success: false, message: err?.message }
   }
 }
 

@@ -3392,15 +3392,17 @@ export async function toggleFollowShopAction(shopId: number, currentFollowing: b
     success = await followShop(session.user.id, shopId)
   }
 
-  revalidatePath("/dashboard/followed-sellers")
-  revalidatePath("/dashboard")
-  revalidatePath("/shop")
+  try {
+    revalidatePath("/dashboard/followed-sellers")
+    revalidatePath("/dashboard")
+    revalidatePath("/shop")
+  } catch {}
   return { success, following: !currentFollowing }
 }
 
 export async function createAffiliateWithdrawAction(data: {
-  affiliateUserId: number
-  userName: string
+  affiliateUserId?: number
+  userName?: string
   userEmail: string
   amount: number
   paymentMethod?: string
@@ -3408,9 +3410,11 @@ export async function createAffiliateWithdrawAction(data: {
 }) {
   const { createAffiliateWithdrawRequest } = await import("@/services/affiliate-service")
   const res = await createAffiliateWithdrawRequest(data)
-  revalidatePath("/dashboard/affiliate")
-  revalidatePath("/dashboard/affiliate/payment-history")
-  revalidatePath("/admin/affiliate/withdraw-requests")
+  try {
+    revalidatePath("/dashboard/affiliate")
+    revalidatePath("/dashboard/affiliate/payment-history")
+    revalidatePath("/admin/affiliate/withdraw-requests")
+  } catch {}
   return res
 }
 
@@ -3433,8 +3437,10 @@ export async function startConversationAction(data: {
     initialMessage: data.initialMessage,
   })
 
-  revalidatePath("/dashboard/conversations")
-  revalidatePath("/seller/conversations")
+  try {
+    revalidatePath("/dashboard/conversations")
+    revalidatePath("/seller/conversations")
+  } catch {}
   return res
 }
 

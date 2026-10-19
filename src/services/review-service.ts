@@ -366,9 +366,12 @@ export async function getProductsForReviewSelect(): Promise<{ id: number; name: 
   }
 }
 
-export async function getProductReviews(productIdOrSlug: string): Promise<ReviewItem[]> {
+export async function getProductReviews(productIdOrSlug: string | number): Promise<ReviewItem[]> {
   try {
-    const numericId = parseInt(productIdOrSlug.replace(/\D/g, "")) || 1
+    const numericId =
+      typeof productIdOrSlug === "number"
+        ? productIdOrSlug
+        : parseInt(String(productIdOrSlug).replace(/\D/g, ""), 10) || 1
     const rows = await db
       .select({
         id: reviews.id,
