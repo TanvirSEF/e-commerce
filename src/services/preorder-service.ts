@@ -568,6 +568,30 @@ export async function createPreorderOrder(data: {
   remainingDue: string
 }) {
   try {
+    const [product] = await db
+      .select()
+      .from(preorderProducts)
+      .where(eq(preorderProducts.id, data.productId))
+      .limit(1)
+
+    if (!product) {
+      return { success: false, error: "Pre-order product not found." }
+    }
+
+    if (!product.status) {
+      return { success: false, error: "This pre-order product is currently unavailable." }
+    }
+
+    if (product.preorderBatchLimit && product.preorderBatchLimit > 0) {
+      const remainingLimit = product.preorderBatchLimit - (product.currentPreorders || 0)
+      if (data.quantity > remainingLimit) {
+        return {
+          success: false,
+          error: `Pre-order batch limit reached. Only ${Math.max(0, remainingLimit)} slot(s) available.`,
+        }
+      }
+    }
+
     const code = `PO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`
     const [inserted] = await db
       .insert(preorderOrders)
@@ -594,6 +618,15 @@ export async function createPreorderOrder(data: {
         .where(eq(preorderProducts.id, data.productId))
     }
 
+    try {
+      const { revalidatePath } = await import("next/cache")
+      revalidatePath("/admin/preorder-orders")
+      revalidatePath("/seller/preorder-orders")
+      revalidatePath("/dashboard/preorder-orders")
+      revalidatePath("/preorder-products")
+      if (product.slug) revalidatePath(`/preorder-product/${product.slug}`)
+    } catch {}
+
     return { success: true, orderCode: code }
   } catch (err) {
     console.error("createPreorderOrder error:", err)
@@ -604,6 +637,12 @@ export async function createPreorderOrder(data: {
 export async function updatePreorderOrderStatus(id: number, status: string): Promise<boolean> {
   try {
     await db.update(preorderOrders).set({ preorderStatus: status }).where(eq(preorderOrders.id, id))
+    try {
+      const { revalidatePath } = await import("next/cache")
+      revalidatePath("/admin/preorder-orders")
+      revalidatePath("/seller/preorder-orders")
+      revalidatePath("/dashboard/preorder-orders")
+    } catch {}
     return true
   } catch (err) {
     console.error("updatePreorderOrderStatus error:", err)

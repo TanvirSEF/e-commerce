@@ -3612,5 +3612,25 @@ export async function confirmDeliveryDropAction(data: {
   return res
 }
 
+export async function purchaseCustomerPackageAction(packageId: number, amount: string) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, error: "Please log in to upgrade your package." }
+  }
 
+  const { purchaseCustomerPackage } = await import("@/services/customer-package-service")
+  const res = await purchaseCustomerPackage({
+    userId: session.user.id,
+    packageId,
+    amount,
+  })
 
+  try {
+    revalidatePath("/dashboard/customer-packages")
+    revalidatePath("/dashboard/customer-products")
+    revalidatePath("/customer-packages")
+  } catch {}
+
+  return res
+}

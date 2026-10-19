@@ -17,6 +17,7 @@ import {
   ticketReplies,
   conversations,
   messages,
+  refundRequests,
 } from "@/db/schema"
 import { and, desc, asc, eq, or, sql, ilike } from "drizzle-orm"
 import { getServerSession } from "@/lib/auth/session-helper"
@@ -167,33 +168,51 @@ export async function getSellerCommissionLedger(seller: CurrentSeller): Promise<
     ? or(eq(products.shopId, seller.shopId), eq(products.userId, seller.userId))
     : eq(products.shopId, seller.shopId)
 
-  const rows = await db
-    .select({
-      id: orders.id,
-      code: orders.code,
-      createdAt: orders.createdAt,
-      gross: sql<string>`coalesce(sum(${orderItems.price} * ${orderItems.quantity}), 0)`,
-    })
-    .from(orders)
-    .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
-    .innerJoin(products, eq(orderItems.productId, products.id))
-    .where(and(ownership, eq(orders.deliveryStatus, "delivered")))
-    .groupBy(orders.id, orders.code, orders.createdAt)
-    .orderBy(desc(orders.createdAt))
+  const [rows, approvedRefunds] = await Promise.all([
+    db
+      .select({
+        id: orders.id,
+        code: orders.code,
+        createdAt: orders.createdAt,
+        gross: sql<string>`coalesce(sum(${orderItems.price} * ${orderItems.quantity}), 0)`,
+      })
+      .from(orders)
+      .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
+      .innerJoin(products, eq(orderItems.productId, products.id))
+      .where(and(ownership, eq(orders.deliveryStatus, "delivered")))
+      .groupBy(orders.id, orders.code, orders.createdAt)
+      .orderBy(desc(orders.createdAt)),
+    db
+      .select({
+        orderCode: refundRequests.orderCode,
+        amount: refundRequests.amount,
+      })
+      .from(refundRequests)
+      .where(and(eq(refundRequests.status, "approved"), eq(refundRequests.shopId, seller.shopId))),
+  ])
 
-  return rows.map((r) => {
-    const gross = Number(r.gross)
-    const commission = Math.round(gross * rate) / 100
-    return {
-      id: r.id,
-      orderCode: r.code,
-      orderTotal: gross,
-      adminCommission: commission,
-      sellerEarning: gross - commission,
-      commissionRate: rate,
-      createdAt: r.createdAt.toISOString(),
-    }
-  })
+  const refundMap = new Map<string, number>()
+  for (const ref of approvedRefunds) {
+    const cur = refundMap.get(ref.orderCode) || 0
+    refundMap.set(ref.orderCode, cur + Number(ref.amount || 0))
+  }
+
+  return rows
+    .map((r) => {
+      const refunded = refundMap.get(r.code) || 0
+      const gross = Math.max(0, Number(r.gross) - refunded)
+      const commission = Math.round(gross * rate) / 100
+      return {
+        id: r.id,
+        orderCode: r.code,
+        orderTotal: gross,
+        adminCommission: commission,
+        sellerEarning: gross - commission,
+        commissionRate: rate,
+        createdAt: r.createdAt.toISOString(),
+      }
+    })
+    .filter((r) => r.orderTotal > 0 || !refundMap.has(r.orderCode))
 }
 
 export async function getSellerWalletSummary(seller: CurrentSeller) {

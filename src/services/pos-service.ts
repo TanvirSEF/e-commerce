@@ -390,9 +390,16 @@ export async function createPosSale(data: {
       console.warn("POS order mirror non-fatal error:", orderMirrorErr)
     }
 
-    revalidatePath("/seller/pos")
-    revalidatePath("/seller/pos-orders")
-    revalidatePath("/seller/dashboard")
+    try {
+      revalidatePath("/seller/pos")
+      revalidatePath("/seller/pos-orders")
+      revalidatePath("/seller/dashboard")
+      revalidatePath("/seller/products")
+      revalidatePath("/admin/pos")
+      revalidatePath("/admin/pos-orders")
+      revalidatePath("/admin/orders")
+      revalidatePath("/products")
+    } catch {}
     return inserted || null
   } catch (err) {
     console.error("createPosSale DB error:", err)

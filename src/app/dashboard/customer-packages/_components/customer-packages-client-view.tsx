@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useState } from "react"
-import { Package, Check, CheckCircle2 } from "lucide-react"
+import { Package, Check, CheckCircle2, Loader2 } from "lucide-react"
 import type { CustomerPackage } from "@/db/schema"
+import { purchaseCustomerPackageAction } from "@/app/actions/ecommerce-actions"
 
 interface CustomerPackagesClientViewProps {
   packages: CustomerPackage[]
@@ -10,12 +11,27 @@ interface CustomerPackagesClientViewProps {
 
 export function CustomerPackagesClientView({ packages }: CustomerPackagesClientViewProps) {
   const [purchasedId, setPurchasedId] = useState<number | null>(null)
+  const [loadingId, setLoadingId] = useState<number | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const handlePurchase = (pkg: CustomerPackage) => {
-    setPurchasedId(pkg.id)
-    setFeedback(`Successfully upgraded to "${pkg.name}" plan! You now have ${pkg.productUpload} classified ad slots.`)
-    setTimeout(() => setFeedback(null), 4000)
+  const handlePurchase = async (pkg: CustomerPackage) => {
+    setLoadingId(pkg.id)
+    setError(null)
+    try {
+      const res = await purchaseCustomerPackageAction(pkg.id, pkg.amount)
+      if (res.success) {
+        setPurchasedId(pkg.id)
+        setFeedback(`Successfully upgraded to "${pkg.name}" plan! You now have ${pkg.productUpload} classified ad slots.`)
+        setTimeout(() => setFeedback(null), 5000)
+      } else {
+        setError(res.error || "Failed to purchase package.")
+      }
+    } catch {
+      setError("An unexpected error occurred.")
+    } finally {
+      setLoadingId(null)
+    }
   }
 
   return (
@@ -32,6 +48,12 @@ export function CustomerPackagesClientView({ packages }: CustomerPackagesClientV
         <div className="flex items-center gap-2 p-3 text-xs rounded-lg border bg-emerald-50 text-emerald-800 border-emerald-200">
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
           <span>{feedback}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 text-xs rounded-lg border bg-red-50 text-red-800 border-red-200">
+          {error}
         </div>
       )}
 
@@ -74,19 +96,26 @@ export function CustomerPackagesClientView({ packages }: CustomerPackagesClientV
                 </ul>
               </div>
 
-              <div className="mt-6">
                 <button
                   type="button"
+                  disabled={loadingId !== null}
                   onClick={() => handlePurchase(pkg)}
-                  className={`w-full py-2 text-xs font-semibold rounded-lg transition-colors ${
+                  className={`w-full py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                     purchasedId === pkg.id
                       ? "bg-emerald-600 text-white"
-                      : "bg-[#d43533] text-white hover:bg-[#b82a28]"
+                      : "bg-[#d43533] text-white hover:bg-[#b82a28] disabled:opacity-50"
                   }`}
                 >
-                  {purchasedId === pkg.id ? "Active Plan" : isFree ? "Free Plan" : "Purchase Plan"}
+                  {loadingId === pkg.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : purchasedId === pkg.id ? (
+                    "Active Plan"
+                  ) : isFree ? (
+                    "Free Plan"
+                  ) : (
+                    "Purchase Plan"
+                  )}
                 </button>
-              </div>
             </div>
           )
         })}

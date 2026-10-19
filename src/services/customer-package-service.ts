@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { customerPackages, customerPackagePayments, customerProducts } from "../db/schema"
-import { eq, desc, and, count } from "drizzle-orm"
+import { eq, desc, and, or, ilike, count } from "drizzle-orm"
 import type { CustomerPackageItem, CustomerPackageInputData } from "@/types/customer-package"
 export type { CustomerPackageItem, CustomerPackageInputData } from "@/types/customer-package"
 
@@ -31,31 +31,36 @@ export async function getCustomerPackageQuota(userId?: string): Promise<Customer
 
     const postedCount = Number(countRow?.val || 0)
 
-    const numUserId = parseInt(String(userId).replace(/\D/g, ""), 10)
+    const rawDigits = String(userId).replace(/\D/g, "")
+    const numUserId = rawDigits ? parseInt(rawDigits.slice(-8), 10) : 0
     let packageLimit = 5
     let packageName = "Free Package"
 
-    if (!isNaN(numUserId)) {
-      const [latestPayment] = await db
-        .select({
-          productUpload: customerPackages.productUpload,
-          name: customerPackages.name,
-        })
-        .from(customerPackagePayments)
-        .innerJoin(customerPackages, eq(customerPackagePayments.customerPackageId, customerPackages.id))
-        .where(
-          and(
-            eq(customerPackagePayments.userId, numUserId),
-            eq(customerPackagePayments.approval, true)
-          )
-        )
-        .orderBy(desc(customerPackagePayments.createdAt))
-        .limit(1)
+    const isValid32Bit = !isNaN(numUserId) && numUserId > 0 && numUserId <= 2147483647
+    const userCondition = or(
+      isValid32Bit ? eq(customerPackagePayments.userId, numUserId) : undefined,
+      ilike(customerPackagePayments.paymentDetails, `%"userUid":"${userId}"%`)
+    )
 
-      if (latestPayment) {
-        packageLimit = latestPayment.productUpload || 10
-        packageName = latestPayment.name || "Standard Package"
-      }
+    const [latestPayment] = await db
+      .select({
+        productUpload: customerPackages.productUpload,
+        name: customerPackages.name,
+      })
+      .from(customerPackagePayments)
+      .innerJoin(customerPackages, eq(customerPackagePayments.customerPackageId, customerPackages.id))
+      .where(
+        and(
+          eq(customerPackagePayments.approval, true),
+          userCondition
+        )
+      )
+      .orderBy(desc(customerPackagePayments.createdAt))
+      .limit(1)
+
+    if (latestPayment) {
+      packageLimit = latestPayment.productUpload || 10
+      packageName = latestPayment.name || "Standard Package"
     }
 
     const remainingUploads = Math.max(0, packageLimit - postedCount)
@@ -70,6 +75,42 @@ export async function getCustomerPackageQuota(userId?: string): Promise<Customer
   } catch (err) {
     console.warn("getCustomerPackageQuota error:", err)
     return defaultFreeQuota
+  }
+}
+
+export async function purchaseCustomerPackage(data: {
+  userId: string
+  packageId: number
+  amount: string
+  paymentMethod?: string
+}) {
+  try {
+    const rawDigits = String(data.userId).replace(/\D/g, "")
+    const numUserId = rawDigits ? parseInt(rawDigits.slice(-8), 10) : 1
+    const [inserted] = await db
+      .insert(customerPackagePayments)
+      .values({
+        userId: numUserId,
+        customerPackageId: data.packageId,
+        amount: data.amount,
+        paymentMethod: data.paymentMethod || "Free Plan",
+        paymentDetails: JSON.stringify({ userUid: data.userId }),
+        offlinePayment: false,
+        approval: true,
+      })
+      .returning()
+
+    try {
+      const { revalidatePath } = await import("next/cache")
+      revalidatePath("/dashboard/customer-packages")
+      revalidatePath("/dashboard/customer-products")
+      revalidatePath("/customer-packages")
+    } catch {}
+
+    return { success: true, payment: inserted }
+  } catch (err: any) {
+    console.error("purchaseCustomerPackage error:", err)
+    return { success: false, error: err?.message }
   }
 }
 

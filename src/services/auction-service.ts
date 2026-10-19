@@ -332,9 +332,22 @@ export async function placeAuctionBid(
   userEmail: string,
   amount: string
 ): Promise<{ success: boolean; message: string; bid?: AuctionBid }> {
-  const product = SEED_AUCTION_PRODUCTS.find((p) => p.id === productId)
+  let product: AuctionProduct | null = null
+  try {
+    const [dbProd] = await db.select().from(auctionProducts).where(eq(auctionProducts.id, productId)).limit(1)
+    if (dbProd) product = dbProd
+  } catch {}
+
+  if (!product) {
+    product = SEED_AUCTION_PRODUCTS.find((p) => p.id === productId) || null
+  }
+
   if (!product) {
     return { success: false, message: "Auction product not found" }
+  }
+
+  if (product.auctionEndDate && new Date(product.auctionEndDate).getTime() < Date.now()) {
+    return { success: false, message: "This auction has already ended." }
   }
 
   const bidAmountNum = parseFloat(amount)
@@ -378,6 +391,15 @@ export async function placeAuctionBid(
     })
     SEED_AUCTION_BIDS.unshift(newBid)
   }
+
+  try {
+    const { revalidatePath } = await import("next/cache")
+    revalidatePath("/auction-products")
+    if (product.slug) revalidatePath(`/auction-product/${product.slug}`)
+    revalidatePath("/admin/auction-products")
+    revalidatePath("/seller/auction-products")
+    revalidatePath("/dashboard/auction-bids")
+  } catch {}
 
   return { success: true, message: "Your bid has been placed successfully!", bid: newBid }
 }
