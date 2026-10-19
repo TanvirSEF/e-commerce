@@ -17,16 +17,16 @@ export function QuickOrderManageModal({
   onClose,
   onSave,
 }: QuickOrderManageModalProps) {
-  const [deliveryStatus, setDeliveryStatus] = useState(order?.deliveryStatus || "pending")
-  const [paymentStatus, setPaymentStatus] = useState(order?.paymentStatus || "unpaid")
+  const [deliveryStatus, setDeliveryStatus] = useState((order?.deliveryStatus || "pending").toLowerCase())
+  const [paymentStatus, setPaymentStatus] = useState((order?.paymentStatus || "unpaid").toLowerCase())
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Sync state whenever selected order changes
   React.useEffect(() => {
     if (order) {
-      setDeliveryStatus(order.deliveryStatus)
-      setPaymentStatus(order.paymentStatus)
+      setDeliveryStatus((order.deliveryStatus || "pending").toLowerCase())
+      setPaymentStatus((order.paymentStatus || "unpaid").toLowerCase())
       setCopied(false)
     }
   }, [order])

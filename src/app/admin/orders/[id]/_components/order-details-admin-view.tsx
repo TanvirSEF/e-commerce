@@ -27,8 +27,8 @@ interface OrderDetailsAdminViewProps {
 }
 
 export function OrderDetailsAdminView({ order }: OrderDetailsAdminViewProps) {
-  const [deliveryStatus, setDeliveryStatus] = useState(order.deliveryStatus)
-  const [paymentStatus, setPaymentStatus] = useState(order.paymentStatus)
+  const [deliveryStatus, setDeliveryStatus] = useState((order.deliveryStatus || "pending").toLowerCase())
+  const [paymentStatus, setPaymentStatus] = useState((order.paymentStatus || "unpaid").toLowerCase())
   const [shippingMethod, setShippingMethod] = useState(order.shippingMethod || "steadfast")
   const [courierTrackingCode, setCourierTrackingCode] = useState(order.courierTrackingCode || "")
   const [isUpdating, setIsUpdating] = useState(false)

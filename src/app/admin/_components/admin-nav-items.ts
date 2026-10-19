@@ -81,6 +81,9 @@ export const adminNavItems: NavItem[] = [
     icon: ShoppingBag,
     children: [
       { title: "All Orders", href: "/admin/orders" },
+      { title: "Inhouse Orders", href: "/admin/orders?tab=inhouse" },
+      { title: "Seller Orders", href: "/admin/orders?tab=seller" },
+      { title: "Pick-up Point Orders", href: "/admin/orders?tab=pickup_point" },
       { title: "Offline Payments", href: "/admin/orders/offline-payments", addonKey: "offline_payments" },
       { title: "Refund Requests", href: "/admin/refund-requests", addonKey: "refund_system" },
     ],

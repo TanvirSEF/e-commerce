@@ -3,11 +3,11 @@ import { AdminOrderListItem } from "@/services/admin-orders-service"
 export function exportOrdersToCsv(orders: AdminOrderListItem[]) {
   const csvContent =
     "data:text/csv;charset=utf-8," +
-    ["Order Code,Customer,Amount,Delivery Status,Payment Status,Date"]
+    ["Order Code,Customer,Seller,Amount,Delivery Status,Payment Method,Payment Status,Tracking Code,Date"]
       .concat(
         orders.map(
           (o) =>
-            `"${o.code}","${o.customerName}",${o.grandTotal},"${o.deliveryStatus}","${o.paymentStatus}","${o.date}"`
+            `"${o.code}","${o.customerName}","${o.sellerName}",${o.grandTotal},"${o.deliveryStatus}","${o.paymentType}","${o.paymentStatus}","${o.trackingCode || ""}","${o.date}"`
         )
       )
       .join("\n")

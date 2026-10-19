@@ -28,7 +28,7 @@ export interface AdminOrderListItem {
 }
 
 export interface GetAdminOrdersParams {
-  tab?: "all" | "inhouse" | "seller"
+  tab?: "all" | "inhouse" | "seller" | "pickup_point"
   deliveryStatuses?: string[]
   paymentStatus?: string
   search?: string
@@ -59,6 +59,14 @@ export async function getAdminOrdersList(
 
     if (params.offlinePaymentOnly) {
       conditions.push(`(o.payment_type = 'manual_payment' OR o.manual_payment_data IS NOT NULL)`)
+    }
+
+    if (params.tab === "inhouse") {
+      conditions.push(`(p.added_by = 'admin' OR p.shop_id IS NULL OR p.shop_id = 3)`)
+    } else if (params.tab === "seller") {
+      conditions.push(`(p.added_by = 'seller' OR (p.shop_id IS NOT NULL AND p.shop_id != 3))`)
+    } else if (params.tab === "pickup_point") {
+      conditions.push(`(o.shipping_type = 'pickup_point' OR o.shipping_method = 'pickup_point')`)
     }
 
     if (params.search && params.search.trim()) {
@@ -105,6 +113,9 @@ export async function getAdminOrdersList(
     const countSql = `
       SELECT COUNT(DISTINCT o.id)::int as count
       FROM orders o
+      LEFT JOIN order_items oi ON oi.order_id = o.id
+      LEFT JOIN products p ON p.id = oi.product_id
+      LEFT JOIN shops s ON s.id = p.shop_id
       LEFT JOIN users u ON u.id = o.user_id
       ${whereClause}
     `
@@ -128,10 +139,17 @@ export async function getAdminOrdersList(
         o.manual_payment_data as "manualPaymentData",
         o.viewed,
         o.created_at as "createdAt",
-        COALESCE(COUNT(oi.id), 0)::int as "productCount",
-        u.name as "customerName"
+        COALESCE(COUNT(DISTINCT oi.id), 0)::int as "productCount",
+        u.name as "customerName",
+        COALESCE(MAX(s.name), 'Inhouse') as "sellerName",
+        CASE 
+          WHEN bool_or(p.added_by = 'seller' OR (p.shop_id IS NOT NULL AND p.shop_id != 3)) THEN true 
+          ELSE false 
+        END as "isSeller"
       FROM orders o
       LEFT JOIN order_items oi ON oi.order_id = o.id
+      LEFT JOIN products p ON p.id = oi.product_id
+      LEFT JOIN shops s ON s.id = p.shop_id
       LEFT JOIN users u ON u.id = o.user_id
       ${whereClause}
       GROUP BY o.id, u.name
@@ -172,8 +190,8 @@ export async function getAdminOrdersList(
         trackingCode: r.trackingCode || null,
         productCount: Number(r.productCount) || 1,
         customerName,
-        sellerName: "Inhouse",
-        isSeller: false,
+        sellerName: r.sellerName || "Inhouse",
+        isSeller: Boolean(r.isSeller),
         grandTotal: Number(r.grandTotal) || 0,
         deliveryStatus: r.deliveryStatus || "pending",
         paymentType: r.paymentType || "cash_on_delivery",
@@ -189,15 +207,8 @@ export async function getAdminOrdersList(
       }
     })
 
-    let finalOrders = mapped
-    if (params.tab === "inhouse") {
-      finalOrders = mapped.filter((o) => !o.isSeller)
-    } else if (params.tab === "seller") {
-      finalOrders = mapped.filter((o) => o.isSeller)
-    }
-
     return {
-      orders: finalOrders,
+      orders: mapped,
       totalCount,
       currentPage: page,
       perPage: limit,

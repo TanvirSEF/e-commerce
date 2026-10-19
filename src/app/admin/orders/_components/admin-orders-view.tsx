@@ -21,18 +21,28 @@ import {
 
 interface AdminOrdersViewProps {
   initialData: AdminOrdersResponse
+  initialTab?: "all" | "inhouse" | "seller" | "pickup_point"
+  initialSearch?: string
+  initialDeliveryStatuses?: string[]
+  initialPaymentStatus?: string
 }
 
-export function AdminOrdersView({ initialData }: AdminOrdersViewProps) {
+export function AdminOrdersView({
+  initialData,
+  initialTab = "all",
+  initialSearch = "",
+  initialDeliveryStatuses = [],
+  initialPaymentStatus = "",
+}: AdminOrdersViewProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
   // State
   const [data, setData] = useState<AdminOrdersResponse>(initialData)
-  const [tab, setTab] = useState<"all" | "inhouse" | "seller">("all")
-  const [search, setSearch] = useState("")
-  const [deliveryStatuses, setDeliveryStatuses] = useState<string[]>([])
-  const [paymentStatus, setPaymentStatus] = useState("")
+  const [tab, setTab] = useState<"all" | "inhouse" | "seller" | "pickup_point">(initialTab)
+  const [search, setSearch] = useState(initialSearch)
+  const [deliveryStatuses, setDeliveryStatuses] = useState<string[]>(initialDeliveryStatuses)
+  const [paymentStatus, setPaymentStatus] = useState(initialPaymentStatus)
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -62,8 +72,9 @@ export function AdminOrdersView({ initialData }: AdminOrdersViewProps) {
   }
 
   // Tab change
-  const handleTabChange = (newTab: "all" | "inhouse" | "seller") => {
+  const handleTabChange = (newTab: "all" | "inhouse" | "seller" | "pickup_point") => {
     setTab(newTab)
+    router.push(newTab === "all" ? "/admin/orders" : `/admin/orders?tab=${newTab}`)
     reloadData({ tab: newTab, page: 1 })
   }
 
@@ -237,6 +248,17 @@ export function AdminOrdersView({ initialData }: AdminOrdersViewProps) {
             }`}
           >
             Seller
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("pickup_point")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-colors capitalize ${
+              tab === "pickup_point"
+                ? "border-[#d43533] text-[#d43533]"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Pick-up Point
           </button>
         </div>
 
