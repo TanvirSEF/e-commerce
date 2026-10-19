@@ -994,9 +994,19 @@ export async function getSellerOrderById(idOrCode: string | number, shopId?: num
       .leftJoin(products, eq(orderItems.productId, products.id))
       .where(eq(orderItems.orderId, foundOrder.id))
 
+    // Vendor product isolation: if shopId is provided, filter to vendor's items only
+    const sellerItems = shopId
+      ? itemsRows.filter((it) => it.shopId === shopId)
+      : itemsRows
+
+    // If order does not contain any products for this shop, deny access
+    if (shopId && sellerItems.length === 0) {
+      return null
+    }
+
     const addr = (foundOrder.shippingAddress as any) || {}
 
-    const mappedItems = itemsRows.map((it) => ({
+    const mappedItems = sellerItems.map((it) => ({
       id: String(it.itemId),
       name: it.productName || "Product",
       thumbnail: it.thumbnail || "/assets/img/placeholder.jpg",
@@ -1011,7 +1021,7 @@ export async function getSellerOrderById(idOrCode: string | number, shopId?: num
     const shippingCost = Number(foundOrder.shippingCost || 0)
     const tax = Number(foundOrder.couponDiscount || 0)
     const couponDiscount = Number(foundOrder.couponDiscount || 0)
-    const total = subtotal + shippingCost
+    const total = shopId ? subtotal : (Number(foundOrder.grandTotal) || subtotal + shippingCost)
 
     return {
       id: String(foundOrder.id),
@@ -1032,10 +1042,10 @@ export async function getSellerOrderById(idOrCode: string | number, shopId?: num
       deliveryStatus: foundOrder.deliveryStatus as any,
       trackingCode: foundOrder.trackingCode || undefined,
       subtotal,
-      shippingCost,
+      shippingCost: shopId ? 0 : shippingCost,
       tax,
-      couponDiscount,
-      total: Number(foundOrder.grandTotal) || total,
+      couponDiscount: shopId ? 0 : couponDiscount,
+      total,
       items: mappedItems,
     }
   } catch (err) {

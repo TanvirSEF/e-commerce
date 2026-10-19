@@ -251,6 +251,26 @@ export async function createRefundRequest(data: {
   attachment?: string
 }) {
   try {
+    // Check if an active (pending or approved) refund request already exists
+    const [existing] = await db
+      .select({ id: refundRequests.id, status: refundRequests.status })
+      .from(refundRequests)
+      .where(
+        and(
+          eq(refundRequests.orderCode, data.orderCode),
+          eq(refundRequests.productName, data.productName),
+          or(eq(refundRequests.status, "pending"), eq(refundRequests.status, "approved"))
+        )
+      )
+      .limit(1)
+
+    if (existing) {
+      return {
+        success: false,
+        error: `A refund request for ${data.productName} is already ${existing.status}.`,
+      }
+    }
+
     const [inserted] = await db
       .insert(refundRequests)
       .values({

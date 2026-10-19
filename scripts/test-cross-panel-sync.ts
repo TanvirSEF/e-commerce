@@ -226,7 +226,7 @@ async function runTests() {
       throw new Error(`Club points not found for order #${orderId}`)
     }
 
-    console.log(`  -> Club points row created: ID ${pts.id}, Points: ${pts.points}, Status: ${pts.status}`)
+    console.log(`  -> Club points row created: ID ${pts.id}, Points: ${pts.points}, Converted: ${pts.converted}`)
     console.log("  [PASS] Admin order delivery accurately awarded customer club points.")
     passed++
   } catch (err: any) {
