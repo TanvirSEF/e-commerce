@@ -35,7 +35,7 @@ function lookupOrder(code: string): TrackedOrder | null {
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
-        if (parsed.code === trimmed || trimmed.length > 5) {
+        if (parsed.code === trimmed || parsed.trackingCode === trimmed) {
           return parsed
         }
       } catch {
@@ -73,56 +73,67 @@ export function TrackOrderView() {
   const initialCode = searchParams.get("code") || ""
 
   const [trackingCode, setTrackingCode] = useState(initialCode)
-  const [searchedOrder, setSearchedOrder] = useState<TrackedOrder | null>(() => {
-    return initialCode ? lookupOrder(initialCode) : null
-  })
-  const [notFound, setNotFound] = useState(() => {
-    return Boolean(initialCode && !lookupOrder(initialCode))
-  })
+  const [searchedOrder, setSearchedOrder] = useState<TrackedOrder | null>(null)
+  const [notFound, setNotFound] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmed = trackingCode.trim()
+  const fetchOrderLive = async (codeStr: string) => {
+    const trimmed = codeStr.trim()
     if (!trimmed) return
-
-    const local = lookupOrder(trimmed)
-    if (local) {
-      setSearchedOrder(local)
-      setNotFound(false)
-      return
-    }
-
+    setLoading(true)
     try {
       const res = await fetch(`/api/orders?code=${encodeURIComponent(trimmed)}`)
-      const data = await res.json()
-      if (data.success && data.order) {
-        setSearchedOrder({
-          code: data.order.code,
-          date: data.order.date ? data.order.date * 1000 : Date.now(),
-          delivery_status: data.order.delivery_status || "pending",
-          payment_type: data.order.payment_type || "Cash on Delivery",
-          payment_status: data.order.payment_status || "unpaid",
-          shipping_type: "Home Delivery",
-          carrier: "Steadfast Courier",
-          shipping_address: data.order.shipping_address,
-          grand_total: Number(data.order.grand_total || 0),
-          items: (data.order.items || []).map(
-            (i: { variation?: string; quantity?: number; price?: number }) => ({
-              name: i.variation || "Product Item",
-              quantity: i.quantity || 1,
-              price: i.price || 0,
-            })
-          ),
-        })
-        setNotFound(false)
-        return
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success && data.order) {
+          const ord = data.order
+          setSearchedOrder({
+            code: ord.code,
+            date: ord.date ? new Date(ord.date).getTime() : Date.now(),
+            delivery_status: ord.status || ord.deliveryStatus || ord.delivery_status || "pending",
+            payment_type: ord.paymentMethod || ord.paymentType || ord.payment_type || "Cash on Delivery",
+            payment_status: ord.paymentStatus || ord.payment_status || "unpaid",
+            shipping_type: ord.shippingMethod || "Home Delivery",
+            carrier: ord.courier || ord.carrier || "Steadfast Courier",
+            shipping_address: ord.shippingAddress || ord.shipping_address,
+            grand_total: Number(ord.total ?? ord.grandTotal ?? ord.grand_total ?? 0),
+            items: (ord.items || []).map(
+              (i: { name?: string; variation?: string; quantity?: number; price?: number }) => ({
+                name: i.name || i.variation || "Product Item",
+                quantity: i.quantity || 1,
+                price: i.price || 0,
+              })
+            ),
+          })
+          setNotFound(false)
+          setLoading(false)
+          return
+        }
       }
     } catch {
       // ignore
     }
 
-    setSearchedOrder(null)
-    setNotFound(true)
+    const local = lookupOrder(trimmed)
+    if (local) {
+      setSearchedOrder(local)
+      setNotFound(false)
+    } else {
+      setSearchedOrder(null)
+      setNotFound(true)
+    }
+    setLoading(false)
+  }
+
+  React.useEffect(() => {
+    if (initialCode) {
+      fetchOrderLive(initialCode)
+    }
+  }, [initialCode])
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await fetchOrderLive(trackingCode)
   }
 
   const steps = [

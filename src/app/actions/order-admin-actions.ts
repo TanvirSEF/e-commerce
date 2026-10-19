@@ -26,6 +26,12 @@ export async function updateOrderQuickManagementAction(
     revalidatePath("/admin/orders")
     revalidatePath("/admin/orders/offline-payments")
     revalidatePath("/admin/offline-payment-orders")
+    revalidatePath("/seller/orders")
+    revalidatePath("/dashboard")
+    revalidatePath("/purchase-history")
+    revalidatePath("/purchase_history")
+    revalidatePath("/track-order")
+    revalidatePath("/track-your-order")
   }
   return success
 }
@@ -36,6 +42,12 @@ export async function approveOfflinePaymentAction(orderId: number): Promise<bool
     revalidatePath("/admin/orders")
     revalidatePath("/admin/orders/offline-payments")
     revalidatePath("/admin/offline-payment-orders")
+    revalidatePath("/seller/orders")
+    revalidatePath("/dashboard")
+    revalidatePath("/purchase-history")
+    revalidatePath("/purchase_history")
+    revalidatePath("/track-order")
+    revalidatePath("/track-your-order")
   }
   return success
 }
@@ -46,6 +58,10 @@ export async function deleteAdminOrderAction(orderId: number): Promise<boolean> 
     revalidatePath("/admin/orders")
     revalidatePath("/admin/orders/offline-payments")
     revalidatePath("/admin/offline-payment-orders")
+    revalidatePath("/seller/orders")
+    revalidatePath("/dashboard")
+    revalidatePath("/purchase-history")
+    revalidatePath("/purchase_history")
   }
   return success
 }
@@ -56,6 +72,10 @@ export async function bulkDeleteAdminOrdersAction(orderIds: number[]): Promise<b
     revalidatePath("/admin/orders")
     revalidatePath("/admin/orders/offline-payments")
     revalidatePath("/admin/offline-payment-orders")
+    revalidatePath("/seller/orders")
+    revalidatePath("/dashboard")
+    revalidatePath("/purchase-history")
+    revalidatePath("/purchase_history")
   }
   return success
 }

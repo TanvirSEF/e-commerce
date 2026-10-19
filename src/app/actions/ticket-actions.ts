@@ -23,6 +23,9 @@ export async function submitTicketReplyAction(data: {
 
     revalidatePath("/admin/support-tickets")
     revalidatePath(`/admin/support-tickets/${data.ticketId}`)
+    revalidatePath("/dashboard/support-tickets")
+    revalidatePath(`/dashboard/support-tickets/${data.ticketId}`)
+    revalidatePath("/seller/support")
 
     return { success: true, message: "Reply has been sent successfully." }
   } catch (err) {
@@ -36,6 +39,9 @@ export async function updateTicketStatusAction(ticketId: number, status: string)
     const res = await updateTicketStatus(ticketId, status)
     revalidatePath("/admin/support-tickets")
     revalidatePath(`/admin/support-tickets/${ticketId}`)
+    revalidatePath("/dashboard/support-tickets")
+    revalidatePath(`/dashboard/support-tickets/${ticketId}`)
+    revalidatePath("/seller/support")
     return res
   } catch (err) {
     console.error("updateTicketStatusAction error:", err)

@@ -128,6 +128,9 @@ export async function replyCustomerTicketAction(data: {
   })
   revalidatePath(`/dashboard/support-tickets/${data.ticketId}`)
   revalidatePath("/dashboard/support-tickets")
+  revalidatePath("/admin/support-tickets")
+  revalidatePath(`/admin/support-tickets/${data.ticketId}`)
+  revalidatePath("/seller/support")
   return res
 }
 
@@ -157,6 +160,8 @@ export async function processWithdrawRequestAction(data: {
   const res = await processWithdrawRequestAdmin(data)
   revalidatePath("/admin/sellers/payout-requests")
   revalidatePath("/admin/sellers")
+  revalidatePath("/seller/payouts")
+  revalidatePath("/seller/dashboard")
   return res
 }
 
@@ -171,6 +176,8 @@ export async function createSellerWithdrawAction(data: {
   const res = await createSellerWithdrawRequest(data)
   revalidatePath("/admin/sellers/payout-requests")
   revalidatePath("/admin/sellers")
+  revalidatePath("/seller/payouts")
+  revalidatePath("/seller/dashboard")
   return res
 }
 
@@ -237,7 +244,15 @@ export async function updateOrderStatusAction(data: {
   courierTrackingCode?: string
 }) {
   const { updateOrderStatusAdmin } = await import("@/services/order-service")
-  return await updateOrderStatusAdmin(data)
+  const res = await updateOrderStatusAdmin(data)
+  revalidatePath("/admin/orders")
+  revalidatePath("/seller/orders")
+  revalidatePath("/dashboard")
+  revalidatePath("/purchase-history")
+  revalidatePath("/purchase_history")
+  revalidatePath("/track-order")
+  revalidatePath("/track-your-order")
+  return res
 }
 
 export async function submitReviewAction(data: {
@@ -249,17 +264,32 @@ export async function submitReviewAction(data: {
   photos?: string[]
 }) {
   const { submitReview } = await import("@/services/review-service")
-  return await submitReview(data)
+  const res = await submitReview(data)
+  revalidatePath("/admin/products/reviews")
+  revalidatePath("/seller/product-reviews")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
 }
 
 export async function toggleReviewStatusAction(id: number, status: boolean) {
   const { toggleReviewStatus } = await import("@/services/review-service")
-  return await toggleReviewStatus(id, status)
+  const res = await toggleReviewStatus(id, status)
+  revalidatePath("/admin/products/reviews")
+  revalidatePath("/seller/product-reviews")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
 }
 
 export async function deleteReviewAction(id: number) {
   const { deleteReview } = await import("@/services/review-service")
-  return await deleteReview(id)
+  const res = await deleteReview(id)
+  revalidatePath("/admin/products/reviews")
+  revalidatePath("/seller/product-reviews")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
 }
 
 export async function sendMessageAction(data: {
@@ -268,7 +298,12 @@ export async function sendMessageAction(data: {
   message: string
 }) {
   const { sendMessage } = await import("@/services/conversation-service")
-  return await sendMessage(data)
+  const res = await sendMessage(data)
+  revalidatePath(`/dashboard/conversations/${data.conversationId}`)
+  revalidatePath("/dashboard/conversations")
+  revalidatePath(`/seller/conversations/${data.conversationId}`)
+  revalidatePath("/seller/conversations")
+  return res
 }
 
 export async function submitSellerVerificationAction(shopId: number, data: {
@@ -307,7 +342,13 @@ export async function createRefundAction(data: {
   details?: string
 }) {
   const { createRefundRequest } = await import("@/services/refund-service")
-  return await createRefundRequest(data)
+  const res = await createRefundRequest(data)
+  revalidatePath("/dashboard/refund-requests")
+  revalidatePath("/sent-refund-request")
+  revalidatePath("/seller/refund-requests")
+  revalidatePath("/seller/refund-request")
+  revalidatePath("/admin/refund-requests")
+  return res
 }
 
 export async function processRefundAction(data: {
@@ -316,7 +357,13 @@ export async function processRefundAction(data: {
   adminNote?: string
 }) {
   const { processRefundAdmin } = await import("@/services/refund-service")
-  return await processRefundAdmin(data)
+  const res = await processRefundAdmin(data)
+  revalidatePath("/dashboard/refund-requests")
+  revalidatePath("/sent-refund-request")
+  revalidatePath("/seller/refund-requests")
+  revalidatePath("/seller/refund-request")
+  revalidatePath("/admin/refund-requests")
+  return res
 }
 
 export async function createAttributeAction(data: {
@@ -1962,7 +2009,16 @@ export async function placeOrderAction(data: {
   couponDiscount?: number
 }) {
   const { createOrder } = await import("@/services/order-service")
-  return await createOrder(data)
+  const res = await createOrder(data)
+  revalidatePath("/admin/orders")
+  revalidatePath("/seller/orders")
+  revalidatePath("/dashboard")
+  revalidatePath("/purchase-history")
+  revalidatePath("/purchase_history")
+  revalidatePath("/track-order")
+  revalidatePath("/products")
+  revalidatePath("/")
+  return res
 }
 
 // Product Creation Action (100% Laravel Faithful Product and Variant Matrix Insertion)
@@ -3220,6 +3276,11 @@ export async function updateSellerOrderStatusAction(data: {
     revalidatePath("/seller/orders")
     revalidatePath(`/seller/orders/${data.orderId}`)
     revalidatePath("/admin/orders")
+    revalidatePath("/dashboard")
+    revalidatePath("/purchase-history")
+    revalidatePath("/purchase_history")
+    revalidatePath("/track-order")
+    revalidatePath("/track-your-order")
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to update order status" }
@@ -3240,6 +3301,8 @@ export async function sellerUpdateRefundRequestStatusAction(data: {
     revalidatePath("/seller/refund-requests")
     revalidatePath("/seller/refund-request")
     revalidatePath("/admin/refund-requests")
+    revalidatePath("/dashboard/refund-requests")
+    revalidatePath("/sent-refund-request")
     return res
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to update refund request" }
