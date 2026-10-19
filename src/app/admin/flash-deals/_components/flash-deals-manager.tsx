@@ -6,6 +6,7 @@ import {
   deleteFlashDealAction,
   toggleFlashDealStatusAction,
   toggleFlashDealFeaturedAction,
+  bulkFlashDealsAction,
 } from "@/app/actions/ecommerce-actions"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import { FlashDealsTabs, FlashDealTabType } from "./flash-deals-tabs"
@@ -22,6 +23,7 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
   const [activeTab, setActiveTab] = useState<FlashDealTabType>("all")
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [editingDeal, setEditingDeal] = useState<FlashDealItem | null>(null)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [dealsToDelete, setDealsToDelete] = useState<string[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
@@ -77,10 +79,33 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
     setDeleteModalOpen(true)
   }
 
-  const handleBulkDelete = () => {
-    if (selectedIds.length === 0) return
-    setDealsToDelete(selectedIds)
-    setDeleteModalOpen(true)
+  const handleBulkAction = async (action: string) => {
+    if (!action || selectedIds.length === 0) return
+    if (action === "delete") {
+      setDealsToDelete(selectedIds)
+      setDeleteModalOpen(true)
+      return
+    }
+
+    if (action === "publish" || action === "unpublish") {
+      const isPublish = action === "publish"
+      setDeals((prev) =>
+        prev.map((d) => (selectedIds.includes(d.id) ? { ...d, status: isPublish } : d))
+      )
+      await bulkFlashDealsAction(selectedIds, action)
+      setSelectedIds([])
+      return
+    }
+
+    if (action === "feature" || action === "unfeature") {
+      const isFeature = action === "feature"
+      setDeals((prev) =>
+        prev.map((d) => (selectedIds.includes(d.id) ? { ...d, featured: isFeature } : d))
+      )
+      await bulkFlashDealsAction(selectedIds, action)
+      setSelectedIds([])
+      return
+    }
   }
 
   const handleConfirmDelete = async () => {
@@ -111,7 +136,10 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
           </p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingDeal(null)
+            setShowModal(true)
+          }}
           className="inline-flex items-center gap-2 px-4 py-2 rounded text-xs font-bold bg-primary hover:bg-primary/90 text-white shadow-xs transition-colors cursor-pointer"
         >
           <Plus className="size-4" />
@@ -134,14 +162,20 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
               />
             </div>
             {selectedIds.length > 0 && (
-              <button
-                type="button"
-                onClick={handleBulkDelete}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 cursor-pointer"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Delete Selected ({selectedIds.length})</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <select
+                  value=""
+                  onChange={(e) => handleBulkAction(e.target.value)}
+                  className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:border-primary cursor-pointer shadow-xs"
+                >
+                  <option value="">Bulk Actions ({selectedIds.length} Selected)</option>
+                  <option value="publish">Publish Selected (Status ON)</option>
+                  <option value="unpublish">Unpublish Selected (Status OFF)</option>
+                  <option value="feature">Feature Selected</option>
+                  <option value="unfeature">Unfeature Selected</option>
+                  <option value="delete">Delete Selected</option>
+                </select>
+              </div>
             )}
           </div>
         </div>
@@ -153,14 +187,25 @@ export function FlashDealsManager({ initialDeals }: FlashDealsManagerProps) {
           onToggleSelectAll={handleToggleSelectAll}
           onToggleStatus={handleToggleStatus}
           onToggleFeatured={handleToggleFeatured}
+          onEditClick={(deal) => {
+            setEditingDeal(deal)
+            setShowModal(true)
+          }}
           onDeleteClick={handleDeleteSingle}
         />
       </div>
 
       <CreateFlashDealModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        initialDeal={editingDeal}
+        onClose={() => {
+          setShowModal(false)
+          setEditingDeal(null)
+        }}
         onCreated={(deal) => setDeals((prev) => [deal, ...prev])}
+        onUpdated={(updated) =>
+          setDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)))
+        }
       />
 
       <DeleteConfirmationModal

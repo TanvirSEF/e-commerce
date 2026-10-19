@@ -72,6 +72,45 @@ export async function toggleFlashDealFeaturedAction(id: number | string, feature
   return { success }
 }
 
+export async function updateFlashDealAction(
+  id: number | string,
+  data: {
+    title?: string
+    banner?: string
+    startDate?: number
+    endDate?: number
+  }
+) {
+  const { updateFlashDeal } = await import("@/services/settings-service")
+  const success = await updateFlashDeal(id, data)
+  try {
+    revalidatePath("/admin/flash-deals")
+    revalidatePath("/flash-deals")
+    revalidatePath("/")
+  } catch {}
+  return { success }
+}
+
+export async function bulkFlashDealsAction(
+  ids: string[],
+  action: "delete" | "publish" | "unpublish" | "feature" | "unfeature"
+) {
+  const { deleteFlashDeal, toggleFlashDealStatus, toggleFlashDealFeatured } = await import("@/services/settings-service")
+  for (const id of ids) {
+    if (action === "delete") await deleteFlashDeal(id)
+    if (action === "publish") await toggleFlashDealStatus(id, true)
+    if (action === "unpublish") await toggleFlashDealStatus(id, false)
+    if (action === "feature") await toggleFlashDealFeatured(id, true)
+    if (action === "unfeature") await toggleFlashDealFeatured(id, false)
+  }
+  try {
+    revalidatePath("/admin/flash-deals")
+    revalidatePath("/flash-deals")
+    revalidatePath("/")
+  } catch {}
+  return { success: true }
+}
+
 export async function rechargeWalletAction(data: {
   amount: number
   paymentMethod: string
@@ -595,17 +634,33 @@ export async function updateClubPointsSettingsAction(data: {
   pointsPerOrder100BDT: number
 }) {
   const { updateClubPointsSettings } = await import("@/services/settings-service")
-  return await updateClubPointsSettings(data)
+  const res = await updateClubPointsSettings(data)
+  try {
+    revalidatePath("/admin/club-points")
+    revalidatePath("/dashboard/club-points")
+    revalidatePath("/", "layout")
+  } catch {}
+  return res
 }
 
 export async function addSubscriberAction(email: string) {
   const { addSubscriber } = await import("@/services/marketing-service")
-  return await addSubscriber(email)
+  const res = await addSubscriber(email)
+  try {
+    revalidatePath("/admin/subscribers")
+    revalidatePath("/admin/newsletter")
+  } catch {}
+  return res
 }
 
 export async function deleteSubscriberAction(id: number) {
   const { deleteSubscriber } = await import("@/services/marketing-service")
-  return await deleteSubscriber(id)
+  const res = await deleteSubscriber(id)
+  try {
+    revalidatePath("/admin/subscribers")
+    revalidatePath("/admin/newsletter")
+  } catch {}
+  return res
 }
 
 export async function sendNewsletterAction(data: {
@@ -1507,7 +1562,12 @@ export async function updateShippingLabelSettingsAction(data: any) {
 
 export async function updateSaleAlertSettingsAction(data: any) {
   const { updateSaleAlertSettings } = await import("@/services/settings-service")
-  return await updateSaleAlertSettings(data)
+  const result = await updateSaleAlertSettings(data)
+  try {
+    revalidatePath("/admin/marketing/custom-sale-alerts")
+    revalidatePath("/", "layout")
+  } catch {}
+  return result
 }
 
 export async function createSizeChartAction(data: any) {
@@ -1548,21 +1608,30 @@ export async function deleteMeasurementPointAction(id: number) {
 export async function createDynamicPopupAction(data: any) {
   const { createDynamicPopup } = await import("@/services/dynamic-popup-service")
   const result = await createDynamicPopup(data)
-  revalidatePath("/admin/marketing/dynamic-popups")
+  try {
+    revalidatePath("/admin/marketing/dynamic-popups")
+    revalidatePath("/", "layout")
+  } catch {}
   return result
 }
 
 export async function toggleDynamicPopupStatusAction(id: number, status: boolean) {
   const { toggleDynamicPopupStatus } = await import("@/services/dynamic-popup-service")
   const result = await toggleDynamicPopupStatus(id, status)
-  revalidatePath("/admin/marketing/dynamic-popups")
+  try {
+    revalidatePath("/admin/marketing/dynamic-popups")
+    revalidatePath("/", "layout")
+  } catch {}
   return result
 }
 
 export async function deleteDynamicPopupAction(id: number) {
   const { deleteDynamicPopup } = await import("@/services/dynamic-popup-service")
   const result = await deleteDynamicPopup(id)
-  revalidatePath("/admin/marketing/dynamic-popups")
+  try {
+    revalidatePath("/admin/marketing/dynamic-popups")
+    revalidatePath("/", "layout")
+  } catch {}
   return result
 }
 
@@ -1646,7 +1715,12 @@ export async function setProductDiscountAction(data: {
 
 export async function updateCustomAlertSettingsAction(data: any) {
   const { updateCustomAlertSettings } = await import("@/services/settings-service")
-  return await updateCustomAlertSettings(data)
+  const result = await updateCustomAlertSettings(data)
+  try {
+    revalidatePath("/admin/marketing/custom-alerts")
+    revalidatePath("/", "layout")
+  } catch {}
+  return result
 }
 
 export async function createPosSaleAction(data: any) {
@@ -2597,6 +2671,21 @@ export async function toggleCouponStatusAction(id: number | string, status: bool
   revalidatePath("/admin/coupons")
   revalidatePath("/seller/coupons")
   return { success }
+}
+
+export async function bulkCouponsAction(
+  ids: string[],
+  action: "delete" | "activate" | "deactivate"
+) {
+  const { deleteCoupon, toggleCouponStatus } = await import("@/services/coupon-service")
+  for (const id of ids) {
+    if (action === "delete") await deleteCoupon(id)
+    if (action === "activate") await toggleCouponStatus(id, true)
+    if (action === "deactivate") await toggleCouponStatus(id, false)
+  }
+  revalidatePath("/admin/coupons")
+  revalidatePath("/seller/coupons")
+  return { success: true }
 }
 
 // Notification Actions (Customer & Admin Bulk Delete & Mark As Read)

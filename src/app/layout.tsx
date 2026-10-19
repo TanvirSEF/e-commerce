@@ -8,7 +8,10 @@ import {
   getChatWidgetsSettings,
   getThirdPartySettings,
   getCustomScriptsSettings,
+  getCustomAlertSettings,
+  getSaleAlertSettings,
 } from "@/services/settings-service"
+import { getActiveDynamicPopup } from "@/services/dynamic-popup-service"
 import { getAllLanguages, getAllTranslationsMap } from "@/services/language-service"
 import { getAppearanceSettings } from "@/services/appearance-service"
 import { CartProvider } from "@/lib/context/cart-context"
@@ -53,6 +56,9 @@ export default async function RootLayout({
     chatWidgetsSettings,
     thirdPartySettings,
     customScriptsSettings,
+    activeDynamicPopup,
+    customAlertSettings,
+    saleAlertSettings,
   ] = await Promise.all([
     getCurrencySettings().catch(() => null),
     getAllLanguages().catch(() => []),
@@ -62,6 +68,9 @@ export default async function RootLayout({
     getChatWidgetsSettings().catch(() => null),
     getThirdPartySettings().catch(() => null),
     getCustomScriptsSettings().catch(() => null),
+    getActiveDynamicPopup().catch(() => null),
+    getCustomAlertSettings().catch(() => null),
+    getSaleAlertSettings().catch(() => null),
   ])
 
   // Filter only active currencies & active languages configured by admin
@@ -94,6 +103,9 @@ export default async function RootLayout({
                   showCurrencySwitcher={appearanceSettings?.showCurrencySwitcher ?? true}
                   generalSettings={generalSettings}
                   chatWidgetsSettings={chatWidgetsSettings}
+                  activeDynamicPopup={activeDynamicPopup}
+                  customAlertSettings={customAlertSettings}
+                  saleAlertSettings={saleAlertSettings}
                 >
                   {children}
                 </StorefrontChrome>

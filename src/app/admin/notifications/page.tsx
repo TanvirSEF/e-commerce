@@ -20,6 +20,7 @@ export default async function AdminNotificationsPage() {
       name: u.name,
       email: u.email,
       phone: u.phone || undefined,
+      role: u.role || "customer",
     }))
   } catch (err) {
     console.warn("DB customers load error:", err)

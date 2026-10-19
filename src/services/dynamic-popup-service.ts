@@ -40,11 +40,11 @@ export async function getActiveDynamicPopup(): Promise<DynamicPopup | null> {
       .orderBy(desc(dynamicPopups.createdAt))
       .limit(1)
 
-    if (row) return row
+    return row || null
   } catch (error) {
     console.warn("DB getActiveDynamicPopup fallback:", error)
+    return null
   }
-  return SEED_POPUPS[0] || null
 }
 
 export async function createDynamicPopup(data: {

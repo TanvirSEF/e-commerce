@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Image from "next/image"
 import { X, Calendar, Loader2 } from "lucide-react"
-import { createFlashDealAction } from "@/app/actions/ecommerce-actions"
+import { createFlashDealAction, updateFlashDealAction } from "@/app/actions/ecommerce-actions"
 import { MediaPickerModal } from "@/components/ui/media-picker-modal"
 
 interface FlashDealItem {
@@ -19,14 +19,18 @@ interface FlashDealItem {
 
 interface CreateFlashDealModalProps {
   isOpen: boolean
+  initialDeal?: FlashDealItem | null
   onClose: () => void
   onCreated: (deal: FlashDealItem) => void
+  onUpdated?: (deal: FlashDealItem) => void
 }
 
 export function CreateFlashDealModal({
   isOpen,
+  initialDeal,
   onClose,
   onCreated,
+  onUpdated,
 }: CreateFlashDealModalProps) {
   const [title, setTitle] = useState("")
   const [startDateStr, setStartDateStr] = useState("")
@@ -35,6 +39,21 @@ export function CreateFlashDealModal({
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
+
+  React.useEffect(() => {
+    if (initialDeal) {
+      setTitle(initialDeal.title || "")
+      setBanner(initialDeal.banner || "")
+      setStartDateStr(new Date(initialDeal.startDate).toISOString().slice(0, 10))
+      setEndDateStr(new Date(initialDeal.endDate).toISOString().slice(0, 10))
+    } else {
+      setTitle("")
+      setBanner("")
+      setStartDateStr("")
+      setEndDateStr("")
+    }
+    setErrorMsg("")
+  }, [initialDeal, isOpen])
 
   if (!isOpen) return null
 
@@ -52,18 +71,39 @@ export function CreateFlashDealModal({
       const start = new Date(startDateStr).getTime()
       const end = new Date(endDateStr).getTime()
 
-      const res = await createFlashDealAction({
-        title,
-        banner: banner || undefined,
-        startDate: start,
-        endDate: end,
-      })
-
-      if (res && res.deal) {
-        onCreated(res.deal)
-        onClose()
+      if (initialDeal) {
+        const res = await updateFlashDealAction(initialDeal.id, {
+          title,
+          banner: banner || undefined,
+          startDate: start,
+          endDate: end,
+        })
+        if (res.success) {
+          onUpdated?.({
+            ...initialDeal,
+            title,
+            banner: banner || undefined,
+            startDate: start,
+            endDate: end,
+          })
+          onClose()
+        } else {
+          setErrorMsg("Failed to update flash deal campaign.")
+        }
       } else {
-        setErrorMsg("Failed to create flash deal campaign.")
+        const res = await createFlashDealAction({
+          title,
+          banner: banner || undefined,
+          startDate: start,
+          endDate: end,
+        })
+
+        if (res && res.deal) {
+          onCreated(res.deal)
+          onClose()
+        } else {
+          setErrorMsg("Failed to create flash deal campaign.")
+        }
       }
     } catch {
       setErrorMsg("An unexpected error occurred.")
@@ -77,7 +117,9 @@ export function CreateFlashDealModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900 text-sm">Create Flash Deal Campaign</h3>
+            <h3 className="font-bold text-gray-900 text-sm">
+              {initialDeal ? "Edit Flash Deal Campaign" : "Create Flash Deal Campaign"}
+            </h3>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
@@ -197,7 +239,7 @@ export function CreateFlashDealModal({
                 className="px-5 py-2 rounded text-xs font-bold bg-[#d43533] hover:bg-[#b82a28] text-white shadow-xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
               >
                 {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>{submitting ? "Saving..." : "Save Campaign"}</span>
+                <span>{submitting ? "Saving..." : initialDeal ? "Update Campaign" : "Save Campaign"}</span>
               </button>
             </div>
           </form>

@@ -11,9 +11,16 @@ import { StorefrontDynamicPopup } from "./storefront-dynamic-popup"
 import { FloatingButtons } from "./floating-buttons"
 import { CookieAlert } from "./cookie-alert"
 import { StorefrontChatWidgets } from "./storefront-chat-widgets"
+import { StorefrontCustomAlert } from "./storefront-custom-alert"
 import { cn } from "@/lib/utils"
 
-import type { GeneralSettings, ChatWidgetsSettings } from "@/services/settings-service"
+import type {
+  GeneralSettings,
+  ChatWidgetsSettings,
+  CustomAlertSettings,
+  CustomSaleAlertSettings,
+} from "@/services/settings-service"
+import type { DynamicPopup } from "@/db/schema"
 
 interface StorefrontChromeProps {
   children: React.ReactNode
@@ -21,6 +28,9 @@ interface StorefrontChromeProps {
   showCurrencySwitcher?: boolean
   generalSettings?: GeneralSettings | null
   chatWidgetsSettings?: ChatWidgetsSettings | null
+  activeDynamicPopup?: DynamicPopup | null
+  customAlertSettings?: CustomAlertSettings | null
+  saleAlertSettings?: CustomSaleAlertSettings | null
 }
 
 export function StorefrontChrome({
@@ -29,6 +39,9 @@ export function StorefrontChrome({
   showCurrencySwitcher = true,
   generalSettings,
   chatWidgetsSettings,
+  activeDynamicPopup,
+  customAlertSettings,
+  saleAlertSettings,
 }: StorefrontChromeProps) {
   const pathname = usePathname()
 
@@ -74,8 +87,9 @@ export function StorefrontChrome({
       <CartDrawer />
       <FloatingButtons />
       <StorefrontChatWidgets settings={chatWidgetsSettings} />
-      <StorefrontSaleAlert />
-      <StorefrontDynamicPopup />
+      <StorefrontSaleAlert settings={saleAlertSettings} />
+      <StorefrontDynamicPopup popup={activeDynamicPopup} />
+      <StorefrontCustomAlert settings={customAlertSettings} />
       <CookieAlert />
     </>
   )

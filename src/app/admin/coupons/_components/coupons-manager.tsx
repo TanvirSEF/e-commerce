@@ -6,6 +6,7 @@ import { SeedCoupon } from "@/db/seed/data"
 import {
   deleteCouponAction,
   toggleCouponStatusAction,
+  bulkCouponsAction,
 } from "@/app/actions/ecommerce-actions"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import { CouponsTabs, CouponTabType } from "./coupons-tabs"
@@ -77,18 +78,31 @@ export function CouponsManager({ initialCoupons }: CouponsManagerProps) {
     setDeleteModalOpen(true)
   }
 
-  const handleBulkDelete = () => {
-    if (selectedIds.length === 0) return
-    const protectedItems = coupons.filter(
-      (c) => selectedIds.includes(c.id) && c.type === "welcome_base" && c.status
-    )
-    if (protectedItems.length > 0) {
-      setWarningMsg("Active welcome coupons cannot be deleted. Please deactivate them first.")
-      setTimeout(() => setWarningMsg(null), 4000)
+  const handleBulkAction = async (action: string) => {
+    if (!action || selectedIds.length === 0) return
+    if (action === "delete") {
+      const protectedItems = coupons.filter(
+        (c) => selectedIds.includes(c.id) && c.type === "welcome_base" && c.status
+      )
+      if (protectedItems.length > 0) {
+        setWarningMsg("Active welcome coupons cannot be deleted. Please deactivate them first.")
+        setTimeout(() => setWarningMsg(null), 4000)
+        return
+      }
+      setCouponsToDelete(selectedIds)
+      setDeleteModalOpen(true)
       return
     }
-    setCouponsToDelete(selectedIds)
-    setDeleteModalOpen(true)
+
+    if (action === "activate" || action === "deactivate") {
+      const isActivate = action === "activate"
+      setCoupons((prev) =>
+        prev.map((c) => (selectedIds.includes(c.id) ? { ...c, status: isActivate } : c))
+      )
+      await bulkCouponsAction(selectedIds, action)
+      setSelectedIds([])
+      return
+    }
   }
 
   const handleConfirmDelete = async () => {
@@ -148,14 +162,18 @@ export function CouponsManager({ initialCoupons }: CouponsManagerProps) {
               />
             </div>
             {selectedIds.length > 0 && (
-              <button
-                type="button"
-                onClick={handleBulkDelete}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 cursor-pointer"
-              >
-                <Trash2 className="size-3.5" />
-                <span>Delete Selected ({selectedIds.length})</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <select
+                  value=""
+                  onChange={(e) => handleBulkAction(e.target.value)}
+                  className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:border-primary cursor-pointer shadow-xs"
+                >
+                  <option value="">Bulk Actions ({selectedIds.length} Selected)</option>
+                  <option value="activate">Activate Selected (Status ON)</option>
+                  <option value="deactivate">Deactivate Selected (Status OFF)</option>
+                  <option value="delete">Delete Selected</option>
+                </select>
+              </div>
             )}
           </div>
         </div>

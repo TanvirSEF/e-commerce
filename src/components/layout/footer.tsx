@@ -15,6 +15,7 @@ export function Footer({ generalSettings }: FooterProps = {}) {
   const pathname = usePathname()
   const [email, setEmail] = useState("")
   const [subscribed, setSubscribed] = useState(false)
+  const [isSubscribing, setIsSubscribing] = useState(false)
 
   if (pathname.startsWith("/admin")) {
     return null
@@ -27,11 +28,20 @@ export function Footer({ generalSettings }: FooterProps = {}) {
     return null
   }
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (email) {
+    if (!email || !email.includes("@") || isSubscribing) return
+    setIsSubscribing(true)
+    try {
+      const { addSubscriberAction } = await import("@/app/actions/ecommerce-actions")
+      await addSubscriberAction(email.trim())
       setSubscribed(true)
       setEmail("")
+      setTimeout(() => setSubscribed(false), 6000)
+    } catch (err) {
+      console.warn("Newsletter subscription error:", err)
+    } finally {
+      setIsSubscribing(false)
     }
   }
 

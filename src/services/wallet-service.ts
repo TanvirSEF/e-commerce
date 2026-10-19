@@ -85,15 +85,24 @@ export async function getClubPoints(userId?: string): Promise<{
   convertRate: number // e.g. 100 points = 10 BDT
   history: SeedClubPoint[]
 }> {
+  let convertRate = 10
+  try {
+    const { getClubPointsSettings } = await import("./settings-service")
+    const cpSettings = await getClubPointsSettings()
+    if (cpSettings?.pointsToWalletRate) {
+      convertRate = cpSettings.pointsToWalletRate
+    }
+  } catch {}
+
   if (!userId) {
-    return { totalPoints: 0, convertRate: 10, history: [] }
+    return { totalPoints: 0, convertRate, history: [] }
   }
   try {
     const rows = await db.select().from(clubPoints).where(eq(clubPoints.userId, userId)).orderBy(desc(clubPoints.createdAt))
     const unconv = rows.filter((r) => !r.converted).reduce((sum, r) => sum + r.points, 0)
     return {
       totalPoints: unconv,
-      convertRate: 10, // 100 points = 10 BDT
+      convertRate,
       history: rows.map((r) => ({
         id: String(r.id),
         orderCode: r.orderId ? `ORD-${r.orderId}` : "REWARD-EARN",
@@ -104,7 +113,7 @@ export async function getClubPoints(userId?: string): Promise<{
     }
   } catch (err) {
     console.warn("getClubPoints error:", (err as Error).message)
-    return { totalPoints: 0, convertRate: 10, history: [] }
+    return { totalPoints: 0, convertRate, history: [] }
   }
 }
 
@@ -123,6 +132,13 @@ export async function awardOrderClubPoints(orderId: number): Promise<boolean> {
 
     if (!order || !order.userId) return false
 
+    // Check if club points system is enabled
+    const { getClubPointsSettings } = await import("./settings-service")
+    const cpSettings = await getClubPointsSettings().catch(() => null)
+    if (cpSettings && !cpSettings.enabled) {
+      return false
+    }
+
     // Check if points were already awarded for this order
     const existing = await db
       .select({ id: clubPoints.id })
@@ -134,9 +150,10 @@ export async function awardOrderClubPoints(orderId: number): Promise<boolean> {
       return false
     }
 
-    // Award 1 club point for every 50 BDT, minimum 5 points
+    // Award points based on admin setting (default: pointsPerOrder100BDT or fallback)
     const totalAmount = Number(order.grandTotal) || 0
-    const pointsToAward = Math.max(5, Math.floor(totalAmount / 50))
+    const pointsPer100 = cpSettings?.pointsPerOrder100BDT || 2
+    const pointsToAward = Math.max(1, Math.floor((totalAmount / 100) * pointsPer100))
 
     try {
       await db.insert(clubPoints).values({
@@ -178,8 +195,14 @@ export async function convertClubPoints(
     return { success: false, creditedAmount: 0, error: "Minimum 100 points required to convert." }
   }
 
-  // Rate: 100 points = 10 BDT (0.1 BDT per point)
-  const creditedAmount = Math.floor(pointsToConvert * 0.1)
+  const { getClubPointsSettings } = await import("./settings-service")
+  const cpSettings = await getClubPointsSettings().catch(() => null)
+  if (cpSettings && !cpSettings.enabled) {
+    return { success: false, creditedAmount: 0, error: "Club points reward redemption is currently disabled." }
+  }
+
+  const rate = cpSettings?.pointsToWalletRate || 10
+  const creditedAmount = Math.floor(pointsToConvert * (rate / 100))
 
   try {
     // 1. Fetch unconverted rows

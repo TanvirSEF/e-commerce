@@ -223,6 +223,33 @@ export async function toggleFlashDealFeatured(id: number | string, featured: boo
   }
 }
 
+export async function updateFlashDeal(
+  id: number | string,
+  data: {
+    title?: string
+    banner?: string
+    startDate?: number
+    endDate?: number
+  }
+): Promise<boolean> {
+  const numericId = typeof id === "number" ? id : parseInt(String(id).replace(/\D/g, ""), 10)
+  if (!numericId || isNaN(numericId)) return false
+  try {
+    const updateData: any = { updatedAt: new Date() }
+    if (data.title !== undefined) updateData.title = data.title
+    if (data.banner !== undefined) updateData.banner = data.banner
+    if (data.startDate !== undefined) updateData.startDate = data.startDate
+    if (data.endDate !== undefined) updateData.endDate = data.endDate
+
+    await db.update(flashDeals).set(updateData).where(eq(flashDeals.id, numericId))
+    return true
+  } catch (err) {
+    console.error("Error updating flash deal:", err)
+    return false
+  }
+}
+
+
 export interface ShippingSettings {
   shippingType: "area_wise" | "flat_rate" | "product_wise"
   flatRateCost: number

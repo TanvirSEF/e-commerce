@@ -8,14 +8,14 @@ import { X } from "lucide-react"
 interface PopupData {
   id: number
   title: string
-  summary: string
+  summary?: string | null
   bannerUrl: string
-  btnText: string
-  btnBackgroundColor: string
-  btnTextColor: string
-  link: string
-  delaySec: number
-  durationSec: number
+  btnText?: string | null
+  btnBackgroundColor?: string | null
+  btnTextColor?: string | null
+  link?: string | null
+  delaySec?: number | null
+  durationSec?: number | null
 }
 
 const DEFAULT_POPUP: PopupData = {
@@ -31,42 +31,48 @@ const DEFAULT_POPUP: PopupData = {
   durationSec: 25,
 }
 
-export function StorefrontDynamicPopup() {
+interface StorefrontDynamicPopupProps {
+  popup?: PopupData | null
+}
+
+export function StorefrontDynamicPopup({ popup }: StorefrontDynamicPopupProps) {
   const pathname = usePathname()
-  const [popup, setPopup] = useState<PopupData | null>(null)
   const [isOpen, setIsOpen] = useState(false)
 
   // Don't display inside admin or seller portals
   const isAdminOrSeller = pathname?.startsWith("/admin") || pathname?.startsWith("/seller")
 
   useEffect(() => {
-    if (isAdminOrSeller) return
+    if (isAdminOrSeller || !popup) return
 
     // Check if dismissed in this session
-    const isDismissed = sessionStorage.getItem("huipper_dynamic_popup_dismissed")
+    const isDismissed = sessionStorage.getItem(`huipper_popup_dismissed_${popup.id}`)
     if (isDismissed) return
 
-    setPopup(DEFAULT_POPUP)
+    const delay = (popup.delaySec || 3) * 1000
+    const duration = (popup.durationSec || 20) * 1000
 
     // Trigger open after delay
     const delayTimer = setTimeout(() => {
       setIsOpen(true)
-    }, (DEFAULT_POPUP.delaySec || 3) * 1000)
+    }, delay)
 
     // Optional auto-dismiss after duration
     const dismissTimer = setTimeout(() => {
       setIsOpen(false)
-    }, ((DEFAULT_POPUP.delaySec || 3) + (DEFAULT_POPUP.durationSec || 20)) * 1000)
+    }, delay + duration)
 
     return () => {
       clearTimeout(delayTimer)
       clearTimeout(dismissTimer)
     }
-  }, [isAdminOrSeller])
+  }, [isAdminOrSeller, popup])
 
   const handleClose = () => {
     setIsOpen(false)
-    sessionStorage.setItem("huipper_dynamic_popup_dismissed", "true")
+    if (popup) {
+      sessionStorage.setItem(`huipper_popup_dismissed_${popup.id}`, "true")
+    }
   }
 
   if (isAdminOrSeller || !isOpen || !popup) return null

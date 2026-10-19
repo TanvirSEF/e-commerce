@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Copy, Check, Trash2, ExternalLink } from "lucide-react"
+import { Copy, Check, Trash2, ExternalLink, Pencil } from "lucide-react"
 
 export interface FlashDealItem {
   id: string
@@ -23,6 +23,7 @@ interface FlashDealsTableProps {
   onToggleSelectAll: () => void
   onToggleStatus: (id: string, current: boolean) => void
   onToggleFeatured: (id: string, current: boolean) => void
+  onEditClick: (deal: FlashDealItem) => void
   onDeleteClick: (id: string) => void
 }
 
@@ -33,6 +34,7 @@ export function FlashDealsTable({
   onToggleSelectAll,
   onToggleStatus,
   onToggleFeatured,
+  onEditClick,
   onDeleteClick,
 }: FlashDealsTableProps) {
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
@@ -166,14 +168,24 @@ export function FlashDealsTable({
                     </div>
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onDeleteClick(deal.id)}
-                      className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
-                      title="Delete"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onEditClick(deal)}
+                        className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors cursor-pointer"
+                        title="Edit Flash Deal"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteClick(deal.id)}
+                        className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                        title="Delete"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )

@@ -55,13 +55,20 @@ const SAMPLE_ALERTS: SaleAlertItem[] = [
   },
 ]
 
-export function StorefrontSaleAlert() {
+import type { CustomSaleAlertSettings } from "@/services/settings-service"
+
+interface StorefrontSaleAlertProps {
+  settings?: CustomSaleAlertSettings | null
+}
+
+export function StorefrontSaleAlert({ settings }: StorefrontSaleAlertProps) {
   const pathname = usePathname()
   const [currentAlert, setCurrentAlert] = useState<SaleAlertItem | null>(null)
   const [visible, setVisible] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
-  // Don't show in admin, seller, or checkout pages
+  // Don't show in admin, seller, or checkout pages, or if disabled in admin settings
+  const isEnabled = settings ? settings.showSaleAlert : true
   const isAdminOrCheckout =
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/seller") ||
@@ -69,34 +76,37 @@ export function StorefrontSaleAlert() {
     pathname?.startsWith("/shipping-label")
 
   useEffect(() => {
-    if (isAdminOrCheckout || dismissed) return
+    if (isAdminOrCheckout || dismissed || !isEnabled) return
+
+    const minSec = Math.max(3, settings?.minIntervalSec || 5)
+    const maxSec = Math.max(minSec + 2, settings?.maxIntervalSec || 15)
 
     let alertIndex = 0
-    const triggerPopup = () => {
-      const alert = SAMPLE_ALERTS[alertIndex % SAMPLE_ALERTS.length]
-      setCurrentAlert(alert)
-      setVisible(true)
-      alertIndex++
+    let timerId: NodeJS.Timeout
 
-      // Hide after 5 seconds
-      setTimeout(() => {
-        setVisible(false)
-      }, 5000)
+    const scheduleNext = () => {
+      const delayMs = Math.floor(Math.random() * (maxSec - minSec + 1) + minSec) * 1000
+      timerId = setTimeout(() => {
+        const alert = SAMPLE_ALERTS[alertIndex % SAMPLE_ALERTS.length]
+        setCurrentAlert(alert)
+        setVisible(true)
+        alertIndex++
+
+        setTimeout(() => {
+          setVisible(false)
+          scheduleNext()
+        }, 5000)
+      }, delayMs)
     }
 
-    // First popup after 4 seconds
-    const initialTimer = setTimeout(triggerPopup, 4000)
-
-    // Then interval every 14 seconds
-    const interval = setInterval(triggerPopup, 14000)
+    scheduleNext()
 
     return () => {
-      clearTimeout(initialTimer)
-      clearInterval(interval)
+      clearTimeout(timerId)
     }
-  }, [isAdminOrCheckout, dismissed])
+  }, [isAdminOrCheckout, dismissed, isEnabled, settings?.minIntervalSec, settings?.maxIntervalSec])
 
-  if (isAdminOrCheckout || dismissed || !currentAlert || !visible) {
+  if (isAdminOrCheckout || dismissed || !isEnabled || !currentAlert || !visible) {
     return null
   }
 

@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from "react"
-import { Bell, Send, CheckCircle2, Users, RefreshCw } from "lucide-react"
+import React, { useState, useMemo } from "react"
+import { Bell, Send, CheckCircle2, Users, RefreshCw, Filter } from "lucide-react"
 import { type CustomNotification } from "@/db/schema"
 import { sendCustomNotificationAction } from "@/app/actions/ecommerce-actions"
 import { NotificationHistoryTable } from "./notification-history-table"
@@ -11,6 +11,7 @@ interface CustomerOption {
   name: string
   email: string
   phone?: string
+  role?: string
 }
 
 interface NotificationsViewProps {
@@ -30,6 +31,7 @@ export function NotificationsView({
   history: initialHistory,
 }: NotificationsViewProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+  const [roleFilter, setRoleFilter] = useState<"all" | "customer" | "seller">("all")
   const [notificationType, setNotificationType] = useState("Promotional")
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
@@ -38,8 +40,14 @@ export function NotificationsView({
   const [isSending, setIsSending] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  const filteredRecipients = useMemo(() => {
+    if (roleFilter === "customer") return customers.filter((c) => c.role === "customer" || !c.role)
+    if (roleFilter === "seller") return customers.filter((c) => c.role === "seller")
+    return customers
+  }, [customers, roleFilter])
+
   const handleSelectAll = () => {
-    setSelectedUserIds(customers.map((c) => c.id))
+    setSelectedUserIds(filteredRecipients.map((c) => c.id))
   }
 
   const handleDeselectAll = () => {
@@ -121,10 +129,24 @@ export function NotificationsView({
 
           <form onSubmit={handleSend} className="space-y-4">
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-gray-700">
-                  Customers ({selectedUserIds.length === 0 ? "All Customers" : `${selectedUserIds.length} Selected`})
-                </label>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-gray-700">
+                    Recipients ({selectedUserIds.length === 0 ? `All (${filteredRecipients.length})` : `${selectedUserIds.length} Selected`})
+                  </label>
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => {
+                      setRoleFilter(e.target.value as any)
+                      setSelectedUserIds([])
+                    }}
+                    className="text-[11px] px-2 py-1 bg-white border border-gray-200 rounded text-gray-700 focus:outline-none focus:border-[#d43533] cursor-pointer"
+                  >
+                    <option value="all">All Registered Users</option>
+                    <option value="customer">Customers Only</option>
+                    <option value="seller">Sellers Only</option>
+                  </select>
+                </div>
                 <div className="space-x-2 text-xs">
                   <button
                     type="button"
@@ -144,10 +166,10 @@ export function NotificationsView({
                 </div>
               </div>
               <div className="border border-gray-200 rounded-lg p-2.5 max-h-36 overflow-y-auto space-y-1 bg-gray-50/50">
-                {customers.length === 0 ? (
-                  <p className="text-xs text-gray-400 py-2 text-center">No registered customers found</p>
+                {filteredRecipients.length === 0 ? (
+                  <p className="text-xs text-gray-400 py-2 text-center">No recipients found for this filter</p>
                 ) : (
-                  customers.map((c) => (
+                  filteredRecipients.map((c) => (
                     <label
                       key={c.id}
                       className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer text-xs"
@@ -164,6 +186,11 @@ export function NotificationsView({
                       />
                       <span className="font-medium text-gray-800">{c.name}</span>
                       <span className="text-gray-400">({c.email})</span>
+                      {c.role && c.role !== "customer" && (
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
+                          {c.role}
+                        </span>
+                      )}
                     </label>
                   ))
                 )}
