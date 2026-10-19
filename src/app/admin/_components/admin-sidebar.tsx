@@ -117,9 +117,9 @@ export function AdminSidebar({ isOpen, onClose, initialDisabledAddons = [] }: Ad
           {filteredNav.map((item) => {
             const Icon = item.icon
             const hasChildren = item.children && item.children.length > 0
-            const isGroupOpen = !!openGroups[item.title]
+            const isChildActive = item.children?.some((c) => pathname === c.href || pathname?.startsWith(c.href + "/"))
+            const isGroupOpen = openGroups[item.title] !== undefined ? openGroups[item.title] : isChildActive
             const isActive = item.href ? pathname === item.href : false
-            const isChildActive = item.children?.some((c) => pathname === c.href)
 
             if (hasChildren) {
               const visibleChildren = item.children?.filter((sub) => !isAddonDisabled(sub.addonKey))

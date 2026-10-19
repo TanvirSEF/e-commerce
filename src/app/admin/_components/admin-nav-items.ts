@@ -207,9 +207,12 @@ export const adminNavItems: NavItem[] = [
     ],
   },
   {
-    title: "Staffs & Roles",
-    href: "/admin/staffs",
+    title: "Staffs",
     icon: ShieldCheck,
+    children: [
+      { title: "All Staffs", href: "/admin/staffs" },
+      { title: "Staff Roles", href: "/admin/roles" },
+    ],
   },
   {
     title: "OTP & SMS System",

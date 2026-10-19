@@ -50,6 +50,22 @@ export function StaffsListContainer({
         </Link>
       </div>
 
+      {/* Navigation Tabs */}
+      <div className="flex items-center border-b border-gray-200">
+        <Link
+          href="/admin/staffs"
+          className="px-4 py-2.5 text-xs font-semibold border-b-2 border-[#d43533] text-[#d43533] transition-colors"
+        >
+          All Staffs
+        </Link>
+        <Link
+          href="/admin/roles"
+          className="px-4 py-2.5 text-xs font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Staff Roles
+        </Link>
+      </div>
+
       {/* Card container matching backend/staff/staffs/index.blade.php */}
       <div className="bg-white border border-gray-200 rounded shadow-sm">
         {/* Card Header */}

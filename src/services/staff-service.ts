@@ -111,6 +111,48 @@ export async function createStaff(data: StaffInputData): Promise<{ id: number }>
       })
       .returning({ id: staffs.id })
 
+    // Also sync to users & accounts for Better Auth login
+    try {
+      const { users, accounts } = await import("../db/schema")
+      const { hashPassword } = await import("better-auth/crypto")
+      const existingUser = await db.select().from(users).where(eq(users.email, data.email.trim().toLowerCase())).limit(1)
+      if (existingUser.length === 0) {
+        const userId = `usr_staff_${row.id}_${Date.now()}`
+        await db.insert(users).values({
+          id: userId,
+          name: data.name.trim(),
+          email: data.email.trim().toLowerCase(),
+          phone: data.phone?.trim() || null,
+          role: "staff",
+          emailVerified: true,
+          balance: "0.00",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+
+        if (data.password) {
+          const hashedPassword = await hashPassword(data.password)
+          await db.insert(accounts).values({
+            id: `acc_${userId}`,
+            userId,
+            accountId: userId,
+            providerId: "credential",
+            password: hashedPassword,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+        }
+      } else {
+        await db.update(users).set({ role: "staff", updatedAt: new Date() }).where(eq(users.id, existingUser[0].id))
+        if (data.password) {
+          const hashedPassword = await hashPassword(data.password)
+          await db.update(accounts).set({ password: hashedPassword, updatedAt: new Date() }).where(eq(accounts.userId, existingUser[0].id))
+        }
+      }
+    } catch (authErr) {
+      console.warn("Failed to sync staff to Better Auth users/accounts:", authErr)
+    }
+
     return { id: row.id }
   } catch (err) {
     console.error("createStaff error:", err)
@@ -139,6 +181,20 @@ export async function updateStaff(id: number, data: StaffInputData): Promise<voi
         updatedAt: new Date(),
       })
       .where(eq(staffs.id, id))
+
+    if (data.password) {
+      try {
+        const { users, accounts } = await import("../db/schema")
+        const { hashPassword } = await import("better-auth/crypto")
+        const existingUser = await db.select().from(users).where(eq(users.email, data.email.trim().toLowerCase())).limit(1)
+        if (existingUser.length > 0) {
+          const hashedPassword = await hashPassword(data.password)
+          await db.update(accounts).set({ password: hashedPassword, updatedAt: new Date() }).where(eq(accounts.userId, existingUser[0].id))
+        }
+      } catch (authErr) {
+        console.warn("Failed to update staff password in auth:", authErr)
+      }
+    }
   } catch (err) {
     console.error("updateStaff error:", err)
     throw err
@@ -159,9 +215,81 @@ export async function updateStaffStatus(id: number, isActive: boolean): Promise<
 
 export async function deleteStaff(id: number): Promise<void> {
   try {
+    const [staff] = await db.select().from(staffs).where(eq(staffs.id, id)).limit(1)
     await db.delete(staffs).where(eq(staffs.id, id))
+    if (staff) {
+      try {
+        const { users } = await import("../db/schema")
+        await db.delete(users).where(eq(users.email, staff.email))
+      } catch (authErr) {
+        console.warn("Failed to clean up staff auth user:", authErr)
+      }
+    }
   } catch (err) {
     console.error("deleteStaff error:", err)
+    throw err
+  }
+}
+
+export async function getRoleByIdAdmin(id: number): Promise<RoleItem | null> {
+  try {
+    const [row] = await db.select().from(staffRoles).where(eq(staffRoles.id, id)).limit(1)
+    if (!row) return null
+    return {
+      id: row.id,
+      name: row.name,
+      permissions: (row.permissions as string[]) || [],
+    }
+  } catch (err) {
+    console.error("getRoleByIdAdmin error:", err)
+    return null
+  }
+}
+
+export async function createRoleAdmin(data: { name: string; permissions: string[] }): Promise<{ id: number }> {
+  try {
+    const [row] = await db
+      .insert(staffRoles)
+      .values({
+        name: data.name.trim(),
+        permissions: data.permissions,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning({ id: staffRoles.id })
+    return { id: row.id }
+  } catch (err) {
+    console.error("createRoleAdmin error:", err)
+    throw err
+  }
+}
+
+export async function updateRoleAdmin(id: number, data: { name: string; permissions: string[] }): Promise<void> {
+  try {
+    await db
+      .update(staffRoles)
+      .set({
+        name: data.name.trim(),
+        permissions: data.permissions,
+        updatedAt: new Date(),
+      })
+      .where(eq(staffRoles.id, id))
+
+    await db
+      .update(staffs)
+      .set({ roleName: data.name.trim(), updatedAt: new Date() })
+      .where(eq(staffs.roleId, id))
+  } catch (err) {
+    console.error("updateRoleAdmin error:", err)
+    throw err
+  }
+}
+
+export async function deleteRoleAdmin(id: number): Promise<void> {
+  try {
+    await db.delete(staffRoles).where(eq(staffRoles.id, id))
+  } catch (err) {
+    console.error("deleteRoleAdmin error:", err)
     throw err
   }
 }

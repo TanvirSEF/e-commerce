@@ -25,7 +25,7 @@ export function StaffForm({ initialData, roles }: Props) {
   const [phone, setPhone] = useState(initialData?.phone || "")
   const [password, setPassword] = useState("")
   const [roleId, setRoleId] = useState<number>(
-    initialData?.roleId || (roles[0]?.id ?? 2)
+    initialData?.roleId || (roles[0]?.id ?? 0)
   )
   const [error, setError] = useState("")
 
@@ -49,7 +49,7 @@ export function StaffForm({ initialData, roles }: Props) {
       setError("Password is required.")
       return
     }
-    if (!roleId) {
+    if (!roleId || roleId <= 0) {
       setError("Please select a role.")
       return
     }
@@ -179,18 +179,40 @@ export function StaffForm({ initialData, roles }: Props) {
                 Role <span className="text-red-500">*</span>
               </label>
               <div className="sm:col-span-3">
-                <select
-                  value={roleId}
-                  onChange={(e) => setRoleId(Number(e.target.value))}
-                  className="w-full text-xs border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-400"
-                  required
-                >
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
+                {roles.length === 0 ? (
+                  <div className="flex items-center justify-between p-2.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                    <span>No roles found. Please create a role first.</span>
+                    <Link
+                      href="/admin/roles/create"
+                      className="font-semibold text-blue-600 hover:underline"
+                    >
+                      + Create Role
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={roleId}
+                      onChange={(e) => setRoleId(Number(e.target.value))}
+                      className="w-full text-xs border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-400 bg-white"
+                      required
+                    >
+                      <option value="0" disabled>Select Role</option>
+                      {roles.map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Link
+                      href="/admin/roles/create"
+                      className="px-2.5 py-2 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-200 whitespace-nowrap transition-colors"
+                      title="Add new role"
+                    >
+                      + New
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
 import type { StaffItem } from "@/types/staff"
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
-import { deleteStaffAction } from "@/app/actions/staff-actions"
+import { deleteStaffAction, updateStaffStatusAction } from "@/app/actions/staff-actions"
 
 interface Props {
   items: StaffItem[]
@@ -26,6 +26,22 @@ export function StaffTable({
 }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<StaffItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [statusMap, setStatusMap] = useState<Record<number, boolean>>({})
+  const [togglingId, setTogglingId] = useState<number | null>(null)
+
+  const isStaffActive = (item: StaffItem) =>
+    statusMap[item.id] !== undefined ? statusMap[item.id] : item.isActive
+
+  const handleToggleStatus = async (item: StaffItem) => {
+    const nextVal = !isStaffActive(item)
+    setTogglingId(item.id)
+    try {
+      await updateStaffStatusAction(item.id, nextVal)
+      setStatusMap((prev) => ({ ...prev, [item.id]: nextVal }))
+    } finally {
+      setTogglingId(null)
+    }
+  }
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -51,7 +67,7 @@ export function StaffTable({
       case "Product & Catalog Editor":
         return "bg-amber-100 text-amber-800 border-amber-200"
       default:
-        return "bg-slate-100 text-slate-800 border-slate-200"
+        return "bg-indigo-50 text-indigo-700 border-indigo-200"
     }
   }
 
@@ -71,13 +87,14 @@ export function StaffTable({
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Phone</th>
               <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3 text-center w-24">Status</th>
               <th className="px-4 py-3 text-right w-24">Options</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
                   No staffs found.
                 </td>
               </tr>
@@ -102,6 +119,18 @@ export function StaffTable({
                     >
                       {item.roleName}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isStaffActive(item)}
+                        disabled={togglingId === item.id}
+                        onChange={() => handleToggleStatus(item)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
