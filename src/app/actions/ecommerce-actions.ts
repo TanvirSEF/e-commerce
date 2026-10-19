@@ -334,16 +334,28 @@ export async function updateShippingSettingsAction(data: {
 
 export async function createRefundAction(data: {
   orderCode: string
+  orderId?: number
   productName: string
-  userName: string
+  userName?: string
   shopName?: string
   amount: number
   reason: string
   details?: string
+  attachment?: string
 }) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  const userId = session?.user?.id || undefined
+  const userName = data.userName || session?.user?.name || "Customer"
+
   const { createRefundRequest } = await import("@/services/refund-service")
-  const res = await createRefundRequest(data)
+  const res = await createRefundRequest({
+    ...data,
+    userId,
+    userName,
+  })
   revalidatePath("/dashboard/refund-requests")
+  revalidatePath("/dashboard/purchase-history")
   revalidatePath("/sent-refund-request")
   revalidatePath("/seller/refund-requests")
   revalidatePath("/seller/refund-request")
@@ -794,6 +806,7 @@ export async function submitContactInquiryAction(data: {
 }
 
 export async function createCustomerProductAction(data: {
+  userId?: string
   name: string
   category: string
   unitPrice: number
@@ -804,8 +817,16 @@ export async function createCustomerProductAction(data: {
   location: string
   thumbnailImg?: string
 }) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  const userId = data.userId || session?.user?.id || undefined
+
   const { createCustomerProduct } = await import("@/services/customer-product-service")
-  return await createCustomerProduct(data)
+  const res = await createCustomerProduct({ ...data, userId })
+  revalidatePath("/dashboard/customer-products")
+  revalidatePath("/customer-products")
+  revalidatePath("/admin/customer-products")
+  return res
 }
 
 export async function deleteCustomerProductAction(id: number) {
@@ -3309,6 +3330,17 @@ export async function updateSellerOrderStatusAction(data: {
 
     await db.update(orders).set(updateFields).where(eq(orders.id, data.orderId))
 
+    if (data.deliveryStatus === "delivered") {
+      try {
+        const { awardOrderClubPoints } = await import("@/services/wallet-service")
+        await awardOrderClubPoints(data.orderId)
+      } catch (err) {
+        console.error("Failed to auto-award club points on seller delivery:", err)
+      }
+      revalidatePath("/dashboard/club-points")
+      revalidatePath("/dashboard/wallet")
+    }
+
     revalidatePath("/seller/orders")
     revalidatePath(`/seller/orders/${data.orderId}`)
     revalidatePath("/admin/orders")
@@ -3344,5 +3376,67 @@ export async function sellerUpdateRefundRequestStatusAction(data: {
     return { success: false, error: err?.message || "Failed to update refund request" }
   }
 }
+
+export async function toggleFollowShopAction(shopId: number, currentFollowing: boolean) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, requireLogin: true, following: currentFollowing }
+  }
+
+  const { followShop, unfollowShop } = await import("@/services/customer-extra-service")
+  let success = false
+  if (currentFollowing) {
+    success = await unfollowShop(session.user.id, shopId)
+  } else {
+    success = await followShop(session.user.id, shopId)
+  }
+
+  revalidatePath("/dashboard/followed-sellers")
+  revalidatePath("/dashboard")
+  revalidatePath("/shop")
+  return { success, following: !currentFollowing }
+}
+
+export async function createAffiliateWithdrawAction(data: {
+  affiliateUserId: number
+  userName: string
+  userEmail: string
+  amount: number
+  paymentMethod?: string
+  paymentDetails?: string
+}) {
+  const { createAffiliateWithdrawRequest } = await import("@/services/affiliate-service")
+  const res = await createAffiliateWithdrawRequest(data)
+  revalidatePath("/dashboard/affiliate")
+  revalidatePath("/dashboard/affiliate/payment-history")
+  revalidatePath("/admin/affiliate/withdraw-requests")
+  return res
+}
+
+export async function startConversationAction(data: {
+  shopId: number
+  title?: string
+  initialMessage?: string
+}) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  if (!session?.user?.id) {
+    return { success: false, requireLogin: true }
+  }
+
+  const { findOrCreateConversation } = await import("@/services/conversation-service")
+  const res = await findOrCreateConversation({
+    userId: session.user.id,
+    shopId: data.shopId,
+    title: data.title,
+    initialMessage: data.initialMessage,
+  })
+
+  revalidatePath("/dashboard/conversations")
+  revalidatePath("/seller/conversations")
+  return res
+}
+
 
 

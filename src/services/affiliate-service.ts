@@ -276,6 +276,37 @@ export async function getAllAffiliateWithdrawRequests(): Promise<AffiliateWithdr
     .orderBy(desc(affiliateWithdrawRequests.createdAt))
 }
 
+// Create affiliate withdraw request
+export async function createAffiliateWithdrawRequest(data: {
+  affiliateUserId: number
+  userName: string
+  userEmail: string
+  amount: number
+  paymentMethod?: string
+  paymentDetails?: string
+}): Promise<{ success: boolean; id?: number }> {
+  try {
+    const [inserted] = await db
+      .insert(affiliateWithdrawRequests)
+      .values({
+        affiliateUserId: data.affiliateUserId,
+        userName: data.userName,
+        userEmail: data.userEmail,
+        amount: String(data.amount),
+        paymentMethod: data.paymentMethod || "Bank Transfer",
+        paymentDetails: data.paymentDetails || null,
+        status: "pending",
+        createdAt: new Date(),
+      })
+      .returning()
+
+    return { success: true, id: inserted?.id }
+  } catch (err) {
+    console.error("createAffiliateWithdrawRequest error:", err)
+    return { success: false }
+  }
+}
+
 // Process withdraw request payout
 export async function processWithdrawRequestPayout(data: {
   requestId: number

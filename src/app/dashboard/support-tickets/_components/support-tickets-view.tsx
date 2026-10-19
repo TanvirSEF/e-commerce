@@ -2,15 +2,17 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Plus, Send, CheckCircle, Clock, AlertCircle, X, ChevronRight } from "lucide-react"
+import { Plus, Send, CheckCircle, Clock, AlertCircle, X, ChevronRight, Loader2 } from "lucide-react"
 import { SeedSupportTicket } from "@/db/seed/data"
-import { createTicketAction } from "@/app/actions/ecommerce-actions"
+import { createTicketAction, replyCustomerTicketAction } from "@/app/actions/ecommerce-actions"
+import { useAuth } from "@/lib/context/auth-context"
 
 interface SupportTicketsViewProps {
   initialTickets: SeedSupportTicket[]
 }
 
 export function SupportTicketsView({ initialTickets }: SupportTicketsViewProps) {
+  const { user } = useAuth()
   const [tickets, setTickets] = useState(initialTickets)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState<SeedSupportTicket | null>(null)
@@ -22,6 +24,7 @@ export function SupportTicketsView({ initialTickets }: SupportTicketsViewProps) 
 
   // Reply states
   const [replyText, setReplyText] = useState("")
+  const [replying, setReplying] = useState(false)
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,26 +39,42 @@ export function SupportTicketsView({ initialTickets }: SupportTicketsViewProps) 
     setDetails("")
   }
 
-  const handleSendReply = (e: React.FormEvent) => {
+  const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!replyText.trim() || !selectedTicket) return
 
-    const newReply = {
-      id: `tr-${Date.now()}`,
-      senderName: "Tanvir Ahmed",
-      senderRole: "customer" as const,
-      message: replyText,
-      date: new Date().toISOString().slice(0, 16).replace("T", " "),
-    }
+    setReplying(true)
+    const currentReplyText = replyText.trim()
+    const customerName = user?.name || "Customer"
 
-    const updated = {
-      ...selectedTicket,
-      replies: [...(selectedTicket.replies || []), newReply],
-    }
+    try {
+      const ticketNumericId = parseInt(selectedTicket.id, 10) || 1
+      await replyCustomerTicketAction({
+        ticketId: ticketNumericId,
+        reply: currentReplyText,
+      })
 
-    setSelectedTicket(updated)
-    setTickets(tickets.map((t) => (t.id === selectedTicket.id ? updated : t)))
-    setReplyText("")
+      const newReply = {
+        id: `tr-${Date.now()}`,
+        senderName: customerName,
+        senderRole: "customer" as const,
+        message: currentReplyText,
+        date: new Date().toISOString().slice(0, 16).replace("T", " "),
+      }
+
+      const updated = {
+        ...selectedTicket,
+        replies: [...(selectedTicket.replies || []), newReply],
+      }
+
+      setSelectedTicket(updated)
+      setTickets(tickets.map((t) => (t.id === selectedTicket.id ? updated : t)))
+      setReplyText("")
+    } catch (err) {
+      console.error("Failed to submit customer ticket reply:", err)
+    } finally {
+      setReplying(false)
+    }
   }
 
   return (

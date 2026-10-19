@@ -90,6 +90,9 @@ export async function submitProductReviewAction(data: {
 
     revalidatePath("/dashboard/purchase-history")
     revalidatePath("/products")
+    revalidatePath("/product")
+    revalidatePath("/admin/products/reviews")
+    revalidatePath("/seller/product-reviews")
 
     return { success: true, message: "Review submitted successfully." }
   } catch (err) {

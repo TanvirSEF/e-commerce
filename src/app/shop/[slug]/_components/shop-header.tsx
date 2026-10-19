@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
-import { CheckCircle, Star, MapPin, Calendar, Heart, Share2 } from "lucide-react"
+import { useState, useTransition, type ReactNode } from "react"
+import { CheckCircle, Star, MapPin, Calendar, Heart, Share2, Loader2 } from "lucide-react"
 import { SeedShop } from "@/db/seed/data"
+import { toggleFollowShopAction } from "@/app/actions/ecommerce-actions"
+import { useRouter } from "next/navigation"
 
 interface ShopHeaderProps {
   shop: SeedShop
@@ -16,17 +18,24 @@ interface SocialLinkItem {
 }
 
 export function ShopHeader({ shop }: ShopHeaderProps) {
+  const router = useRouter()
   const [following, setFollowing] = useState(false)
   const [followerCount, setFollowerCount] = useState(shop.followersCount)
+  const [isPending, startTransition] = useTransition()
 
   const handleToggleFollow = () => {
-    if (following) {
-      setFollowing(false)
-      setFollowerCount((prev) => Math.max(0, prev - 1))
-    } else {
-      setFollowing(true)
-      setFollowerCount((prev) => prev + 1)
-    }
+    startTransition(async () => {
+      const numericShopId = typeof shop.id === "number" ? shop.id : parseInt(String(shop.id).replace(/\D/g, ""), 10) || 1
+      const res = await toggleFollowShopAction(numericShopId, following)
+      if (res.requireLogin) {
+        router.push("/login")
+        return
+      }
+      if (res.success) {
+        setFollowing(res.following)
+        setFollowerCount((prev) => (res.following ? prev + 1 : Math.max(0, prev - 1)))
+      }
+    })
   }
 
   const socialLinks: SocialLinkItem[] = []
@@ -201,13 +210,18 @@ export function ShopHeader({ shop }: ShopHeaderProps) {
               {/* Follow Button */}
               <button
                 onClick={handleToggleFollow}
-                className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs ${
+                disabled={isPending}
+                className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs disabled:opacity-70 ${
                   following
                     ? "bg-green-600 hover:bg-green-700 text-white"
                     : "bg-primary hover:bg-primary/90 text-white"
                 }`}
               >
-                <Heart className={`size-3.5 ${following ? "fill-white" : ""}`} />
+                {isPending ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Heart className={`size-3.5 ${following ? "fill-white" : ""}`} />
+                )}
                 <span>{following ? "Followed" : "Follow Seller"}</span>
                 <span className="opacity-80 font-normal">({followerCount})</span>
               </button>

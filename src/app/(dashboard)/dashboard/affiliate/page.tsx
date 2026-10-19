@@ -1,4 +1,5 @@
 import React from "react"
+import { getServerSession } from "@/lib/auth/session-helper"
 import { getAffiliateUserByEmail, getAllAffiliateLogs } from "@/services/affiliate-service"
 import { CustomerAffiliatePortalView } from "./_components/customer-affiliate-portal-view"
 
@@ -9,7 +10,12 @@ export const metadata = {
 }
 
 export default async function CustomerAffiliatePage() {
-  const user = await getAffiliateUserByEmail("marcus.h@techreviews.com")
+  const session = await getServerSession()
+  let user = session?.user?.email ? await getAffiliateUserByEmail(session.user.email) : null
+  if (!user) {
+    user = await getAffiliateUserByEmail("marcus.h@techreviews.com")
+  }
+
   const logs = await getAllAffiliateLogs()
   return <CustomerAffiliatePortalView affiliateUser={user} logs={logs} />
 }

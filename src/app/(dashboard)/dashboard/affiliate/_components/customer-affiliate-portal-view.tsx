@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { Users, DollarSign, Copy, Check, Share2, History, ArrowUpRight, CheckCircle2 } from "lucide-react"
 import type { AffiliateUser, AffiliateLog } from "@/db/schema/affiliate"
+import { createAffiliateWithdrawAction } from "@/app/actions/ecommerce-actions"
 
 interface CustomerAffiliatePortalViewProps {
   affiliateUser: AffiliateUser | null
@@ -25,14 +26,31 @@ export function CustomerAffiliatePortalView({ affiliateUser, logs }: CustomerAff
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleWithdraw = (e: React.FormEvent) => {
+  const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!affiliateUser || !withdrawAmount || parseFloat(withdrawAmount) <= 0) return
+
     setIsSubmitting(true)
-    setTimeout(() => {
+    try {
+      const res = await createAffiliateWithdrawAction({
+        affiliateUserId: affiliateUser.id,
+        userName: affiliateUser.userName,
+        userEmail: affiliateUser.userEmail,
+        amount: parseFloat(withdrawAmount),
+        paymentMethod: "Bank Transfer",
+        paymentDetails: `Affiliate payout requested for ${affiliateUser.userName}`,
+      })
+
+      if (res && res.success) {
+        setWithdrawSuccess(true)
+        setWithdrawAmount("")
+        setTimeout(() => setWithdrawSuccess(false), 4000)
+      }
+    } catch (err) {
+      console.error("Failed to submit affiliate withdraw request:", err)
+    } finally {
       setIsSubmitting(false)
-      setWithdrawSuccess(true)
-      setWithdrawAmount("")
-    }, 600)
+    }
   }
 
   return (

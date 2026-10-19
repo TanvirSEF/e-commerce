@@ -1,10 +1,11 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Tag, ArrowLeft, Upload, Save, AlertCircle } from "lucide-react"
 import { createCustomerProductAction } from "@/app/actions/ecommerce-actions"
+import { useAuth } from "@/lib/context/auth-context"
 
 const CATEGORIES = [
   "Cellphones & Tabs",
@@ -25,6 +26,7 @@ const CONDITIONS = [
 
 export function CustomerProductCreateView() {
   const router = useRouter()
+  const { user } = useAuth()
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
 
@@ -33,13 +35,24 @@ export function CustomerProductCreateView() {
     category: "Cellphones & Tabs",
     condition: "Used - Like New",
     unitPrice: "",
-    customerName: "Sakib Al Hasan",
-    customerPhone: "+880 1711-889900",
-    customerEmail: "sakib.user@gmail.com",
-    location: "Dhanmondi, Dhaka",
+    customerName: user?.name || "Valued Customer",
+    customerPhone: user?.phone || "+880 1711-000000",
+    customerEmail: user?.email || "",
+    location: "Dhaka, Bangladesh",
     thumbnailImg: "/assets/img/products/1.jpg",
     description: "",
   })
+
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        customerName: user.name || prev.customerName,
+        customerPhone: user.phone || prev.customerPhone,
+        customerEmail: user.email || prev.customerEmail,
+      }))
+    }
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

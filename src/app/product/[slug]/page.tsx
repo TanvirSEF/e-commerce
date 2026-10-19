@@ -213,13 +213,35 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
       ? product.id
       : parseInt(String(product.id).replace(/\D/g, "")) || 1
 
-  const [wholesaleTiers, visitorsConfig, frequentlyBought, smartBarSettings] = await Promise.all([
+  const [wholesaleTiers, visitorsConfig, frequentlyBought, smartBarSettings, dbReviews] = await Promise.all([
     getWholesaleTiersForProduct(product.id),
     getCustomProductVisitorsSettings(),
     getFrequentlyBoughtProducts(numericProductId),
     getSmartBarSettings(),
+    getProductReviews(String(numericProductId)),
   ])
-  const productWithWholesale = { ...product, wholesaleTiers }
+
+  const mappedDbReviews = (dbReviews || []).map((r) => ({
+    id: r.id,
+    userName: r.userName || "Verified Buyer",
+    date: r.date || "Recent",
+    rating: r.rating,
+    comment: r.comment,
+  }))
+
+  const displayReviews = mappedDbReviews.length > 0 ? mappedDbReviews : SAMPLE_PRODUCT_DATA.default.reviews
+  const displayRating = mappedDbReviews.length > 0
+    ? Number((mappedDbReviews.reduce((sum, r) => sum + r.rating, 0) / mappedDbReviews.length).toFixed(1))
+    : product.rating
+  const displayReviewCount = mappedDbReviews.length > 0 ? mappedDbReviews.length : (product.reviewCount || 12)
+
+  const productWithWholesale = {
+    ...product,
+    wholesaleTiers,
+    reviews: displayReviews,
+    rating: displayRating,
+    reviewCount: displayReviewCount,
+  }
 
   return (
     <div className="bg-gray-50/40 py-5">
@@ -267,9 +289,9 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
           productName={product.name}
           description={product.description}
           specifications={product.specifications}
-          reviews={product.reviews}
-          rating={product.rating}
-          reviewCount={product.reviews.length || product.reviewCount}
+          reviews={productWithWholesale.reviews}
+          rating={productWithWholesale.rating}
+          reviewCount={productWithWholesale.reviewCount}
         />
 
         {/* Frequently Bought Together (Active eCommerce CMS 1:1) */}

@@ -229,6 +229,38 @@ export async function getSupportTickets(userId?: string) {
   if (!userId) return []
   try {
     const rows = await db.select().from(tickets).where(eq(tickets.userId, userId)).orderBy(desc(tickets.createdAt))
+    const ticketIds = rows.map((r) => r.id)
+    const repliesMap = new Map<number, any[]>()
+
+    if (ticketIds.length > 0) {
+      const allReplies = await db
+        .select({
+          id: ticketReplies.id,
+          ticketId: ticketReplies.ticketId,
+          userId: ticketReplies.userId,
+          reply: ticketReplies.reply,
+          files: ticketReplies.files,
+          createdAt: ticketReplies.createdAt,
+          userName: users.name,
+          userRole: users.role,
+        })
+        .from(ticketReplies)
+        .leftJoin(users, eq(ticketReplies.userId, users.id))
+        .where(sql`${ticketReplies.ticketId} IN ${ticketIds}`)
+        .orderBy(asc(ticketReplies.createdAt))
+
+      for (const rep of allReplies) {
+        const list = repliesMap.get(rep.ticketId) || []
+        list.push({
+          id: String(rep.id),
+          senderName: rep.userName || (rep.userRole === "admin" ? "Support Agent" : "Customer"),
+          senderRole: (rep.userRole === "admin" ? "support" : "customer") as "support" | "customer",
+          message: rep.reply,
+          date: rep.createdAt.toISOString().slice(0, 16).replace("T", " "),
+        })
+        repliesMap.set(rep.ticketId, list)
+      }
+    }
 
     return rows.map((t) => ({
       id: String(t.id),
@@ -237,7 +269,7 @@ export async function getSupportTickets(userId?: string) {
       details: t.details,
       status: (t.status as "pending" | "open" | "solved") || "pending",
       date: t.createdAt.toISOString().slice(0, 16).replace("T", " "),
-      replies: [],
+      replies: repliesMap.get(t.id) || [],
     }))
   } catch (err) {
     console.error("getSupportTickets error:", err)

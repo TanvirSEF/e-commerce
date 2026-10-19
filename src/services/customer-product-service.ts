@@ -327,6 +327,7 @@ export async function updateCustomerProductStatus(
 }
 
 export async function createCustomerProduct(data: {
+  userId?: string
   name: string
   category: string
   unitPrice: number
@@ -344,6 +345,7 @@ export async function createCustomerProduct(data: {
     const [row] = await db
       .insert(customerProducts)
       .values({
+        userId: data.userId || null,
         name: data.name,
         slug,
         category: data.category,

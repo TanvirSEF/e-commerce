@@ -23,6 +23,17 @@ export async function updateOrderQuickManagementAction(
 ): Promise<boolean> {
   const success = await updateOrderQuickManagement(orderId, data)
   if (success) {
+    if (data.deliveryStatus === "delivered") {
+      try {
+        const { awardOrderClubPoints } = await import("@/services/wallet-service")
+        await awardOrderClubPoints(orderId)
+      } catch (err) {
+        console.error("Failed to auto-award club points on delivery:", err)
+      }
+      revalidatePath("/dashboard/club-points")
+      revalidatePath("/dashboard/wallet")
+    }
+
     revalidatePath("/admin/orders")
     revalidatePath("/admin/orders/offline-payments")
     revalidatePath("/admin/offline-payment-orders")

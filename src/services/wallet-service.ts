@@ -1,5 +1,5 @@
 import { db } from "../db"
-import { wallets, clubPoints, users } from "../db/schema"
+import { wallets, clubPoints, users, orders } from "../db/schema"
 import { eq, desc, ilike, or, and, count } from "drizzle-orm"
 import {
   SEED_WALLET_TRANSACTIONS,
@@ -104,6 +104,51 @@ export async function getClubPoints(userId?: string): Promise<{
   } catch (err) {
     console.warn("getClubPoints error:", (err as Error).message)
     return { totalPoints: 0, convertRate: 10, history: [] }
+  }
+}
+
+export async function awardOrderClubPoints(orderId: number): Promise<boolean> {
+  try {
+    const [order] = await db
+      .select({
+        id: orders.id,
+        userId: orders.userId,
+        grandTotal: orders.grandTotal,
+        deliveryStatus: orders.deliveryStatus,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1)
+
+    if (!order || !order.userId) return false
+
+    // Check if points were already awarded for this order
+    const existing = await db
+      .select({ id: clubPoints.id })
+      .from(clubPoints)
+      .where(and(eq(clubPoints.orderId, orderId), eq(clubPoints.userId, order.userId)))
+      .limit(1)
+
+    if (existing.length > 0) {
+      return false
+    }
+
+    // Award 1 club point for every 50 BDT, minimum 5 points
+    const totalAmount = Number(order.grandTotal) || 0
+    const pointsToAward = Math.max(5, Math.floor(totalAmount / 50))
+
+    await db.insert(clubPoints).values({
+      userId: order.userId,
+      orderId: order.id,
+      points: pointsToAward,
+      converted: false,
+      createdAt: new Date(),
+    })
+
+    return true
+  } catch (err) {
+    console.error("awardOrderClubPoints error:", err)
+    return false
   }
 }
 

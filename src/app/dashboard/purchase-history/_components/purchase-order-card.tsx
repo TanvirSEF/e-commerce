@@ -6,9 +6,10 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useCart } from "@/lib/context/cart-context"
 import { formatPrice } from "@/lib/utils"
-import { Download, Eye, RefreshCw, MoreVertical, X, AlertTriangle, Loader2 } from "lucide-react"
+import { Download, Eye, RefreshCw, MoreVertical, X, AlertTriangle, Loader2, RotateCcw } from "lucide-react"
 import { cancelOrderAction } from "@/app/actions/customer-order-actions"
 import type { CustomerOrderRecord, CustomerOrderItem } from "@/services/order-service"
+import { RefundRequestModal, type RefundModalItem } from "./refund-request-modal"
 
 export type { CustomerOrderRecord as OrderRecord, CustomerOrderItem as OrderItem }
 
@@ -25,6 +26,7 @@ export function PurchaseOrderCard({ order, onOpenReview, onOrderCancelled }: Pur
   const [cancelModalOpen, setCancelModalOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [deliveryStatus, setDeliveryStatus] = useState(order.deliveryStatus)
+  const [refundModalItem, setRefundModalItem] = useState<RefundModalItem | null>(null)
 
   const items = order.items || []
 
@@ -202,29 +204,50 @@ export function PurchaseOrderCard({ order, onOpenReview, onOrderCancelled }: Pur
               </div>
             </div>
 
-            {/* Review status matching Laravel single_purchase_history 1:1 */}
-            <div className="shrink-0 text-right">
+            {/* Review & Refund actions matching Laravel single_purchase_history 1:1 */}
+            <div className="shrink-0 text-right flex items-center justify-end gap-1.5">
               {deliveryStatus === "delivered" ? (
-                item.reviewed ? (
-                  <span className="inline-block rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-bold text-emerald-700">
-                    Reviewed
-                  </span>
-                ) : (
+                <>
+                  {item.reviewed ? (
+                    <span className="inline-block rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-bold text-emerald-700">
+                      Reviewed
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenReview({
+                          id: item.productId,
+                          name: item.name,
+                          thumbnail: item.thumbnail,
+                          orderCode: order.code,
+                        })
+                      }
+                      className="inline-block rounded-full bg-amber-500 hover:bg-amber-600 px-3.5 py-1 text-[11px] font-bold text-white shadow-2xs transition-colors"
+                    >
+                      Review
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() =>
-                      onOpenReview({
-                        id: item.productId,
+                      setRefundModalItem({
+                        id: item.id,
+                        productId: item.productId,
                         name: item.name,
                         thumbnail: item.thumbnail,
-                        orderCode: order.code,
+                        price: item.price,
+                        quantity: item.quantity,
                       })
                     }
-                    className="inline-block rounded-full bg-amber-500 hover:bg-amber-600 px-3.5 py-1 text-[11px] font-bold text-white shadow-2xs transition-colors"
+                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 hover:bg-[#d43533] text-[#d43533] hover:text-white px-3 py-1 text-[11px] font-bold shadow-2xs transition-colors"
+                    title="Request a refund for this item"
                   >
-                    Review
+                    <RotateCcw className="w-3 h-3" />
+                    Refund
                   </button>
-                )
+                </>
               ) : (
                 <span className="text-xs text-gray-400 font-medium">Not Delivered</span>
               )}
@@ -278,6 +301,16 @@ export function PurchaseOrderCard({ order, onOpenReview, onOrderCancelled }: Pur
           </div>
         </div>
       )}
+
+      {/* Refund Request Modal */}
+      <RefundRequestModal
+        isOpen={!!refundModalItem}
+        onClose={() => setRefundModalItem(null)}
+        orderCode={order.code}
+        orderId={order.numericId}
+        shopName={order.shopName}
+        item={refundModalItem}
+      />
     </div>
   )
 }

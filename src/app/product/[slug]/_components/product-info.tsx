@@ -421,7 +421,7 @@ export function ProductInfo({
       </div>
 
       {/* Seller Box */}
-      <ProductSellerBox sellerName={product.sellerName} sellerSlug={product.sellerSlug} />
+      <ProductSellerBox sellerName={product.sellerName} sellerSlug={product.sellerSlug} productName={product.name} />
 
       {/* Warranty & Guarantee Badges */}
       <ProductWarrantyBadges />

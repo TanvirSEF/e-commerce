@@ -223,3 +223,66 @@ export async function sendMessage(data: {
     return false
   }
 }
+
+export async function findOrCreateConversation(data: {
+  userId: string
+  shopId: number
+  title?: string
+  initialMessage?: string
+}): Promise<{ success: boolean; conversationId?: number }> {
+  try {
+    // 1. Check if conversation already exists between userId and shopId
+    const existing = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(and(eq(conversations.senderId, data.userId), eq(conversations.shopId, data.shopId)))
+      .limit(1)
+
+    if (existing.length > 0) {
+      if (data.initialMessage) {
+        await db.insert(messages).values({
+          conversationId: existing[0].id,
+          senderId: data.userId,
+          message: data.initialMessage,
+          viewed: false,
+        })
+        await db.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, existing[0].id))
+      }
+      return { success: true, conversationId: existing[0].id }
+    }
+
+    // 2. Fetch shop details to find seller user
+    const [shop] = await db
+      .select({ userId: shops.userId, name: shops.name })
+      .from(shops)
+      .where(eq(shops.id, data.shopId))
+      .limit(1)
+
+    const [inserted] = await db
+      .insert(conversations)
+      .values({
+        senderId: data.userId,
+        receiverId: shop?.userId || null,
+        shopId: data.shopId,
+        title: data.title || `Inquiry with ${shop?.name || "Merchant"}`,
+        lastMessageAt: new Date(),
+        createdAt: new Date(),
+      })
+      .returning()
+
+    if (data.initialMessage) {
+      await db.insert(messages).values({
+        conversationId: inserted.id,
+        senderId: data.userId,
+        message: data.initialMessage,
+        viewed: false,
+      })
+    }
+
+    return { success: true, conversationId: inserted.id }
+  } catch (err) {
+    console.error("findOrCreateConversation error:", err)
+    return { success: false }
+  }
+}
+
