@@ -120,12 +120,12 @@ export async function replyProductQuery(data: {
   queryId?: number
   reply: string
   repliedBy?: string
-}): Promise<{ success: boolean }> {
+}): Promise<{ success: boolean; item?: any }> {
   try {
     const targetId = data.id ?? data.queryId
     if (!targetId) return { success: false }
 
-    await db
+    const [row] = await db
       .update(productQueries)
       .set({
         reply: data.reply,
@@ -134,8 +134,9 @@ export async function replyProductQuery(data: {
         updatedAt: new Date(),
       })
       .where(eq(productQueries.id, targetId))
+      .returning()
 
-    return { success: true }
+    return { success: true, item: row }
   } catch (err) {
     console.error("Error in replyProductQuery:", err)
     return { success: false }

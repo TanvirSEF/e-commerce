@@ -31,9 +31,11 @@ export async function sendConversationMessageAction(
       message: messageText.trim(),
     })
 
-    revalidatePath("/dashboard/conversations")
-    revalidatePath(`/dashboard/conversations/${conversationId}`)
-    revalidatePath("/seller/conversations")
+    try {
+      revalidatePath("/dashboard/conversations")
+      revalidatePath(`/dashboard/conversations/${conversationId}`)
+      revalidatePath("/seller/conversations")
+    } catch {}
     return { success: ok }
   } catch (err) {
     console.error("sendConversationMessageAction error:", err)

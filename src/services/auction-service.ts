@@ -359,6 +359,11 @@ export async function placeAuctionBid(
   }
 
   try {
+    await db
+      .update(auctionBids)
+      .set({ isHighest: false })
+      .where(eq(auctionBids.productId, productId))
+
     await db.insert(auctionBids).values(newBid)
     await db.update(auctionProducts).set({
       currentBid: newBid.amount,
@@ -368,6 +373,9 @@ export async function placeAuctionBid(
     console.warn("placeAuctionBid DB fallback:", err instanceof Error ? err.message : String(err))
     product.currentBid = newBid.amount
     product.totalBids += 1
+    SEED_AUCTION_BIDS.forEach((b) => {
+      if (b.productId === productId) b.isHighest = false
+    })
     SEED_AUCTION_BIDS.unshift(newBid)
   }
 

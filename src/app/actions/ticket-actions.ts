@@ -21,11 +21,13 @@ export async function submitTicketReplyAction(data: {
       files: data.files || [],
     })
 
-    revalidatePath("/admin/support-tickets")
-    revalidatePath(`/admin/support-tickets/${data.ticketId}`)
-    revalidatePath("/dashboard/support-tickets")
-    revalidatePath(`/dashboard/support-tickets/${data.ticketId}`)
-    revalidatePath("/seller/support")
+    try {
+      revalidatePath("/admin/support-tickets")
+      revalidatePath(`/admin/support-tickets/${data.ticketId}`)
+      revalidatePath("/dashboard/support-tickets")
+      revalidatePath(`/dashboard/support-tickets/${data.ticketId}`)
+      revalidatePath("/seller/support")
+    } catch {}
 
     return { success: true, message: "Reply has been sent successfully." }
   } catch (err) {
@@ -37,11 +39,13 @@ export async function submitTicketReplyAction(data: {
 export async function updateTicketStatusAction(ticketId: number, status: string) {
   try {
     const res = await updateTicketStatus(ticketId, status)
-    revalidatePath("/admin/support-tickets")
-    revalidatePath(`/admin/support-tickets/${ticketId}`)
-    revalidatePath("/dashboard/support-tickets")
-    revalidatePath(`/dashboard/support-tickets/${ticketId}`)
-    revalidatePath("/seller/support")
+    try {
+      revalidatePath("/admin/support-tickets")
+      revalidatePath(`/admin/support-tickets/${ticketId}`)
+      revalidatePath("/dashboard/support-tickets")
+      revalidatePath(`/dashboard/support-tickets/${ticketId}`)
+      revalidatePath("/seller/support")
+    } catch {}
     return res
   } catch (err) {
     console.error("updateTicketStatusAction error:", err)

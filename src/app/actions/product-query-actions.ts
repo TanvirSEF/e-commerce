@@ -16,6 +16,11 @@ export async function replyProductQueryAction(data: {
     try {
       revalidatePath("/admin/product-queries")
       revalidatePath(`/admin/product-queries/${data.id}`)
+      revalidatePath("/seller/product-queries")
+      if (res.item?.productSlug) {
+        revalidatePath(`/product/${res.item.productSlug}`)
+      }
+      revalidatePath("/products")
     } catch {}
   }
   return res.success

@@ -673,7 +673,7 @@ export async function getSellerProductQueries(seller: CurrentSeller): Promise<Se
 }
 
 export async function replySellerProductQuery(id: number, replyText: string, repliedBy: string) {
-  await db
+  const [row] = await db
     .update(productQueries)
     .set({
       reply: replyText.trim(),
@@ -682,7 +682,8 @@ export async function replySellerProductQuery(id: number, replyText: string, rep
       updatedAt: new Date(),
     })
     .where(eq(productQueries.id, id))
-  return { success: true }
+    .returning()
+  return { success: true, item: row }
 }
 
 /* -------------------------- Support Tickets ---------------------------- */

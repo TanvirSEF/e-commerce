@@ -15,8 +15,8 @@ export async function getCoupons(): Promise<SeedCoupon[]> {
         discountType: (c.discountType as "percent" | "amount") || "percent",
         minBuy: Number(c.details?.min_buy || 0),
         maxDiscount: Number(c.details?.max_discount || 0),
-        startDate: Number(c.startDate) * 1000,
-        endDate: Number(c.endDate) * 1000,
+        startDate: Number(c.startDate) > 10000000000 ? Number(c.startDate) : Number(c.startDate) * 1000,
+        endDate: Number(c.endDate) > 10000000000 ? Number(c.endDate) : Number(c.endDate) * 1000,
         status: c.status,
       }))
     }

@@ -161,8 +161,15 @@ export async function replySellerProductQueryAction(id: number, replyText: strin
   const seller = await getCurrentSeller()
   if (!seller) return { success: false, error: "Unauthorized" }
   try {
-    await replySellerProductQuery(id, replyText, seller.shopName || "Merchant Seller")
-    revalidatePath("/seller/product-queries")
+    const res = await replySellerProductQuery(id, replyText, seller.shopName || "Merchant Seller")
+    try {
+      revalidatePath("/seller/product-queries")
+      revalidatePath("/admin/product-queries")
+      if (res.item?.productSlug) {
+        revalidatePath(`/product/${res.item.productSlug}`)
+      }
+      revalidatePath("/products")
+    } catch {}
     return { success: true }
   } catch (err) {
     return { success: false, error: (err as Error).message }
