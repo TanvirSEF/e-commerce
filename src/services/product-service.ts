@@ -416,11 +416,11 @@ export async function getProductBySlug(slug: string): Promise<SeedProduct | null
         reviews: [],
       }
     }
+    return null
   } catch (err) {
     console.warn("DB getProductBySlug fallback:", (err as Error).message)
+    return SEED_PRODUCTS.find((p) => p.slug === slug && p.published) || null
   }
-
-  return SEED_PRODUCTS.find((p) => p.slug === slug) || null
 }
 
 export async function getProductById(id: string | number): Promise<SeedProduct | null> {
@@ -495,12 +495,14 @@ export async function getProductById(id: string | number): Promise<SeedProduct |
           reviews: [],
         }
       }
+      return null
     }
   } catch (err) {
     console.warn("DB getProductById fallback:", (err as Error).message)
+    return SEED_PRODUCTS.find((p) => p.id === String(id) || p.slug === String(id)) || null
   }
 
-  return SEED_PRODUCTS.find((p) => p.id === String(id) || p.slug === String(id)) || null
+  return null
 }
 
 export interface DigitalProductItem {

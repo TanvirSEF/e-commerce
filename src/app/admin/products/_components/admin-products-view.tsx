@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react"
 import Link from "next/link"
-import { Search, Plus, CheckCircle2, AlertCircle } from "lucide-react"
+import { Plus, CheckCircle2, AlertCircle } from "lucide-react"
 import {
   deleteProductAction,
   toggleProductPublishedAction,
@@ -13,6 +13,7 @@ import {
 import { DeleteConfirmationModal } from "@/components/ui/delete-confirmation-modal"
 import { AdminProductRowItem, type AdminProductRowData } from "./admin-product-row"
 import { AdminProductsPagination } from "./admin-products-pagination"
+import { AdminProductsFilterBar } from "./admin-products-filter-bar"
 
 export type { AdminProductRowData }
 
@@ -145,6 +146,7 @@ export function AdminProductsView({
       p.slug.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCat =
       selectedCategory === "all" ||
+      p.categorySlug === selectedCategory ||
       p.category.toLowerCase().replace(/[^a-z0-9]/g, "").includes(selectedCategory.toLowerCase().replace(/[^a-z0-9]/g, ""))
     const matchesSeller =
       selectedSeller === "all" ||
@@ -202,118 +204,27 @@ export function AdminProductsView({
         </div>
       )}
 
-      {/* Product Type Tabs (Active eCommerce 1:1) */}
-      <div className="flex items-center gap-1 border-b border-slate-200 bg-white px-4 rounded-t-lg shadow-2xs">
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedSeller("all")
-            setCurrentPage(1)
-          }}
-          className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
-            selectedSeller === "all"
-              ? "border-[#d43533] text-[#d43533]"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          All Products
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedSeller("inhouse")
-            setCurrentPage(1)
-          }}
-          className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
-            selectedSeller === "inhouse"
-              ? "border-[#d43533] text-[#d43533]"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          In House Products
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedSeller("sellers")
-            setCurrentPage(1)
-          }}
-          className={`px-4 py-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
-            selectedSeller === "sellers"
-              ? "border-[#d43533] text-[#d43533]"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          Seller Products
-        </button>
-      </div>
-
-      {/* 1:1 Active eCommerce Filter Bar */}
-      <div className="bg-white p-4 border border-slate-200 rounded-b-lg shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Type name & Enter..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setCurrentPage(1)
-            }}
-            className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded text-xs text-slate-700 focus:outline-hidden focus:border-[#d43533]"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 text-xs">
-          {/* Dynamic Categories */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value)
-              setCurrentPage(1)
-            }}
-            className="border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:border-[#d43533]"
-          >
-            <option value="all">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.id || c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Seller / Added By */}
-          <select
-            value={selectedSeller}
-            onChange={(e) => {
-              setSelectedSeller(e.target.value)
-              setCurrentPage(1)
-            }}
-            className="border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:border-[#d43533]"
-          >
-            <option value="all">All Sellers</option>
-            <option value="inhouse">Inhouse (Admin)</option>
-            <option value="sellers">Vendor Sellers</option>
-          </select>
-
-          {/* Sort By */}
-          <select
-            value={selectedSort}
-            onChange={(e) => setSelectedSort(e.target.value)}
-            className="border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 focus:outline-hidden focus:border-[#d43533]"
-          >
-            <option value="newest">Sort: Newest</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-            <option value="sales">Most Sold</option>
-            <option value="stock">High Stock</option>
-          </select>
-
-          <span className="text-slate-500 font-medium pl-1">
-            Total: <strong>{filtered.length}</strong>
-          </span>
-        </div>
-      </div>
+      <AdminProductsFilterBar
+        searchQuery={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val)
+          setCurrentPage(1)
+        }}
+        selectedCategory={selectedCategory}
+        onCategoryChange={(val) => {
+          setSelectedCategory(val)
+          setCurrentPage(1)
+        }}
+        selectedSeller={selectedSeller}
+        onSellerChange={(val) => {
+          setSelectedSeller(val)
+          setCurrentPage(1)
+        }}
+        selectedSort={selectedSort}
+        onSortChange={(val) => setSelectedSort(val)}
+        categories={categories}
+        totalResults={filtered.length}
+      />
 
       {/* Products Table (1:1 Active eCommerce Columns) */}
       <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">

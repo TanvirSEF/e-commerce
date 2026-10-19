@@ -10,6 +10,8 @@ export interface AdminProductRowData {
   name: string
   slug: string
   category: string
+  categorySlug?: string
+  categoryId?: number
   brand: string
   price: number
   stock: number

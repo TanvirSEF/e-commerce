@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "Explore hand-picked featured and trending collections on Active eCommerce",
 }
 
+export const dynamic = "force-dynamic"
+
 interface PageProps {
   searchParams: Promise<{ sort?: string; page?: string }>
 }

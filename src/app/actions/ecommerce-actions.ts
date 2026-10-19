@@ -1993,6 +1993,8 @@ export async function createProductAction(data: {
   revalidatePath("/seller/products")
   revalidatePath("/products")
   revalidatePath("/")
+  revalidatePath("/todays-deal")
+  revalidatePath("/featured-products")
   return res
 }
 
@@ -2003,6 +2005,8 @@ export async function deleteProductAction(id: number | string) {
   revalidatePath("/seller/products")
   revalidatePath("/products")
   revalidatePath("/")
+  revalidatePath("/todays-deal")
+  revalidatePath("/featured-products")
   return { success }
 }
 
@@ -2013,6 +2017,8 @@ export async function toggleProductPublishedAction(id: number | string, publishe
   revalidatePath("/seller/products")
   revalidatePath("/products")
   revalidatePath("/")
+  revalidatePath("/todays-deal")
+  revalidatePath("/featured-products")
   return { success }
 }
 
@@ -2023,6 +2029,7 @@ export async function toggleProductFeaturedAction(id: number | string, featured:
   revalidatePath("/seller/products")
   revalidatePath("/products")
   revalidatePath("/")
+  revalidatePath("/featured-products")
   return { success }
 }
 
@@ -2033,6 +2040,7 @@ export async function toggleProductTodaysDealAction(id: number | string, todaysD
   revalidatePath("/seller/products")
   revalidatePath("/products")
   revalidatePath("/")
+  revalidatePath("/todays-deal")
   return { success }
 }
 
@@ -2053,6 +2061,8 @@ export async function updateProductAction(id: number | string, data: any) {
   revalidatePath("/seller/products")
   revalidatePath("/products")
   revalidatePath("/")
+  revalidatePath("/todays-deal")
+  revalidatePath("/featured-products")
   return { success }
 }
 

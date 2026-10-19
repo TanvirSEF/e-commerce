@@ -9,19 +9,24 @@ export const metadata: Metadata = {
   description: "View, filter, and manage store product catalog",
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminProductsPage() {
   const [{ data, total }, categories] = await Promise.all([
-    getProducts({ limit: 100, sort: "newest", includeUnpublished: true }),
+    getProducts({ limit: 500, sort: "newest", includeUnpublished: true }),
     getCategories(),
   ])
 
   const initialProducts: AdminProductRowData[] = data.map((p) => {
-    const matchedCat = categories.find((c) => c.slug === p.categorySlug)
+    const matchedCat = categories.find(
+      (c) => c.slug === p.categorySlug || (p.categorySlugs && p.categorySlugs.includes(c.slug))
+    )
     return {
       id: p.id,
       name: p.name,
       slug: p.slug,
       category: matchedCat?.name || p.categorySlug.replace(/-/g, " ").toUpperCase(),
+      categorySlug: p.categorySlug || matchedCat?.slug,
       brand: p.brandSlug ? p.brandSlug.toUpperCase() : "GENERAL",
       price: p.price,
       stock: p.stock,

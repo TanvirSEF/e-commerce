@@ -1,6 +1,7 @@
 import React from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
+import { notFound } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import { ProductGallery } from "./_components/product-gallery"
 import { ProductInfo, type ProductDetailsData } from "./_components/product-info"
@@ -15,6 +16,8 @@ import { getWholesaleTiersForProduct } from "@/services/wholesale-service"
 import { getCustomProductVisitorsSettings, getSmartBarSettings } from "@/services/settings-service"
 import { getFrequentlyBoughtProducts } from "@/services/frequently-bought-service"
 
+export const dynamic = "force-dynamic"
+
 interface ProductPageProps {
   params: Promise<{
     slug: string
@@ -23,10 +26,15 @@ interface ProductPageProps {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params
-  const title = slug.replace(/-/g, " ")
+  const product = await getProductBySlug(slug)
+  if (!product) {
+    return {
+      title: "Product Not Found | Active eCommerce",
+    }
+  }
   return {
-    title: `${title.charAt(0).toUpperCase() + title.slice(1)} | Active eCommerce`,
-    description: `Buy ${title} online at best price with cash on delivery and fast express delivery.`,
+    title: `${product.name} | Active eCommerce`,
+    description: `Buy ${product.name} online at best price with cash on delivery and fast express delivery.`,
   }
 }
 
@@ -164,46 +172,41 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
   const { slug } = await params
   const dbProduct = await getProductBySlug(slug)
 
-  const product = dbProduct
-    ? {
-        ...SAMPLE_PRODUCT_DATA.default,
-        id: dbProduct.id,
-        name: dbProduct.name,
-        slug: dbProduct.slug,
-        sku: dbProduct.sku || SAMPLE_PRODUCT_DATA.default.sku,
-        brandName: dbProduct.brandSlug ? dbProduct.brandSlug.toUpperCase() : "Active Brand",
-        brandSlug: dbProduct.brandSlug || "brand",
-        categoryName: dbProduct.categorySlug
-          ? dbProduct.categorySlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-          : "General",
-        categorySlug: dbProduct.categorySlug || "general",
-        price: dbProduct.price,
-        originalPrice: dbProduct.originalPrice,
-        discountPercent: dbProduct.discountPercent,
-        rating: dbProduct.rating || 4.8,
-        reviewCount: dbProduct.reviewCount || 12,
-        stock: dbProduct.stock,
-        thumbnail: dbProduct.thumbnail,
-        images: dbProduct.images.length ? dbProduct.images : SAMPLE_PRODUCT_DATA.default.images,
-        colors: dbProduct.colors.length ? dbProduct.colors : SAMPLE_PRODUCT_DATA.default.colors,
-        sizes: dbProduct.sizes.length ? dbProduct.sizes : SAMPLE_PRODUCT_DATA.default.sizes,
-        sellerName: dbProduct.sellerName,
-        sellerSlug: dbProduct.sellerSlug,
-        description: dbProduct.description || SAMPLE_PRODUCT_DATA.default.description,
-        specifications:
-          dbProduct.specifications.length
-            ? dbProduct.specifications
-            : SAMPLE_PRODUCT_DATA.default.specifications,
-        reviews: dbProduct.reviews.length ? dbProduct.reviews : SAMPLE_PRODUCT_DATA.default.reviews,
-      }
-    : {
-        ...SAMPLE_PRODUCT_DATA.default,
-        slug,
-        name:
-          slug !== "classic-mens-casual-shirt"
-            ? slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-            : SAMPLE_PRODUCT_DATA.default.name,
-      }
+  if (!dbProduct) {
+    notFound()
+  }
+
+  const product = {
+    ...SAMPLE_PRODUCT_DATA.default,
+    id: dbProduct.id,
+    name: dbProduct.name,
+    slug: dbProduct.slug,
+    sku: dbProduct.sku || SAMPLE_PRODUCT_DATA.default.sku,
+    brandName: dbProduct.brandSlug ? dbProduct.brandSlug.toUpperCase() : "Active Brand",
+    brandSlug: dbProduct.brandSlug || "brand",
+    categoryName: dbProduct.categorySlug
+      ? dbProduct.categorySlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      : "General",
+    categorySlug: dbProduct.categorySlug || "general",
+    price: dbProduct.price,
+    originalPrice: dbProduct.originalPrice,
+    discountPercent: dbProduct.discountPercent,
+    rating: dbProduct.rating || 4.8,
+    reviewCount: dbProduct.reviewCount || 12,
+    stock: dbProduct.stock,
+    thumbnail: dbProduct.thumbnail,
+    images: dbProduct.images.length ? dbProduct.images : SAMPLE_PRODUCT_DATA.default.images,
+    colors: dbProduct.colors.length ? dbProduct.colors : SAMPLE_PRODUCT_DATA.default.colors,
+    sizes: dbProduct.sizes.length ? dbProduct.sizes : SAMPLE_PRODUCT_DATA.default.sizes,
+    sellerName: dbProduct.sellerName,
+    sellerSlug: dbProduct.sellerSlug,
+    description: dbProduct.description || SAMPLE_PRODUCT_DATA.default.description,
+    specifications:
+      dbProduct.specifications.length
+        ? dbProduct.specifications
+        : SAMPLE_PRODUCT_DATA.default.specifications,
+    reviews: dbProduct.reviews.length ? dbProduct.reviews : SAMPLE_PRODUCT_DATA.default.reviews,
+  }
 
   const numericProductId =
     typeof product.id === "number"

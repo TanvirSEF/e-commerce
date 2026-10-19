@@ -7,10 +7,9 @@ export const metadata: Metadata = {
   description: "Limited-time 24-hour deals on top trending products.",
 }
 
-export default async function TodaysDealPage() {
-  const { data: allProducts } = await getProducts({ limit: 40 })
-  const deals = allProducts.filter((p) => p.todaysDeal)
-  const displayProducts = deals.length > 0 ? deals : allProducts.slice(0, 10)
+export const dynamic = "force-dynamic"
 
-  return <TodaysDealView products={displayProducts} />
+export default async function TodaysDealPage() {
+  const { data: deals } = await getProducts({ todaysDeal: true, limit: 50 })
+  return <TodaysDealView products={deals} />
 }
