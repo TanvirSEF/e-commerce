@@ -195,11 +195,13 @@ export async function updateSellerVerificationAction(
 ) {
   const { updateSellerVerification } = await import("@/services/seller-service")
   const res = await updateSellerVerification(shopId, status, rejectionReason)
-  revalidatePath("/admin/sellers")
-  revalidatePath("/admin/sellers/verification")
-  revalidatePath("/seller/verify")
-  revalidatePath("/seller/dashboard")
-  revalidatePath("/shop")
+  try {
+    revalidatePath("/admin/sellers")
+    revalidatePath("/admin/sellers/verification")
+    revalidatePath("/seller/verify")
+    revalidatePath("/seller/dashboard")
+    revalidatePath("/shop")
+  } catch {}
   return res
 }
 

@@ -5,19 +5,25 @@ import { banToggleCustomer, suspiciousToggleCustomer, deleteCustomer } from "@/s
 
 export async function banToggleCustomerAction(userId: string) {
   const result = await banToggleCustomer(userId)
-  revalidatePath("/admin/customers")
+  try {
+    revalidatePath("/admin/customers")
+  } catch {}
   return result
 }
 
 export async function suspiciousToggleCustomerAction(userId: string) {
   const result = await suspiciousToggleCustomer(userId)
-  revalidatePath("/admin/customers")
+  try {
+    revalidatePath("/admin/customers")
+  } catch {}
   return result
 }
 
 export async function deleteCustomerAction(userId: string) {
   await deleteCustomer(userId)
-  revalidatePath("/admin/customers")
+  try {
+    revalidatePath("/admin/customers")
+  } catch {}
   return { success: true }
 }
 
@@ -36,22 +42,28 @@ export async function adminRechargeWalletAction(data: {
     offlinePayment: false,
     addedBy: "admin",
   })
-  revalidatePath("/admin/customers")
-  revalidatePath("/admin/wallet-recharges")
+  try {
+    revalidatePath("/admin/customers")
+    revalidatePath("/admin/wallet-recharges")
+  } catch {}
   return result
 }
 
 export async function bulkDeleteCustomersAction(userIds: string[]) {
   const { bulkDeleteCustomers } = await import("@/services/customer-service")
   const success = await bulkDeleteCustomers(userIds)
-  revalidatePath("/admin/customers")
+  try {
+    revalidatePath("/admin/customers")
+  } catch {}
   return { success }
 }
 
 export async function bulkBanCustomersAction(userIds: string[], banned: boolean) {
   const { bulkBanCustomers } = await import("@/services/customer-service")
   const success = await bulkBanCustomers(userIds, banned)
-  revalidatePath("/admin/customers")
+  try {
+    revalidatePath("/admin/customers")
+  } catch {}
   return { success }
 }
 
@@ -63,7 +75,8 @@ export async function createCustomerAdminAction(data: {
 }) {
   const { createCustomerAdmin } = await import("@/services/customer-service")
   const result = await createCustomerAdmin(data)
-  revalidatePath("/admin/customers")
+  try {
+    revalidatePath("/admin/customers")
+  } catch {}
   return result
 }
-
