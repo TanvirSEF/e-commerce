@@ -2,11 +2,19 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Search, Plus, Trash2, Percent, DollarSign } from "lucide-react"
-import { updateSellerVerificationAction } from "@/app/actions/ecommerce-actions"
+import { Search, Plus, Trash2, Percent, DollarSign, Ban, CheckCircle } from "lucide-react"
+import {
+  updateSellerVerificationAction,
+  toggleSellerBanAction,
+  bulkBanSellersAction,
+  bulkUpdateSellerVerificationAction,
+  deleteSellerAdminAction,
+  bulkDeleteSellersAdminAction,
+} from "@/app/actions/ecommerce-actions"
 import { SellerMetricsCards } from "./seller-metrics-cards"
 import { SellersTable, type SellerTableRow } from "./sellers-table"
 import { PaySellerModal, type PaySellerTarget } from "./pay-seller-modal"
+import { AddSellerModal } from "./add-seller-modal"
 
 interface SellersManagementViewProps {
   initialSellers: SellerTableRow[]
@@ -19,8 +27,11 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
   const [activeTab, setActiveTab] = useState<TabType>("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [emailStatusFilter, setEmailStatusFilter] = useState<"all" | "verified" | "unverified">("all")
+  const [verificationFilter, setVerificationFilter] = useState<"all" | "verified" | "unverified">("all")
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [bulkAction, setBulkAction] = useState<string>("")
   const [selectedPaySeller, setSelectedPaySeller] = useState<PaySellerTarget | null>(null)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
 
@@ -45,6 +56,9 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
 
     if (emailStatusFilter === "verified" && !s.emailVerified) return false
     if (emailStatusFilter === "unverified" && s.emailVerified) return false
+
+    if (verificationFilter === "verified" && !s.verificationStatus) return false
+    if (verificationFilter === "unverified" && s.verificationStatus) return false
 
     return true
   })
@@ -79,6 +93,35 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
     }
   }
 
+  const handleToggleBan = async (seller: SellerTableRow) => {
+    if (!seller.userId) {
+      alert("This seller account is not linked to a user credential.")
+      return
+    }
+    const nextBanned = !seller.banned
+    const res = await toggleSellerBanAction(seller.userId, nextBanned)
+    if (res.success) {
+      setSellers((prev) =>
+        prev.map((s) => (s.id === seller.id ? { ...s, banned: nextBanned } : s))
+      )
+      setActionNotice(`Seller ${seller.name} is now ${nextBanned ? "Banned" : "Unbanned"}`)
+      setTimeout(() => setActionNotice(null), 3000)
+    }
+  }
+
+  const handleDeleteSeller = async (seller: SellerTableRow) => {
+    if (confirm(`Are you sure you want to permanently delete seller "${seller.name}"?`)) {
+      const numericId = parseInt(seller.id.replace(/\D/g, "")) || 1
+      const res = await deleteSellerAdminAction(numericId, seller.userId)
+      if (res.success) {
+        setSellers((prev) => prev.filter((s) => s.id !== seller.id))
+        setSelectedIds((prev) => prev.filter((id) => id !== seller.id))
+        setActionNotice(`Seller "${seller.name}" deleted successfully`)
+        setTimeout(() => setActionNotice(null), 3000)
+      }
+    }
+  }
+
   const handlePaySuccess = (sellerId: string, amount: number) => {
     setSellers((prev) =>
       prev.map((s) =>
@@ -89,12 +132,56 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
     )
   }
 
-  const handleBulkDelete = () => {
-    if (selectedIds.length === 0) return
-    if (confirm(`Are you sure you want to delete ${selectedIds.length} selected sellers?`)) {
-      setSellers((prev) => prev.filter((s) => !selectedIds.includes(s.id)))
+  const handleApplyBulkAction = async () => {
+    if (selectedIds.length === 0 || !bulkAction) return
+    const selectedSellers = sellers.filter((s) => selectedIds.includes(s.id))
+    const shopIds = selectedSellers.map((s) => parseInt(s.id.replace(/\D/g, "")) || 1)
+    const userIds = selectedSellers.map((s) => s.userId).filter(Boolean) as string[]
+
+    if (bulkAction === "delete") {
+      if (confirm(`Are you sure you want to delete ${selectedIds.length} selected sellers?`)) {
+        await bulkDeleteSellersAdminAction(shopIds, userIds)
+        setSellers((prev) => prev.filter((s) => !selectedIds.includes(s.id)))
+        setSelectedIds([])
+        setBulkAction("")
+        setActionNotice("Selected sellers deleted successfully")
+        setTimeout(() => setActionNotice(null), 3000)
+      }
+    } else if (bulkAction === "ban") {
+      await bulkBanSellersAction(userIds, true)
+      setSellers((prev) =>
+        prev.map((s) => (selectedIds.includes(s.id) ? { ...s, banned: true } : s))
+      )
       setSelectedIds([])
-      setActionNotice("Selected sellers deleted successfully")
+      setBulkAction("")
+      setActionNotice("Selected sellers banned successfully")
+      setTimeout(() => setActionNotice(null), 3000)
+    } else if (bulkAction === "unban") {
+      await bulkBanSellersAction(userIds, false)
+      setSellers((prev) =>
+        prev.map((s) => (selectedIds.includes(s.id) ? { ...s, banned: false } : s))
+      )
+      setSelectedIds([])
+      setBulkAction("")
+      setActionNotice("Selected sellers unbanned successfully")
+      setTimeout(() => setActionNotice(null), 3000)
+    } else if (bulkAction === "verify") {
+      await bulkUpdateSellerVerificationAction(shopIds, true)
+      setSellers((prev) =>
+        prev.map((s) => (selectedIds.includes(s.id) ? { ...s, verificationStatus: true } : s))
+      )
+      setSelectedIds([])
+      setBulkAction("")
+      setActionNotice("Selected sellers verified successfully")
+      setTimeout(() => setActionNotice(null), 3000)
+    } else if (bulkAction === "unverify") {
+      await bulkUpdateSellerVerificationAction(shopIds, false)
+      setSellers((prev) =>
+        prev.map((s) => (selectedIds.includes(s.id) ? { ...s, verificationStatus: false } : s))
+      )
+      setSelectedIds([])
+      setBulkAction("")
+      setActionNotice("Selected sellers marked unverified")
       setTimeout(() => setActionNotice(null), 3000)
     }
   }
@@ -119,8 +206,8 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
           </Link>
           <button
             type="button"
-            onClick={() => alert("To add a seller, invite them or use the seller registration portal.")}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded-full shadow-xs transition-colors"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded-full shadow-xs transition-colors cursor-pointer"
           >
             <span>Add New Seller</span>
             <span className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center">
@@ -199,14 +286,28 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
 
           <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
             {selectedIds.length > 0 && (
-              <button
-                type="button"
-                onClick={handleBulkDelete}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete Selected ({selectedIds.length})
-              </button>
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-md border border-slate-200">
+                <select
+                  value={bulkAction}
+                  onChange={(e) => setBulkAction(e.target.value)}
+                  className="px-2.5 py-1 border border-slate-300 rounded text-xs text-slate-700 bg-white focus:outline-hidden"
+                >
+                  <option value="">Bulk Actions ({selectedIds.length})</option>
+                  <option value="ban">Ban Selected</option>
+                  <option value="unban">Unban Selected</option>
+                  <option value="verify">Verify Selected</option>
+                  <option value="unverify">Unverify Selected</option>
+                  <option value="delete">Delete Selected</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={handleApplyBulkAction}
+                  disabled={!bulkAction}
+                  className="px-3 py-1 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  Apply
+                </button>
+              </div>
             )}
 
             <Link
@@ -222,7 +323,17 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
               onChange={(e) => setEmailStatusFilter(e.target.value as "all" | "verified" | "unverified")}
               className="px-3 py-1.5 border border-slate-300 rounded text-xs text-slate-700 bg-white focus:outline-hidden focus:border-[#d43533]"
             >
-              <option value="all">Email Verification Status</option>
+              <option value="all">Email Status</option>
+              <option value="verified">Verified</option>
+              <option value="unverified">Unverified</option>
+            </select>
+
+            <select
+              value={verificationFilter}
+              onChange={(e) => setVerificationFilter(e.target.value as "all" | "verified" | "unverified")}
+              className="px-3 py-1.5 border border-slate-300 rounded text-xs text-slate-700 bg-white focus:outline-hidden focus:border-[#d43533]"
+            >
+              <option value="all">Merchant Verification</option>
               <option value="verified">Verified</option>
               <option value="unverified">Unverified</option>
             </select>
@@ -238,6 +349,8 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
           onToggleSelectOne={handleToggleSelectOne}
           onToggleVerification={handleToggleVerification}
           onPaySeller={(seller) => setSelectedPaySeller(seller)}
+          onToggleBan={handleToggleBan}
+          onDeleteSeller={handleDeleteSeller}
         />
       </div>
 
@@ -246,6 +359,17 @@ export function SellersManagementView({ initialSellers }: SellersManagementViewP
         seller={selectedPaySeller}
         onClose={() => setSelectedPaySeller(null)}
         onSuccess={handlePaySuccess}
+      />
+
+      {/* Add New Seller Modal */}
+      <AddSellerModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={(newSeller) => {
+          setSellers((prev) => [newSeller, ...prev])
+          setActionNotice(`Seller "${newSeller.name}" added successfully`)
+          setTimeout(() => setActionNotice(null), 3500)
+        }}
       />
     </div>
   )

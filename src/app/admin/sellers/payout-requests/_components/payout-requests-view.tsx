@@ -40,7 +40,7 @@ export function PayoutRequestsView({ initialRequests }: PayoutRequestsViewProps)
     if (!activeModalRequest) return
     setProcessing(true)
     try {
-      const numericId = typeof activeModalRequest.id === "number" ? activeModalRequest.id : 1
+      const numericId = Number(activeModalRequest.id) || 1
       await processWithdrawRequestAction({
         requestId: numericId,
         status,

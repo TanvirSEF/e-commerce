@@ -484,6 +484,7 @@ export interface SeedShop {
   bankAccName?: string
   bankAccNo?: string
   bankRoutingNo?: string
+  banned?: boolean
 }
 
 export const SEED_SHOPS: SeedShop[] = [

@@ -19,9 +19,12 @@ import { formatPrice } from "@/lib/utils"
 
 export interface SellerTableRow {
   id: string
+  userId?: string
   name: string
   slug: string
   logo: string
+  topBanner?: string
+  sliders?: string[]
   address?: string
   phone?: string
   email?: string
@@ -36,6 +39,10 @@ export interface SellerTableRow {
   banned?: boolean
   isSuspicious?: boolean
   emailVerified?: boolean
+  bankName?: string
+  bankAccName?: string
+  bankAccNo?: string
+  bankRoutingNo?: string
 }
 
 interface SellersTableProps {
@@ -46,6 +53,8 @@ interface SellersTableProps {
   onToggleSelectOne: (id: string) => void
   onToggleVerification: (seller: SellerTableRow) => void
   onPaySeller: (seller: SellerTableRow) => void
+  onToggleBan?: (seller: SellerTableRow) => void
+  onDeleteSeller?: (seller: SellerTableRow) => void
   onViewVerification?: (seller: SellerTableRow) => void
 }
 
@@ -57,6 +66,8 @@ export function SellersTable({
   onToggleSelectOne,
   onToggleVerification,
   onPaySeller,
+  onToggleBan,
+  onDeleteSeller,
   onViewVerification,
 }: SellersTableProps) {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null)
@@ -207,14 +218,90 @@ export function SellersTable({
                         >
                           Pay
                         </button>
-                        <Link
-                          href={`/shop/${seller.slug}`}
-                          target="_blank"
-                          className="p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100"
-                          title="Visit Shop"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Link>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenDropdownId(openDropdownId === seller.id ? null : seller.id)
+                            }}
+                            className="p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100 transition-colors"
+                            title="More options"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+
+                          {openDropdownId === seller.id && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setOpenDropdownId(null)}
+                              />
+                              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg py-1.5 z-50 text-left">
+                                <Link
+                                  href={`/shop/${seller.slug}`}
+                                  target="_blank"
+                                  onClick={() => setOpenDropdownId(null)}
+                                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Visit Store</span>
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenDropdownId(null)
+                                    onPaySeller(seller)
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Pay Seller</span>
+                                </button>
+                                <Link
+                                  href={`/admin/sellers/payout-requests?search=${encodeURIComponent(seller.name)}`}
+                                  onClick={() => setOpenDropdownId(null)}
+                                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>Payout History</span>
+                                </Link>
+                                {onToggleBan && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenDropdownId(null)
+                                      onToggleBan(seller)
+                                    }}
+                                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                                      seller.banned
+                                        ? "text-emerald-600 hover:bg-emerald-50"
+                                        : "text-amber-600 hover:bg-amber-50"
+                                    }`}
+                                  >
+                                    <Ban className="w-3.5 h-3.5" />
+                                    <span>{seller.banned ? "Unban Seller" : "Ban this Seller"}</span>
+                                  </button>
+                                )}
+                                {onDeleteSeller && (
+                                  <div className="pt-1 mt-1 border-t border-slate-100">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenDropdownId(null)
+                                        onDeleteSeller(seller)
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete Seller</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

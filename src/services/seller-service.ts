@@ -416,33 +416,55 @@ export async function getSellerFullDashboardData(params: {
     }
   })
 
-  return {
-    shop: {
-      id: shop.id,
-      name: shop.name,
-      slug: shop.slug,
-      rating: shopRating,
+    let activeType: "fixed_rate" | "seller_based" | "category_based" | "none" = "fixed_rate"
+    let activeRate = 10
+    try {
+      const { getSellerCommissionSettings, getSellerCommissionOverrides } = await import("@/services/settings-service")
+      const commSettings = await getSellerCommissionSettings()
+      const overrides = await getSellerCommissionOverrides()
+
+      if (commSettings.commissionActivation) {
+        activeType = commSettings.commissionType
+        if (activeType === "fixed_rate") {
+          activeRate = Number(commSettings.fixedCommissionRate) || 10
+        } else if (activeType === "seller_based") {
+          activeRate = overrides[String(shopId)] ?? (Number(commSettings.fixedCommissionRate) || 10)
+        } else if (activeType === "category_based") {
+          activeRate = 0
+        }
+      } else {
+        activeType = "none"
+        activeRate = 0
+      }
+    } catch {}
+
+    return {
+      shop: {
+        id: shop.id,
+        name: shop.name,
+        slug: shop.slug,
+        rating: shopRating,
+        followersCount,
+        customFollowers,
+        verificationStatus: Boolean(shop.verificationStatus),
+      },
+      totalProducts,
+      shopRating,
       followersCount,
       customFollowers,
-      verificationStatus: Boolean(shop.verificationStatus),
-    },
-    totalProducts,
-    shopRating,
-    followersCount,
-    customFollowers,
-    totalDeliveredOrders,
-    totalSales,
-    previousMonthSoldAmount,
-    last7DaysSales,
-    thisMonthSoldAmount,
-    categoryProductCounts,
-    thisMonthOrders,
-    commissionSetting: {
-      type: "seller_based",
-      rate: 10,
-    },
-    topProducts,
-  }
+      totalDeliveredOrders,
+      totalSales,
+      previousMonthSoldAmount,
+      last7DaysSales,
+      thisMonthSoldAmount,
+      categoryProductCounts,
+      thisMonthOrders,
+      commissionSetting: {
+        type: activeType,
+        rate: activeRate,
+      },
+      topProducts,
+    }
   } catch (err) {
     console.warn("getSellerFullDashboardData DB query error:", err)
     return {
@@ -493,24 +515,33 @@ export async function getSellerFullDashboardData(params: {
   }
 }
 
+export type AdminSellerItem = SeedShop & {
+  userId?: string
+  email?: string
+  dueToSeller: number
+  productCount: number
+  ownerName: string
+  banned?: boolean
+  isSuspicious?: boolean
+  emailVerified?: boolean
+  bankName?: string
+  bankAccName?: string
+  bankAccNo?: string
+  bankRoutingNo?: string
+}
+
 export async function getAllSellersAdmin(options?: {
   tab?: "all" | "banned" | "suspicious"
   search?: string
   verificationStatus?: "verified" | "unverified"
 }): Promise<{
-  sellers: (SeedShop & {
-    dueToSeller: number
-    productCount: number
-    ownerName: string
-    banned?: boolean
-    isSuspicious?: boolean
-    emailVerified?: boolean
-  })[]
+  sellers: AdminSellerItem[]
 }> {
   try {
     const rows = await db
       .select({
         id: shops.id,
+        userId: shops.userId,
         name: shops.name,
         slug: shops.slug,
         logo: shops.logo,
@@ -521,11 +552,18 @@ export async function getAllSellersAdmin(options?: {
         rating: shops.rating,
         numOfReviews: shops.numOfReviews,
         verificationStatus: shops.verificationStatus,
+        bankName: shops.bankName,
+        bankAccName: shops.bankAccName,
+        bankAccNo: shops.bankAccNo,
+        bankRoutingNo: shops.bankRoutingNo,
         createdAt: shops.createdAt,
+        ownerId: users.id,
         ownerName: users.name,
         ownerEmail: users.email,
         ownerPhone: users.phone,
         emailVerified: users.emailVerified,
+        banned: users.banned,
+        isSuspicious: users.isSuspicious,
       })
       .from(shops)
       .leftJoin(users, eq(shops.userId, users.id))
@@ -565,13 +603,14 @@ export async function getAllSellersAdmin(options?: {
       })
       .from(sellerWithdrawRequests)
 
-    const sellers = rows.map((s) => {
+    const sellers: AdminSellerItem[] = rows.map((s) => {
       const pendingWithdraw = withdrawRows
         .filter((w) => w.shopId === s.id && w.status === "pending")
         .reduce((sum, w) => sum + Number(w.amount || 0), 0)
 
       return {
         id: String(s.id),
+        userId: s.ownerId || s.userId || undefined,
         name: s.name,
         slug: s.slug,
         logo: s.logo || "/assets/img/placeholder.jpg",
@@ -590,13 +629,23 @@ export async function getAllSellersAdmin(options?: {
         dueToSeller: pendingWithdraw,
         productCount: prodCountMap.get(s.id) || 0,
         ownerName: s.ownerName || "Merchant Owner",
-        banned: false,
-        isSuspicious: false,
-        emailVerified: !!s.emailVerified,
+        banned: Boolean(s.banned),
+        isSuspicious: Boolean(s.isSuspicious),
+        emailVerified: Boolean(s.emailVerified),
+        bankName: s.bankName || undefined,
+        bankAccName: s.bankAccName || undefined,
+        bankAccNo: s.bankAccNo || undefined,
+        bankRoutingNo: s.bankRoutingNo || undefined,
       }
     })
 
     let filtered = sellers
+    if (options?.tab === "banned") {
+      filtered = filtered.filter((s) => s.banned)
+    } else if (options?.tab === "suspicious") {
+      filtered = filtered.filter((s) => s.isSuspicious)
+    }
+
     if (options?.search) {
       const q = options.search.toLowerCase()
       filtered = filtered.filter(
@@ -617,6 +666,159 @@ export async function getAllSellersAdmin(options?: {
   } catch (err) {
     console.warn("DB getAllSellersAdmin error:", (err as Error).message)
     return { sellers: [] }
+  }
+}
+
+export async function toggleSellerBan(userId: string, banned: boolean) {
+  try {
+    await db
+      .update(users)
+      .set({ banned, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+    return { success: true }
+  } catch (err: any) {
+    console.error("toggleSellerBan error:", err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function bulkBanSellers(userIds: string[], banned: boolean) {
+  if (!userIds || userIds.length === 0) return { success: true }
+  try {
+    const { inArray } = await import("drizzle-orm")
+    await db
+      .update(users)
+      .set({ banned, updatedAt: new Date() })
+      .where(inArray(users.id, userIds))
+    return { success: true }
+  } catch (err: any) {
+    console.error("bulkBanSellers error:", err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function bulkUpdateSellerVerification(shopIds: number[], status: boolean) {
+  if (!shopIds || shopIds.length === 0) return { success: true }
+  try {
+    const { inArray } = await import("drizzle-orm")
+    await db
+      .update(shops)
+      .set({ verificationStatus: status, updatedAt: new Date() })
+      .where(inArray(shops.id, shopIds))
+    return { success: true }
+  } catch (err: any) {
+    console.error("bulkUpdateSellerVerification error:", err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function deleteSellerAdmin(shopId: number, userId?: string) {
+  try {
+    await db.delete(shops).where(eq(shops.id, shopId))
+    if (userId) {
+      await db.delete(users).where(eq(users.id, userId))
+    }
+    return { success: true }
+  } catch (err: any) {
+    console.error("deleteSellerAdmin error:", err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function bulkDeleteSellersAdmin(shopIds: number[], userIds: string[] = []) {
+  if (!shopIds || shopIds.length === 0) return { success: true }
+  try {
+    const { inArray } = await import("drizzle-orm")
+    await db.delete(shops).where(inArray(shops.id, shopIds))
+    const validUserIds = userIds.filter(Boolean)
+    if (validUserIds.length > 0) {
+      await db.delete(users).where(inArray(users.id, validUserIds))
+    }
+    return { success: true }
+  } catch (err: any) {
+    console.error("bulkDeleteSellersAdmin error:", err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function createSellerAdmin(data: {
+  name: string
+  email: string
+  phone?: string
+  password?: string
+  shopName: string
+  address?: string
+}) {
+  try {
+    const cleanEmail = data.email.trim().toLowerCase()
+    const existing = await db.select().from(users).where(eq(users.email, cleanEmail)).limit(1)
+    if (existing.length > 0) {
+      return { success: false, error: "A user with this email address already exists." }
+    }
+
+    const { hashPassword } = await import("better-auth/crypto")
+    const hashedPassword = data.password ? await hashPassword(data.password) : await hashPassword("12345678")
+    const userId = `usr_seller_${Date.now()}`
+
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        id: userId,
+        name: data.name.trim(),
+        email: cleanEmail,
+        phone: data.phone?.trim() || null,
+        role: "seller",
+        emailVerified: true,
+        banned: false,
+        isSuspicious: false,
+        balance: "0.00",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+
+    const { accounts } = await import("@/db/schema/auth")
+    await db.insert(accounts).values({
+      id: `acc_${userId}`,
+      userId,
+      accountId: userId,
+      providerId: "credential",
+      password: hashedPassword,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    const baseSlug =
+      data.shopName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") || `shop-${Date.now()}`
+    let slug = baseSlug
+    const existingSlug = await db.select({ id: shops.id }).from(shops).where(eq(shops.slug, slug)).limit(1)
+    if (existingSlug.length > 0) {
+      slug = `${baseSlug}-${Math.floor(100 + Math.random() * 900)}`
+    }
+
+    const [newShop] = await db
+      .insert(shops)
+      .values({
+        userId,
+        name: data.shopName.trim(),
+        slug,
+        address: data.address?.trim() || "Dhaka, Bangladesh",
+        phone: data.phone?.trim() || null,
+        verificationStatus: true,
+        rating: "5.00",
+        numOfReviews: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning()
+
+    return { success: true, user: newUser, shop: newShop }
+  } catch (err: any) {
+    console.error("createSellerAdmin error:", err)
+    return { success: false, error: err?.message || "Failed to create seller" }
   }
 }
 

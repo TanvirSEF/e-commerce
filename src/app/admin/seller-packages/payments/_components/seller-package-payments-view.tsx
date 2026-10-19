@@ -1,8 +1,9 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useTransition } from "react"
 import Link from "next/link"
-import { CreditCard, ArrowLeft, Search, CheckCircle2 } from "lucide-react"
+import { CreditCard, ArrowLeft, Search, CheckCircle2, Clock, Check } from "lucide-react"
+import { approveSellerPackagePaymentAction } from "@/app/actions/ecommerce-actions"
 
 interface PaymentItem {
   id: number
@@ -21,8 +22,21 @@ interface SellerPackagePaymentsViewProps {
 }
 
 export function SellerPackagePaymentsView({ initialPayments = [] }: SellerPackagePaymentsViewProps) {
-  const [payments] = useState<PaymentItem[]>(initialPayments || [])
+  const [payments, setPayments] = useState<PaymentItem[]>(initialPayments || [])
   const [search, setSearch] = useState("")
+  const [approvingId, setApprovingId] = useState<number | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  const handleApprove = (id: number) => {
+    setApprovingId(id)
+    startTransition(async () => {
+      const res = await approveSellerPackagePaymentAction(id)
+      if (res.success) {
+        setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, approval: true } : p)))
+      }
+      setApprovingId(null)
+    })
+  }
 
   const filtered = payments.filter(
     (p) =>
@@ -76,7 +90,8 @@ export function SellerPackagePaymentsView({ initialPayments = [] }: SellerPackag
                 <th className="py-3 px-4">Payment Method</th>
                 <th className="py-3 px-4">Details</th>
                 <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Date</th>
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -91,12 +106,31 @@ export function SellerPackagePaymentsView({ initialPayments = [] }: SellerPackag
                     {item.paymentDetails || "Instant Online"}
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-                      <CheckCircle2 className="w-3 h-3" /> Approved
-                    </span>
+                    {item.approval ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                        <CheckCircle2 className="w-3 h-3" /> Approved
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                        <Clock className="w-3 h-3" /> Pending Review
+                      </span>
+                    )}
                   </td>
-                  <td className="py-3 px-4 text-right font-mono text-gray-400">
+                  <td className="py-3 px-4 font-mono text-gray-400">
                     {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Recent"}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    {!item.approval && (
+                      <button
+                        type="button"
+                        onClick={() => handleApprove(item.id)}
+                        disabled={isPending && approvingId === item.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold transition-colors disabled:opacity-50"
+                      >
+                        <Check className="w-3 h-3" />
+                        {approvingId === item.id ? "Approving..." : "Approve"}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -42,6 +42,14 @@ export default async function ShopPage({ params, searchParams }: PageProps) {
       {/* Shop Identity Header */}
       <ShopHeader shop={shop} />
 
+      {shop.banned && (
+        <div className="max-w-7xl mx-auto px-4 pt-4">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-xs font-semibold flex items-center gap-2">
+            <span>⚠️ This store has been temporarily suspended by platform administration. Product purchasing from this merchant is currently unavailable.</span>
+          </div>
+        </div>
+      )}
+
       {/* Tabs Navigation */}
       <ShopNav
         shopSlug={shop.slug}

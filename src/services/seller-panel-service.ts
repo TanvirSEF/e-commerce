@@ -156,14 +156,20 @@ export interface CommissionLedgerRow {
   createdAt: string
 }
 
-async function getCommissionRate(): Promise<number> {
+async function getCommissionRate(shopId?: number): Promise<number> {
   const s = await getSellerCommissionSettings()
-  return s.commissionActivation ? Number(s.fixedCommissionRate) || 0 : 0
+  if (!s.commissionActivation) return 0
+  if (s.commissionType === "seller_based" && shopId) {
+    const { getSellerCommissionOverrides } = await import("@/services/settings-service")
+    const overrides = await getSellerCommissionOverrides()
+    return overrides[String(shopId)] ?? (Number(s.fixedCommissionRate) || 0)
+  }
+  return Number(s.fixedCommissionRate) || 0
 }
 
 /** Commission is settled on delivered orders, calculated from the seller's own order items. */
 export async function getSellerCommissionLedger(seller: CurrentSeller): Promise<CommissionLedgerRow[]> {
-  const rate = await getCommissionRate()
+  const rate = await getCommissionRate(seller.shopId)
   const ownership = seller.userId
     ? or(eq(products.shopId, seller.shopId), eq(products.userId, seller.userId))
     : eq(products.shopId, seller.shopId)

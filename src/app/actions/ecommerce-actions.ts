@@ -206,9 +206,21 @@ export async function paySellerDirectAction(data: {
   paymentMethod: string
 }) {
   const { processWithdrawRequestAdmin, createSellerWithdrawRequest } = await import("@/services/seller-service")
+  const { db } = await import("@/db")
+  const { shops } = await import("@/db/schema")
+  const { eq } = await import("drizzle-orm")
+
+  const [shopRow] = await db
+    .select({ userId: shops.userId })
+    .from(shops)
+    .where(eq(shops.id, data.shopId))
+    .limit(1)
+
+  const sellerUserId = shopRow?.userId || "usr_seller_default_01"
+
   const withdraw = await createSellerWithdrawRequest({
     shopId: data.shopId,
-    userId: "usr_seller_default_01",
+    userId: sellerUserId,
     amount: data.amount,
     message: "Admin direct payout disbursement",
     paymentMethod: data.paymentMethod,
@@ -224,8 +236,105 @@ export async function paySellerDirectAction(data: {
   try {
     revalidatePath("/admin/sellers")
     revalidatePath("/admin/sellers/payout-requests")
+    revalidatePath("/seller/payouts")
+    revalidatePath("/seller/dashboard")
   } catch {}
   return { success: true }
+}
+
+export async function toggleSellerBanAction(userId: string, banned: boolean) {
+  const { toggleSellerBan } = await import("@/services/seller-service")
+  const res = await toggleSellerBan(userId, banned)
+  try {
+    revalidatePath("/admin/sellers")
+    revalidatePath("/admin/sellers/seller-commission")
+    revalidatePath("/seller/dashboard")
+    revalidatePath("/shop", "layout")
+  } catch {}
+  return res
+}
+
+export async function bulkBanSellersAction(userIds: string[], banned: boolean) {
+  const { bulkBanSellers } = await import("@/services/seller-service")
+  const res = await bulkBanSellers(userIds, banned)
+  try {
+    revalidatePath("/admin/sellers")
+    revalidatePath("/admin/sellers/seller-commission")
+    revalidatePath("/seller/dashboard")
+    revalidatePath("/shop", "layout")
+  } catch {}
+  return res
+}
+
+export async function bulkUpdateSellerVerificationAction(shopIds: number[], status: boolean) {
+  const { bulkUpdateSellerVerification } = await import("@/services/seller-service")
+  const res = await bulkUpdateSellerVerification(shopIds, status)
+  try {
+    revalidatePath("/admin/sellers")
+    revalidatePath("/admin/sellers/verification")
+    revalidatePath("/seller/dashboard")
+    revalidatePath("/seller/verify")
+    revalidatePath("/shop", "layout")
+  } catch {}
+  return res
+}
+
+export async function deleteSellerAdminAction(shopId: number, userId?: string) {
+  const { deleteSellerAdmin } = await import("@/services/seller-service")
+  const res = await deleteSellerAdmin(shopId, userId)
+  try {
+    revalidatePath("/admin/sellers")
+    revalidatePath("/admin/sellers/seller-commission")
+    revalidatePath("/shop", "layout")
+  } catch {}
+  return res
+}
+
+export async function bulkDeleteSellersAdminAction(shopIds: number[], userIds: string[]) {
+  const { bulkDeleteSellersAdmin } = await import("@/services/seller-service")
+  const res = await bulkDeleteSellersAdmin(shopIds, userIds)
+  try {
+    revalidatePath("/admin/sellers")
+    revalidatePath("/admin/sellers/seller-commission")
+    revalidatePath("/shop", "layout")
+  } catch {}
+  return res
+}
+
+export async function createSellerAdminAction(data: {
+  name: string
+  email: string
+  phone?: string
+  password?: string
+  shopName: string
+  address?: string
+}) {
+  const { createSellerAdmin } = await import("@/services/seller-service")
+  const res = await createSellerAdmin(data)
+  try {
+    revalidatePath("/admin/sellers")
+    revalidatePath("/admin/sellers/seller-commission")
+    revalidatePath("/admin/sellers/verification")
+  } catch {}
+  return res
+}
+
+export async function approveSellerPackagePaymentAction(paymentId: number) {
+  const { db } = await import("@/db")
+  const { sellerPackagePayments } = await import("@/db/schema")
+  const { eq } = await import("drizzle-orm")
+  try {
+    await db
+      .update(sellerPackagePayments)
+      .set({ approval: true })
+      .where(eq(sellerPackagePayments.id, paymentId))
+    revalidatePath("/admin/seller-packages/payments")
+    revalidatePath("/seller/packages")
+    revalidatePath("/seller/dashboard")
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Failed to approve payment" }
+  }
 }
 
 export async function updateTicketStatusAction(ticketId: number, status: string) {
@@ -470,7 +579,14 @@ export async function updateSellerCommissionAction(data: {
   minimumWithdrawalAmount: number
 }) {
   const { updateSellerCommissionSettings } = await import("@/services/settings-service")
-  return await updateSellerCommissionSettings(data)
+  const res = await updateSellerCommissionSettings(data)
+  try {
+    revalidatePath("/admin/sellers/commission")
+    revalidatePath("/seller/dashboard")
+    revalidatePath("/seller/payouts")
+    revalidatePath("/seller/commission-history")
+  } catch {}
+  return res
 }
 
 export async function updateClubPointsSettingsAction(data: {
@@ -1481,12 +1597,24 @@ export async function deleteOrderNoteAction(id: number) {
 
 export async function updateCategoryCommissionsAction(data: any) {
   const { updateCategoryCommissions } = await import("@/services/settings-service")
-  return await updateCategoryCommissions(data)
+  const res = await updateCategoryCommissions(data)
+  try {
+    revalidatePath("/admin/sellers/category-commission")
+    revalidatePath("/seller/dashboard")
+    revalidatePath("/seller/category-commission")
+  } catch {}
+  return res
 }
 
 export async function updateSellerCommissionOverrideAction(sellerId: string, rate: number) {
   const { updateSellerCommissionOverride } = await import("@/services/settings-service")
-  return await updateSellerCommissionOverride(sellerId, rate)
+  const res = await updateSellerCommissionOverride(sellerId, rate)
+  try {
+    revalidatePath("/admin/sellers/seller-commission")
+    revalidatePath("/seller/dashboard")
+    revalidatePath("/seller/commission-history")
+  } catch {}
+  return res
 }
 
 export async function updateCategoryDiscountsAction(data: any) {
