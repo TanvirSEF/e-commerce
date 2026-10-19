@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { placeAuctionBidAction } from "@/app/actions/ecommerce-actions"
+import { useAuth } from "@/lib/context/auth-context"
 import type { AuctionBid, AuctionProduct } from "@/db/schema/auction"
 
 interface AuctionProductDetailViewProps {
@@ -23,16 +24,22 @@ interface AuctionProductDetailViewProps {
 }
 
 export function AuctionProductDetailView({ product, initialBids }: AuctionProductDetailViewProps) {
+  const { user } = useAuth()
   const [bids, setBids] = useState(initialBids)
   const [currentBid, setCurrentBid] = useState(product.currentBid)
   const [totalBids, setTotalBids] = useState(product.totalBids)
 
   const minBidAllowed = (parseFloat(currentBid) + parseFloat(product.minBidIncrement)).toFixed(2)
   const [bidAmount, setBidAmount] = useState(minBidAllowed)
-  const [bidderName, setBidderName] = useState("John Doe")
-  const [bidderEmail, setBidderEmail] = useState("johndoe@example.com")
+  const [bidderName, setBidderName] = useState(user?.name || "")
+  const [bidderEmail, setBidderEmail] = useState(user?.email || "")
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<{ success: boolean; message: string } | null>(null)
+
+  React.useEffect(() => {
+    if (user?.name) setBidderName(user.name)
+    if (user?.email) setBidderEmail(user.email)
+  }, [user])
 
   const endDate = new Date(product.auctionEndDate)
   const isEnded = endDate.getTime() < Date.now()

@@ -1709,7 +1709,13 @@ export async function createPreorderOrderAction(data: {
   remainingDue: string
 }) {
   const { createPreorderOrder } = await import("@/services/preorder-service")
-  return await createPreorderOrder(data)
+  const res = await createPreorderOrder(data)
+  revalidatePath("/admin/preorder/orders")
+  revalidatePath("/seller/preorder/orders")
+  revalidatePath("/dashboard/preorder")
+  revalidatePath("/preorder")
+  revalidatePath("/all-preorder-products")
+  return res
 }
 
 export async function updatePreorderOrderStatusAction(id: number, status: string) {
@@ -1799,7 +1805,15 @@ export async function placeAuctionBidAction(
   amount: string
 ) {
   const { placeAuctionBid } = await import("@/services/auction-service")
-  return await placeAuctionBid(productId, userName, userEmail, amount)
+  const res = await placeAuctionBid(productId, userName, userEmail, amount)
+  revalidatePath("/auction-products")
+  revalidatePath(`/admin/auction/bids/${productId}`)
+  revalidatePath(`/seller/auction/bids/${productId}`)
+  revalidatePath("/admin/auction/all-products")
+  revalidatePath("/seller/auction/products")
+  revalidatePath("/dashboard/auction/bidded-products")
+  revalidatePath("/dashboard/auction/purchase-history")
+  return res
 }
 
 // Affiliate Actions
@@ -2042,7 +2056,28 @@ export async function createProductAction(data: {
   shippingCost?: string | number
   weight?: string | number
   published?: boolean
+  shopId?: number
+  userId?: string
+  addedBy?: string
 }) {
+  if (data.addedBy === "seller") {
+    try {
+      const { getCurrentSeller, getSellerPackageOverview } = await import("@/services/seller-panel-service")
+      const seller = await getCurrentSeller()
+      if (seller) {
+        const pkg = await getSellerPackageOverview(seller)
+        if (pkg?.current && pkg.current.remainingUploads <= 0) {
+          return {
+            success: false,
+            error: "Product upload limit reached for your active package. Please upgrade or renew your plan.",
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Seller package validation skipped:", e)
+    }
+  }
+
   const { createProduct } = await import("@/services/product-service")
   const res = await createProduct(data)
   revalidatePath("/admin/products")
@@ -2329,6 +2364,7 @@ export async function addCustomerAddressAction(data: {
   const item = await addCustomerAddress({ ...data, userId: session.user.id })
   revalidatePath("/dashboard/profile")
   revalidatePath("/dashboard")
+  revalidatePath("/checkout")
   return { success: Boolean(item), item }
 }
 

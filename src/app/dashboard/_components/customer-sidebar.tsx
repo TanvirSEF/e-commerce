@@ -20,6 +20,8 @@ import {
   Bell,
   Trash2,
   Camera,
+  Clock,
+  Gavel,
 } from "lucide-react"
 import { useAuth } from "@/lib/context/auth-context"
 import { AccountDeleteModal } from "./account-delete-modal"
@@ -73,6 +75,8 @@ export function CustomerSidebar() {
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Purchase History", href: "/dashboard/purchase-history", icon: ShoppingBag },
     { label: "Digital Purchases", href: "/dashboard/digital-purchases", icon: Download },
+    { label: "Pre-Orders", href: "/dashboard/preorder", icon: Clock, addonKey: "preorder_system" },
+    { label: "Auction Bids", href: "/dashboard/auction/bidded-products", icon: Gavel, addonKey: "auction_system" },
     { label: "Refund Requests", href: "/dashboard/refund-requests", icon: RotateCcw, addonKey: "refund_system" },
     { label: "Wishlist", href: "/dashboard/wishlist", icon: Heart },
     { label: "Classified Products", href: "/dashboard/customer-products", icon: Tag },

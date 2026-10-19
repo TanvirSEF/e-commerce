@@ -128,6 +128,8 @@ export function ProductInfo({
       slug: product.slug,
       thumbnail: product.thumbnail,
       price: effectivePrice,
+      basePrice: product.price,
+      wholesaleTiers: product.wholesaleTiers,
       quantity,
       variation: variationString,
     })

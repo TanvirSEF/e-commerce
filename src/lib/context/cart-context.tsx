@@ -9,12 +9,30 @@ export interface CartItem {
   slug: string
   thumbnail: string
   price: number
+  basePrice?: number
+  wholesaleTiers?: { minQty: number; maxQty: number; price: number }[]
   quantity: number
   variation?: string
   selected: boolean
   sellerName?: string
   tax?: number
   shippingCost?: number
+}
+
+function computeItemUnitPrice(item: {
+  price: number
+  basePrice?: number
+  wholesaleTiers?: { minQty: number; maxQty: number; price: number }[]
+  quantity: number
+}): number {
+  if (item.wholesaleTiers && item.wholesaleTiers.length > 0) {
+    const matched = item.wholesaleTiers.find(
+      (t) => item.quantity >= t.minQty && item.quantity <= t.maxQty
+    )
+    if (matched) return matched.price
+    return item.basePrice ?? item.price
+  }
+  return item.price
 }
 
 export interface AppliedCoupon {
@@ -131,16 +149,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         (i) => i.productId === newItem.productId && i.variation === newItem.variation
       )
       if (existing) {
+        const nextQty = existing.quantity + newItem.quantity
+        const unitPrice = computeItemUnitPrice({
+          price: existing.price,
+          basePrice: existing.basePrice ?? newItem.basePrice,
+          wholesaleTiers: existing.wholesaleTiers ?? newItem.wholesaleTiers,
+          quantity: nextQty,
+        })
         return prev.map((i) =>
           i.id === existing.id
-            ? { ...i, quantity: i.quantity + newItem.quantity, selected: true }
+            ? { ...i, quantity: nextQty, price: unitPrice, selected: true }
             : i
         )
       }
+      const initialUnitPrice = computeItemUnitPrice({
+        price: newItem.price,
+        basePrice: newItem.basePrice,
+        wholesaleTiers: newItem.wholesaleTiers,
+        quantity: newItem.quantity,
+      })
       return [
         ...prev,
         {
           ...newItem,
+          price: initialUnitPrice,
+          basePrice: newItem.basePrice ?? newItem.price,
           id: `item-${Date.now()}`,
           selected: true,
           sellerName: newItem.sellerName || "Inhouse Products",
@@ -162,7 +195,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .map((i) => {
           if (i.id === id) {
             const newQty = i.quantity + delta
-            return newQty > 0 ? { ...i, quantity: newQty } : null
+            if (newQty <= 0) return null
+            const unitPrice = computeItemUnitPrice({
+              price: i.price,
+              basePrice: i.basePrice,
+              wholesaleTiers: i.wholesaleTiers,
+              quantity: newQty,
+            })
+            return { ...i, quantity: newQty, price: unitPrice }
           }
           return i
         })
@@ -176,7 +216,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return
     }
     setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, quantity: qty } : i))
+      prev.map((i) => {
+        if (i.id === id) {
+          const unitPrice = computeItemUnitPrice({
+            price: i.price,
+            basePrice: i.basePrice,
+            wholesaleTiers: i.wholesaleTiers,
+            quantity: qty,
+          })
+          return { ...i, quantity: qty, price: unitPrice }
+        }
+        return i
+      })
     )
   }
 

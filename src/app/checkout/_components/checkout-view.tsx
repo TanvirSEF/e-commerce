@@ -12,10 +12,13 @@ import { placeOrderAction } from "@/app/actions/ecommerce-actions"
 import { ChevronRight, MapPin, Truck, CreditCard, ChevronDown } from "lucide-react"
 import type { PaymentGatewaysSettings } from "@/services/settings-service"
 import type { CouriersMasterSettings } from "@/services/courier-config-service"
+import { CheckoutOrderSummary } from "./checkout-order-summary"
 
 interface CheckoutViewProps {
   paymentSettings?: PaymentGatewaysSettings | null
   courierSettings?: CouriersMasterSettings | null
+  initialAddresses?: AddressData[]
+  userProfile?: { id: string; name: string; email: string } | null
 }
 
 const DEFAULT_ADDRESSES: AddressData[] = [
@@ -43,7 +46,12 @@ const DEFAULT_ADDRESSES: AddressData[] = [
   },
 ]
 
-export function CheckoutView({ paymentSettings, courierSettings }: CheckoutViewProps) {
+export function CheckoutView({
+  paymentSettings,
+  courierSettings,
+  initialAddresses = [],
+  userProfile,
+}: CheckoutViewProps) {
   const router = useRouter()
   const {
     items,
@@ -66,8 +74,10 @@ export function CheckoutView({ paymentSettings, courierSettings }: CheckoutViewP
   })
 
   // Address state
-  const [addresses, setAddresses] = useState<AddressData[]>(DEFAULT_ADDRESSES)
-  const [selectedAddressId, setSelectedAddressId] = useState(DEFAULT_ADDRESSES[0].id)
+  const availableAddresses = initialAddresses.length > 0 ? initialAddresses : DEFAULT_ADDRESSES
+  const [addresses, setAddresses] = useState<AddressData[]>(availableAddresses)
+  const defaultAddr = availableAddresses.find((a) => a.isDefault) || availableAddresses[0]
+  const [selectedAddressId, setSelectedAddressId] = useState(defaultAddr.id)
   const [sameAsShipping, setSameAsShipping] = useState(true)
 
   // Delivery state
@@ -101,9 +111,25 @@ export function CheckoutView({ paymentSettings, courierSettings }: CheckoutViewP
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }))
   }
 
-  const handleAddNewAddress = (newAddr: AddressData) => {
-    setAddresses((prev) => [...prev, newAddr])
+  const handleAddNewAddress = async (newAddr: AddressData) => {
+    setAddresses((prev) => [newAddr, ...prev])
     setSelectedAddressId(newAddr.id)
+
+    if (userProfile?.id) {
+      try {
+        const { addCustomerAddressAction } = await import("@/app/actions/ecommerce-actions")
+        await addCustomerAddressAction({
+          address: newAddr.address,
+          city: newAddr.city,
+          country: newAddr.country,
+          postalCode: newAddr.postalCode,
+          phone: newAddr.phone,
+          setDefault: true,
+        })
+      } catch (err) {
+        console.warn("Could not save address to database:", err)
+      }
+    }
   }
 
   const handleSubmitOrder = async () => {
@@ -112,7 +138,7 @@ export function CheckoutView({ paymentSettings, courierSettings }: CheckoutViewP
 
     try {
       const orderPayload = {
-        userId: "usr_customer_default_01",
+        userId: userProfile?.id || "usr_customer_default_01",
         shippingAddress: {
           name: selectedAddress.name,
           email: selectedAddress.email,
@@ -346,44 +372,7 @@ export function CheckoutView({ paymentSettings, courierSettings }: CheckoutViewP
 
           {/* Right Column (4 cols): Order Summary */}
           <div className="lg:col-span-4 sticky top-24">
-            <div className="rounded border border-gray-200 bg-white p-5 shadow-sm">
-              <h4 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 mb-4">
-                Order Summary
-              </h4>
-
-              <div className="divide-y divide-gray-100 text-sm">
-                <div className="flex justify-between py-2 text-gray-600">
-                  <span>Subtotal ({selectedCount} items)</span>
-                  <span className="font-semibold text-gray-900">{formatPrice(selectedSubtotal)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-gray-600">
-                  <span>Shipping</span>
-                  <span className="font-semibold text-gray-900">{formatPrice(shippingTotal)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-gray-600">
-                  <span>Tax</span>
-                  <span className="font-semibold text-gray-900">{formatPrice(taxTotal)}</span>
-                </div>
-                {couponDiscount > 0 && (
-                  <div className="flex justify-between py-2 text-emerald-600">
-                    <span>Coupon Discount</span>
-                    <span className="font-bold">-{formatPrice(couponDiscount)}</span>
-                  </div>
-                )}
-                <div className="flex items-baseline justify-between pt-3 pb-1">
-                  <span className="text-sm font-bold uppercase text-gray-900">Total</span>
-                  <span className="text-xl font-extrabold text-[#d43533]">{formatPrice(grandTotal)}</span>
-                </div>
-              </div>
-
-              {/* Delivery To pill */}
-              <div className="mt-4 rounded bg-gray-50 p-3 text-xs text-gray-600 border border-gray-100">
-                <div className="font-bold text-gray-800 mb-0.5">Shipping to:</div>
-                <div className="line-clamp-2">
-                  {selectedAddress.name}, {selectedAddress.address}, {selectedAddress.city}
-                </div>
-              </div>
-            </div>
+            <CheckoutOrderSummary selectedAddress={selectedAddress} />
           </div>
         </div>
       </div>

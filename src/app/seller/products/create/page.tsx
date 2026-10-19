@@ -2,6 +2,7 @@ import React from "react"
 import { Metadata } from "next"
 import { getServerSession } from "@/lib/auth/session-helper"
 import { getSellerFullDashboardData } from "@/services/seller-service"
+import { getCurrentSeller, getSellerPackageOverview } from "@/services/seller-panel-service"
 import { SellerProductCreateView } from "./_components/seller-product-create-view"
 import { getCategories } from "@/services/category-service"
 import { getBrands } from "@/services/brand-service"
@@ -21,15 +22,18 @@ export default async function SellerProductCreatePage(props: {
   const editId = searchParams?.edit
 
   const session = await getServerSession()
-  const sellerData = await getSellerFullDashboardData({
-    userId: session?.user?.id,
-  })
+  const seller = await getCurrentSeller()
 
-  const [categories, brands, initialProduct] = await Promise.all([
+  const [sellerData, packageData, categories, brands, initialProduct] = await Promise.all([
+    getSellerFullDashboardData({ userId: session?.user?.id }),
+    seller ? getSellerPackageOverview(seller).catch(() => null) : Promise.resolve(null),
     getCategories(),
     getBrands(),
     editId ? getProductForEdit(editId) : Promise.resolve(null),
   ])
+
+  const remainingUploads = packageData?.current ? packageData.current.remainingUploads : null
+  const packageName = packageData?.current ? packageData.current.name : null
 
   return (
     <SellerProductCreateView
@@ -38,6 +42,8 @@ export default async function SellerProductCreatePage(props: {
       initialProduct={initialProduct}
       shopId={sellerData.shop.id}
       sellerUserId={session?.user?.id || "usr_seller_default_01"}
+      remainingUploads={remainingUploads}
+      packageName={packageName}
     />
   )
 }

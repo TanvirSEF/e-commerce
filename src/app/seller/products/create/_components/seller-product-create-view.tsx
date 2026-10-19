@@ -17,6 +17,8 @@ interface SellerProductCreateViewProps {
   initialProduct?: ProductEditInitial | null
   shopId?: number
   sellerUserId?: string
+  remainingUploads?: number | null
+  packageName?: string | null
 }
 
 interface ProductFormState {
@@ -43,8 +45,15 @@ export function SellerProductCreateView({
   initialProduct,
   shopId,
   sellerUserId,
+  remainingUploads,
+  packageName,
 }: SellerProductCreateViewProps) {
   const router = useRouter()
+  const isUploadLimitReached =
+    !initialProduct &&
+    remainingUploads !== null &&
+    remainingUploads !== undefined &&
+    remainingUploads <= 0
   const [form, setForm] = useState<ProductFormState>({
     name: initialProduct?.name || "",
     sku: initialProduct?.sku || "",
@@ -137,17 +146,50 @@ export function SellerProductCreateView({
         >
           <ArrowLeft className="w-4 h-4" />
         </Link>
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">
-            {initialProduct ? "Edit Product" : "Add New Product"}
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {initialProduct
-              ? "Update product details and publish changes to catalog"
-              : "Fill in the form below to list a new product in your store"}
-          </p>
+        <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">
+              {initialProduct ? "Edit Product" : "Add New Product"}
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {initialProduct
+                ? "Update product details and publish changes to catalog"
+                : "Fill in the form below to list a new product in your store"}
+            </p>
+          </div>
+          {remainingUploads !== null && remainingUploads !== undefined && (
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border ${
+                remainingUploads > 0
+                  ? "bg-slate-50 border-slate-200 text-slate-700"
+                  : "bg-red-50 border-red-200 text-red-700"
+              }`}
+            >
+              {remainingUploads} uploads remaining ({packageName || "Active Plan"})
+            </span>
+          )}
         </div>
       </div>
+
+      {isUploadLimitReached && (
+        <div className="flex items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs font-medium">
+          <div className="flex items-center gap-2">
+            <XCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <strong className="font-bold">Product Upload Limit Reached</strong>
+              <p className="text-[11px] text-amber-700 mt-0.5">
+                Your current package ({packageName || "Active Plan"}) has 0 remaining uploads. Please upgrade or renew your package to publish more products.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/seller/packages"
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded shadow-xs whitespace-nowrap"
+          >
+            Upgrade Package
+          </Link>
+        </div>
+      )}
 
       {success && (
         <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-sm font-semibold">
@@ -290,14 +332,16 @@ export function SellerProductCreateView({
           </Link>
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-1.5 px-5 py-2 bg-[#d43533] hover:bg-[#b82a28] text-white text-xs font-semibold rounded shadow-sm transition-colors cursor-pointer"
+            disabled={isSubmitting || isUploadLimitReached}
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-[#d43533] hover:bg-[#b82a28] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold rounded shadow-sm transition-colors cursor-pointer"
           >
             <Save className="w-4 h-4" />
             {isSubmitting
               ? "Saving..."
               : initialProduct
               ? "Update Product"
+              : isUploadLimitReached
+              ? "Limit Reached"
               : "Submit for Approval"}
           </button>
         </div>

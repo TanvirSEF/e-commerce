@@ -522,6 +522,20 @@ export async function getAllPreorderOrders(tab?: string, sellerName?: string): P
   }
 }
 
+export async function getCustomerPreorderOrders(email: string): Promise<PreorderOrder[]> {
+  try {
+    if (!email) return []
+    return await db
+      .select()
+      .from(preorderOrders)
+      .where(eq(preorderOrders.customerEmail, email))
+      .orderBy(desc(preorderOrders.createdAt))
+  } catch (err) {
+    console.error("getCustomerPreorderOrders error:", err)
+    return []
+  }
+}
+
 export async function deletePreorderOrder(id: number): Promise<boolean> {
   try {
     await db.delete(preorderOrders).where(eq(preorderOrders.id, id))
