@@ -6,9 +6,11 @@ import Image from "next/image"
 import Link from "next/link"
 import { Search, Download, ExternalLink, Check, Truck } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
+import { trackOrderByCodeAction } from "@/app/actions/ecommerce-actions"
 
 export interface TrackedOrder {
   code: string
+  trackingCode?: string
   date: number
   delivery_status: string
   payment_type: string
@@ -25,49 +27,6 @@ export interface TrackedOrder {
   items?: Array<{ name: string; quantity: number; price: number }>
 }
 
-function lookupOrder(code: string): TrackedOrder | null {
-  const trimmed = code.trim()
-  if (!trimmed) return null
-
-  if (typeof window !== "undefined") {
-    const stored =
-      localStorage.getItem(`order_${trimmed}`) || localStorage.getItem("active_ecom_last_order")
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        if (parsed.code === trimmed || parsed.trackingCode === trimmed) {
-          return parsed
-        }
-      } catch {
-        // fallback
-      }
-    }
-  }
-
-  // Demo fallback
-  if (trimmed.toUpperCase() === "DEMO") {
-    return {
-      code: "DEMO-2026",
-      date: Date.now() - 3600000 * 24,
-      delivery_status: "on_the_way",
-      payment_type: "bKash",
-      payment_status: "paid",
-      shipping_type: "Home Delivery",
-      carrier: "Steadfast Courier",
-      shipping_address: {
-        name: "Tanvir Ahmed",
-        address: "House 12, Road 4, Banani",
-        city: "Dhaka",
-        country: "Bangladesh",
-      },
-      grand_total: 4760,
-      items: [{ name: "Classic Men's Casual Shirt", quantity: 1, price: 1250 }],
-    }
-  }
-
-  return null
-}
-
 export function TrackOrderView() {
   const searchParams = useSearchParams()
   const initialCode = searchParams.get("code") || ""
@@ -81,47 +40,38 @@ export function TrackOrderView() {
     const trimmed = codeStr.trim()
     if (!trimmed) return
     setLoading(true)
+    setNotFound(false)
+
     try {
-      const res = await fetch(`/api/orders?code=${encodeURIComponent(trimmed)}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.success && data.order) {
-          const ord = data.order
-          setSearchedOrder({
-            code: ord.code,
-            date: ord.date ? new Date(ord.date).getTime() : Date.now(),
-            delivery_status: ord.status || ord.deliveryStatus || ord.delivery_status || "pending",
-            payment_type: ord.paymentMethod || ord.paymentType || ord.payment_type || "Cash on Delivery",
-            payment_status: ord.paymentStatus || ord.payment_status || "unpaid",
-            shipping_type: ord.shippingMethod || "Home Delivery",
-            carrier: ord.courier || ord.carrier || "Steadfast Courier",
-            shipping_address: ord.shippingAddress || ord.shipping_address,
-            grand_total: Number(ord.total ?? ord.grandTotal ?? ord.grand_total ?? 0),
-            items: (ord.items || []).map(
-              (i: { name?: string; variation?: string; quantity?: number; price?: number }) => ({
-                name: i.name || i.variation || "Product Item",
-                quantity: i.quantity || 1,
-                price: i.price || 0,
-              })
-            ),
-          })
-          setNotFound(false)
-          setLoading(false)
-          return
-        }
+      const res = await trackOrderByCodeAction(trimmed)
+      if (res.success && res.order) {
+        setSearchedOrder(res.order as TrackedOrder)
+        setNotFound(false)
+        setLoading(false)
+        return
       }
     } catch {
-      // ignore
+      // fallback
     }
 
-    const local = lookupOrder(trimmed)
-    if (local) {
-      setSearchedOrder(local)
-      setNotFound(false)
-    } else {
-      setSearchedOrder(null)
-      setNotFound(true)
+    if (typeof window !== "undefined") {
+      const stored =
+        localStorage.getItem(`order_${trimmed}`) || localStorage.getItem("active_ecom_last_order")
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          if (parsed.code === trimmed || parsed.trackingCode === trimmed) {
+            setSearchedOrder(parsed)
+            setNotFound(false)
+            setLoading(false)
+            return
+          }
+        } catch {}
+      }
     }
+
+    setSearchedOrder(null)
+    setNotFound(true)
     setLoading(false)
   }
 

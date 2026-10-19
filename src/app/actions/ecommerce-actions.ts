@@ -2089,17 +2089,78 @@ export async function placeOrderAction(data: {
   shippingCost?: number
   couponDiscount?: number
 }) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  let targetUserId = data.userId
+  if (!targetUserId) {
+    try {
+      const session = await getServerSession()
+      targetUserId = session?.user?.id
+    } catch {}
+  }
+
   const { createOrder } = await import("@/services/order-service")
-  const res = await createOrder(data)
-  revalidatePath("/admin/orders")
-  revalidatePath("/seller/orders")
-  revalidatePath("/dashboard")
-  revalidatePath("/purchase-history")
-  revalidatePath("/purchase_history")
-  revalidatePath("/track-order")
-  revalidatePath("/products")
-  revalidatePath("/")
+  const res = await createOrder({
+    ...data,
+    userId: targetUserId || undefined,
+  })
+
+  if (res.success) {
+    try {
+      revalidatePath("/admin/orders")
+      revalidatePath("/seller/orders")
+      revalidatePath("/dashboard")
+      revalidatePath("/dashboard/purchase-history")
+      revalidatePath("/dashboard/wallet")
+      revalidatePath("/purchase-history")
+      revalidatePath("/purchase_history")
+      revalidatePath("/track-order")
+      revalidatePath("/products")
+      revalidatePath("/")
+    } catch {}
+  }
+
   return res
+}
+
+export async function trackOrderByCodeAction(codeOrTracking: string) {
+  const cleanCode = (codeOrTracking || "").trim()
+  if (!cleanCode) return { success: false, notFound: true }
+
+  try {
+    const { getOrderByCode } = await import("@/services/order-service")
+    const order = await getOrderByCode(cleanCode)
+    if (!order) {
+      return { success: false, notFound: true }
+    }
+
+    return {
+      success: true,
+      order: {
+        code: order.code,
+        trackingCode: order.trackingCode,
+        date: order.date ? new Date(order.date).getTime() : Date.now(),
+        delivery_status: order.status || "pending",
+        payment_type: order.paymentMethod === "cash_on_delivery" ? "Cash on Delivery" : order.paymentMethod,
+        payment_status: order.paymentStatus || "unpaid",
+        shipping_type: "Home Delivery",
+        carrier: "Steadfast Courier",
+        shipping_address: {
+          name: order.customerName,
+          address: order.shippingAddress,
+          phone: order.customerPhone,
+        },
+        grand_total: Number(order.total || 0),
+        items: (order.items || []).map((i: any) => ({
+          name: i.name || "Product Item",
+          quantity: i.quantity || 1,
+          price: Number(i.price || 0),
+        })),
+      },
+    }
+  } catch (err) {
+    console.error("trackOrderByCodeAction error:", err)
+    return { success: false, notFound: true }
+  }
 }
 
 // Product Creation Action (100% Laravel Faithful Product and Variant Matrix Insertion)

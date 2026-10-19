@@ -26,11 +26,13 @@ export async function toggleWishlistAction(productId: number) {
     return { success: false, requireLogin: true }
   }
   const result = await toggleWishlistProduct(userId, productId)
-  revalidatePath("/dashboard")
-  revalidatePath("/dashboard/wishlist")
-  revalidatePath("/wishlist")
-  revalidatePath("/wishlists")
-  revalidatePath("/products")
+  try {
+    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/wishlist")
+    revalidatePath("/wishlist")
+    revalidatePath("/wishlists")
+    revalidatePath("/products")
+  } catch {}
   return { success: true, added: result.added }
 }
 
@@ -41,9 +43,11 @@ export async function removeFromWishlistAction(wishlistId: number, productId?: n
   }
   const targetId = wishlistId > 0 ? wishlistId : (productId || 0)
   const result = await removeFromWishlist(userId, targetId)
-  revalidatePath("/dashboard")
-  revalidatePath("/dashboard/wishlist")
-  revalidatePath("/wishlist")
-  revalidatePath("/wishlists")
+  try {
+    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/wishlist")
+    revalidatePath("/wishlist")
+    revalidatePath("/wishlists")
+  } catch {}
   return { success: result }
 }

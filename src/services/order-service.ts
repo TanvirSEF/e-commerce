@@ -1,5 +1,5 @@
 import { db } from "../db"
-import { orders, orderItems, products, reviews } from "../db/schema"
+import { orders, orderItems, products, reviews, users, wallets } from "../db/schema"
 import { eq, or, desc, and, sql, inArray } from "drizzle-orm"
 
 export interface CreateOrderInput {
@@ -59,6 +59,34 @@ export async function createOrder(data: CreateOrderInput) {
   const cDiscount = Number(data.couponDiscount ?? data.coupon_discount ?? 0)
   const isPaid = pType === "wallet" || pType === "paid"
 
+  // 1. Wallet Payment Pre-validation
+  if (pType === "wallet") {
+    if (!data.userId) {
+      return {
+        success: false,
+        error: "Please log in to your account to pay using your active wallet balance.",
+      }
+    }
+
+    try {
+      const [u] = await db
+        .select({ balance: users.balance })
+        .from(users)
+        .where(eq(users.id, data.userId))
+        .limit(1)
+
+      const curBal = Number(u?.balance || 0)
+      if (curBal < total) {
+        return {
+          success: false,
+          error: `Insufficient wallet balance. Order total is ৳${total.toFixed(2)}, but your wallet balance is ৳${curBal.toFixed(2)}. Please recharge your wallet or choose another payment method.`,
+        }
+      }
+    } catch (e: any) {
+      return { success: false, error: "Failed to verify wallet balance: " + (e?.message || e) }
+    }
+  }
+
   try {
     const [newOrder] = await db
       .insert(orders)
@@ -75,6 +103,33 @@ export async function createOrder(data: CreateOrderInput) {
         couponDiscount: cDiscount.toFixed(2),
       })
       .returning()
+
+    // 2. If Wallet Payment, debit user's balance and record ledger transaction
+    if (pType === "wallet" && data.userId) {
+      const [u] = await db
+        .select({ balance: users.balance })
+        .from(users)
+        .where(eq(users.id, data.userId))
+        .limit(1)
+
+      const curBal = Number(u?.balance || 0)
+      const nextBal = Math.max(0, curBal - total).toFixed(2)
+
+      await db
+        .update(users)
+        .set({ balance: nextBal, updatedAt: new Date() })
+        .where(eq(users.id, data.userId))
+
+      await db.insert(wallets).values({
+        userId: data.userId,
+        amount: (-total).toFixed(2),
+        paymentMethod: `Order Payment (#${code})`,
+        paymentDetails: `Debited for order #${code}`,
+        approval: true,
+        offlinePayment: false,
+        addedBy: "user",
+      })
+    }
 
     if (data.items.length > 0) {
       await db.insert(orderItems).values(

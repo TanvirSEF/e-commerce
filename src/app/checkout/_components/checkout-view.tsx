@@ -170,6 +170,11 @@ export function CheckoutView({
       }
 
       const res = await placeOrderAction(orderPayload)
+      if (res && res.success === false) {
+        alert(res.error || "Failed to place order. Please check your payment details and try again.")
+        setIsSubmitting(false)
+        return
+      }
       const orderCode = res?.order?.code || `20260926-${Math.floor(100000 + Math.random() * 900000)}`
 
       const orderData = {
