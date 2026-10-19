@@ -261,10 +261,21 @@ export async function updateDeliveryCancelRequestStatus(
   if (status === "approved" && req.orderCode) {
     try {
       const { orders } = await import("@/db/schema/orders")
+      const [ord] = await db
+        .select({ id: orders.id })
+        .from(orders)
+        .where(eq(orders.code, req.orderCode))
+        .limit(1)
+
       await db
         .update(orders)
         .set({ deliveryStatus: "cancelled" })
         .where(eq(orders.code, req.orderCode))
+
+      if (ord?.id) {
+        const { handleOrderCancellation } = await import("./order-service")
+        await handleOrderCancellation(ord.id)
+      }
     } catch (e) {
       console.warn("Notice: Order status update skipped:", e)
     }

@@ -260,13 +260,18 @@ export async function updateOrderStatusAction(data: {
 }) {
   const { updateOrderStatusAdmin } = await import("@/services/order-service")
   const res = await updateOrderStatusAdmin(data)
-  revalidatePath("/admin/orders")
-  revalidatePath("/seller/orders")
-  revalidatePath("/dashboard")
-  revalidatePath("/purchase-history")
-  revalidatePath("/purchase_history")
-  revalidatePath("/track-order")
-  revalidatePath("/track-your-order")
+  try {
+    revalidatePath("/admin/orders")
+    revalidatePath("/seller/orders")
+    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/wallet")
+    revalidatePath("/dashboard/club-points")
+    revalidatePath("/wallet")
+    revalidatePath("/purchase-history")
+    revalidatePath("/purchase_history")
+    revalidatePath("/track-order")
+    revalidatePath("/track-your-order")
+  } catch {}
   return res
 }
 
@@ -280,10 +285,15 @@ export async function submitReviewAction(data: {
 }) {
   const { submitReview } = await import("@/services/review-service")
   const res = await submitReview(data)
-  revalidatePath("/admin/products/reviews")
-  revalidatePath("/seller/product-reviews")
-  revalidatePath("/products")
-  revalidatePath("/")
+  try {
+    revalidatePath("/admin/products/reviews")
+    revalidatePath("/seller/product-reviews")
+    revalidatePath("/products")
+    revalidatePath("/dashboard")
+    revalidatePath("/purchase-history")
+    revalidatePath("/purchase_history")
+    revalidatePath("/")
+  } catch {}
   return res
 }
 
@@ -2208,47 +2218,55 @@ export async function createProductAction(data: {
 
   const { createProduct } = await import("@/services/product-service")
   const res = await createProduct(data)
-  revalidatePath("/admin/products")
-  revalidatePath("/seller/products")
-  revalidatePath("/products")
-  revalidatePath("/")
-  revalidatePath("/todays-deal")
-  revalidatePath("/featured-products")
+  try {
+    revalidatePath("/admin/products")
+    revalidatePath("/seller/products")
+    revalidatePath("/products")
+    revalidatePath("/")
+    revalidatePath("/todays-deal")
+    revalidatePath("/featured-products")
+  } catch {}
   return res
 }
 
 export async function deleteProductAction(id: number | string) {
   const { deleteProduct } = await import("@/services/product-service")
   const success = await deleteProduct(id)
-  revalidatePath("/admin/products")
-  revalidatePath("/seller/products")
-  revalidatePath("/products")
-  revalidatePath("/")
-  revalidatePath("/todays-deal")
-  revalidatePath("/featured-products")
+  try {
+    revalidatePath("/admin/products")
+    revalidatePath("/seller/products")
+    revalidatePath("/products")
+    revalidatePath("/")
+    revalidatePath("/todays-deal")
+    revalidatePath("/featured-products")
+  } catch {}
   return { success }
 }
 
 export async function toggleProductPublishedAction(id: number | string, published: boolean) {
   const { toggleProductPublished } = await import("@/services/product-service")
   const success = await toggleProductPublished(id, published)
-  revalidatePath("/admin/products")
-  revalidatePath("/seller/products")
-  revalidatePath("/products")
-  revalidatePath("/")
-  revalidatePath("/todays-deal")
-  revalidatePath("/featured-products")
+  try {
+    revalidatePath("/admin/products")
+    revalidatePath("/seller/products")
+    revalidatePath("/products")
+    revalidatePath("/")
+    revalidatePath("/todays-deal")
+    revalidatePath("/featured-products")
+  } catch {}
   return { success }
 }
 
 export async function toggleProductFeaturedAction(id: number | string, featured: boolean) {
   const { toggleProductFeatured } = await import("@/services/product-service")
   const success = await toggleProductFeatured(id, featured)
-  revalidatePath("/admin/products")
-  revalidatePath("/seller/products")
-  revalidatePath("/products")
-  revalidatePath("/")
-  revalidatePath("/featured-products")
+  try {
+    revalidatePath("/admin/products")
+    revalidatePath("/seller/products")
+    revalidatePath("/products")
+    revalidatePath("/")
+    revalidatePath("/featured-products")
+  } catch {}
   return { success }
 }
 
@@ -3444,18 +3462,30 @@ export async function updateSellerOrderStatusAction(data: {
       } catch (err) {
         console.error("Failed to auto-award club points on seller delivery:", err)
       }
-      revalidatePath("/dashboard/club-points")
-      revalidatePath("/dashboard/wallet")
     }
 
-    revalidatePath("/seller/orders")
-    revalidatePath(`/seller/orders/${data.orderId}`)
-    revalidatePath("/admin/orders")
-    revalidatePath("/dashboard")
-    revalidatePath("/purchase-history")
-    revalidatePath("/purchase_history")
-    revalidatePath("/track-order")
-    revalidatePath("/track-your-order")
+    if (data.deliveryStatus === "cancelled") {
+      try {
+        const { handleOrderCancellation } = await import("@/services/order-service")
+        await handleOrderCancellation(data.orderId)
+      } catch (err) {
+        console.error("Failed to handle order cancellation on seller update:", err)
+      }
+    }
+
+    try {
+      revalidatePath("/seller/orders")
+      revalidatePath(`/seller/orders/${data.orderId}`)
+      revalidatePath("/admin/orders")
+      revalidatePath("/dashboard")
+      revalidatePath("/dashboard/club-points")
+      revalidatePath("/dashboard/wallet")
+      revalidatePath("/wallet")
+      revalidatePath("/purchase-history")
+      revalidatePath("/purchase_history")
+      revalidatePath("/track-order")
+      revalidatePath("/track-your-order")
+    } catch {}
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to update order status" }
@@ -3473,11 +3503,16 @@ export async function sellerUpdateRefundRequestStatusAction(data: {
   try {
     const { processRefundAdmin } = await import("@/services/refund-service")
     const res = await processRefundAdmin(data)
-    revalidatePath("/seller/refund-requests")
-    revalidatePath("/seller/refund-request")
-    revalidatePath("/admin/refund-requests")
-    revalidatePath("/dashboard/refund-requests")
-    revalidatePath("/sent-refund-request")
+    try {
+      revalidatePath("/seller/refund-requests")
+      revalidatePath("/seller/refund-request")
+      revalidatePath("/admin/refund-requests")
+      revalidatePath("/dashboard/refund-requests")
+      revalidatePath("/dashboard/wallet")
+      revalidatePath("/wallet")
+      revalidatePath("/dashboard")
+      revalidatePath("/sent-refund-request")
+    } catch {}
     return res
   } catch (err: any) {
     return { success: false, error: err?.message || "Failed to update refund request" }

@@ -220,6 +220,12 @@ export async function updateOrderQuickManagement(
   data: { deliveryStatus: string; paymentStatus: string }
 ): Promise<boolean> {
   try {
+    const [currentOrder] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1)
+
     await db
       .update(orders)
       .set({
@@ -228,6 +234,11 @@ export async function updateOrderQuickManagement(
         updatedAt: new Date(),
       })
       .where(eq(orders.id, orderId))
+
+    if (data.deliveryStatus === "cancelled" && currentOrder?.deliveryStatus !== "cancelled") {
+      const { handleOrderCancellation } = await import("./order-service")
+      await handleOrderCancellation(orderId, currentOrder)
+    }
 
     return true
   } catch (error) {

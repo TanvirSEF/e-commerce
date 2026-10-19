@@ -30,19 +30,22 @@ export async function updateOrderQuickManagementAction(
       } catch (err) {
         console.error("Failed to auto-award club points on delivery:", err)
       }
-      revalidatePath("/dashboard/club-points")
-      revalidatePath("/dashboard/wallet")
     }
 
-    revalidatePath("/admin/orders")
-    revalidatePath("/admin/orders/offline-payments")
-    revalidatePath("/admin/offline-payment-orders")
-    revalidatePath("/seller/orders")
-    revalidatePath("/dashboard")
-    revalidatePath("/purchase-history")
-    revalidatePath("/purchase_history")
-    revalidatePath("/track-order")
-    revalidatePath("/track-your-order")
+    try {
+      revalidatePath("/dashboard/club-points")
+      revalidatePath("/dashboard/wallet")
+      revalidatePath("/wallet")
+      revalidatePath("/admin/orders")
+      revalidatePath("/admin/orders/offline-payments")
+      revalidatePath("/admin/offline-payment-orders")
+      revalidatePath("/seller/orders")
+      revalidatePath("/dashboard")
+      revalidatePath("/purchase-history")
+      revalidatePath("/purchase_history")
+      revalidatePath("/track-order")
+      revalidatePath("/track-your-order")
+    } catch {}
   }
   return success
 }
@@ -50,15 +53,17 @@ export async function updateOrderQuickManagementAction(
 export async function approveOfflinePaymentAction(orderId: number): Promise<boolean> {
   const success = await approveOfflinePayment(orderId)
   if (success) {
-    revalidatePath("/admin/orders")
-    revalidatePath("/admin/orders/offline-payments")
-    revalidatePath("/admin/offline-payment-orders")
-    revalidatePath("/seller/orders")
-    revalidatePath("/dashboard")
-    revalidatePath("/purchase-history")
-    revalidatePath("/purchase_history")
-    revalidatePath("/track-order")
-    revalidatePath("/track-your-order")
+    try {
+      revalidatePath("/admin/orders")
+      revalidatePath("/admin/orders/offline-payments")
+      revalidatePath("/admin/offline-payment-orders")
+      revalidatePath("/seller/orders")
+      revalidatePath("/dashboard")
+      revalidatePath("/purchase-history")
+      revalidatePath("/purchase_history")
+      revalidatePath("/track-order")
+      revalidatePath("/track-your-order")
+    } catch {}
   }
   return success
 }
@@ -66,13 +71,15 @@ export async function approveOfflinePaymentAction(orderId: number): Promise<bool
 export async function deleteAdminOrderAction(orderId: number): Promise<boolean> {
   const success = await deleteAdminOrder(orderId)
   if (success) {
-    revalidatePath("/admin/orders")
-    revalidatePath("/admin/orders/offline-payments")
-    revalidatePath("/admin/offline-payment-orders")
-    revalidatePath("/seller/orders")
-    revalidatePath("/dashboard")
-    revalidatePath("/purchase-history")
-    revalidatePath("/purchase_history")
+    try {
+      revalidatePath("/admin/orders")
+      revalidatePath("/admin/orders/offline-payments")
+      revalidatePath("/admin/offline-payment-orders")
+      revalidatePath("/seller/orders")
+      revalidatePath("/dashboard")
+      revalidatePath("/purchase-history")
+      revalidatePath("/purchase_history")
+    } catch {}
   }
   return success
 }
@@ -80,13 +87,15 @@ export async function deleteAdminOrderAction(orderId: number): Promise<boolean> 
 export async function bulkDeleteAdminOrdersAction(orderIds: number[]): Promise<boolean> {
   const success = await bulkDeleteAdminOrders(orderIds)
   if (success) {
-    revalidatePath("/admin/orders")
-    revalidatePath("/admin/orders/offline-payments")
-    revalidatePath("/admin/offline-payment-orders")
-    revalidatePath("/seller/orders")
-    revalidatePath("/dashboard")
-    revalidatePath("/purchase-history")
-    revalidatePath("/purchase_history")
+    try {
+      revalidatePath("/admin/orders")
+      revalidatePath("/admin/orders/offline-payments")
+      revalidatePath("/admin/offline-payment-orders")
+      revalidatePath("/seller/orders")
+      revalidatePath("/dashboard")
+      revalidatePath("/purchase-history")
+      revalidatePath("/purchase_history")
+    } catch {}
   }
   return success
 }

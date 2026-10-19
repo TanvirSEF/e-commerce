@@ -359,7 +359,28 @@ export async function cancelCustomerOrder(
       })
       .where(eq(orders.id, orderId))
 
-    // Restock items
+    await handleOrderCancellation(orderId, order)
+
+    return { success: true, message: "Order has been canceled successfully." }
+  } catch (err) {
+    console.error("cancelCustomerOrder error:", err)
+    return { success: false, message: "Failed to cancel order. Please try again." }
+  }
+}
+
+/**
+ * Handles unified order cancellation across Admin, Seller, and Customer panels:
+ * 1. Restocks inventory into products.currentStock and adjusts numOfSale
+ * 2. If paid via wallet, refunds amount to users.balance and creates a wallet ledger row
+ */
+export async function handleOrderCancellation(orderId: number, existingOrder?: any) {
+  try {
+    const order =
+      existingOrder ||
+      (await db.select().from(orders).where(eq(orders.id, orderId)).limit(1))[0]
+    if (!order) return
+
+    // 1. Restock items back to product inventory and adjust sales count
     const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId))
     const { sql } = await import("drizzle-orm")
     for (const item of items) {
@@ -368,15 +389,59 @@ export async function cancelCustomerOrder(
           .update(products)
           .set({
             currentStock: sql`COALESCE(${products.currentStock}, 0) + ${item.quantity}`,
+            numOfSale: sql`GREATEST(0, COALESCE(${products.numOfSale}, 0) - ${item.quantity})`,
+            updatedAt: new Date(),
           })
           .where(eq(products.id, item.productId))
+          .catch((e) => console.warn("Restock item error:", e))
       }
     }
 
-    return { success: true, message: "Order has been canceled successfully." }
+    // 2. If order was paid via wallet, refund the user's wallet
+    if (
+      order.userId &&
+      (order.paymentType === "wallet" || order.paymentStatus === "paid") &&
+      Number(order.grandTotal) > 0
+    ) {
+      const refundAmt = Number(order.grandTotal)
+      const [existingRefund] = await db
+        .select({ id: wallets.id })
+        .from(wallets)
+        .where(
+          and(
+            eq(wallets.userId, order.userId),
+            eq(wallets.paymentMethod, "Refund"),
+            sql`${wallets.paymentDetails} ILIKE ${`%Order #${order.code}%`}`
+          )
+        )
+        .limit(1)
+
+      if (!existingRefund) {
+        await db
+          .update(users)
+          .set({
+            balance: sql`COALESCE(${users.balance}, 0) + ${refundAmt}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, order.userId))
+          .catch((e) => console.warn("Balance refund error:", e))
+
+        await db
+          .insert(wallets)
+          .values({
+            userId: order.userId,
+            amount: refundAmt.toFixed(2),
+            paymentMethod: "Refund",
+            paymentDetails: `Order #${order.code} cancelled - refunded to wallet`,
+            approval: true,
+            offlinePayment: false,
+            addedBy: "system",
+          })
+          .catch((e) => console.warn("Wallet ledger insert error:", e))
+      }
+    }
   } catch (err) {
-    console.error("cancelCustomerOrder error:", err)
-    return { success: false, message: "Failed to cancel order. Please try again." }
+    console.error("handleOrderCancellation error:", err)
   }
 }
 
@@ -748,13 +813,35 @@ export async function updateOrderStatusAdmin(data: {
 }) {
   try {
     const numericId = parseInt(data.orderId.replace(/\D/g, "")) || 1
-    const updateObj: Record<string, any> = {}
+    const updateObj: Record<string, any> = { updatedAt: new Date() }
     if (data.deliveryStatus) updateObj.deliveryStatus = data.deliveryStatus
     if (data.paymentStatus) updateObj.paymentStatus = data.paymentStatus
     if (data.shippingMethod) updateObj.shippingMethod = data.shippingMethod
     if (data.courierTrackingCode) updateObj.courierTrackingCode = data.courierTrackingCode
 
+    const [currentOrder] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, numericId))
+      .limit(1)
+
     await db.update(orders).set(updateObj).where(eq(orders.id, numericId))
+
+    // 1. If transitioning to delivered, award club points
+    if (data.deliveryStatus === "delivered" && currentOrder?.deliveryStatus !== "delivered") {
+      try {
+        const { awardOrderClubPoints } = await import("./wallet-service")
+        await awardOrderClubPoints(numericId)
+      } catch (ptsErr) {
+        console.error("Failed to auto-award club points on admin order update:", ptsErr)
+      }
+    }
+
+    // 2. If transitioning to cancelled, restock inventory and refund wallet
+    if (data.deliveryStatus === "cancelled" && currentOrder?.deliveryStatus !== "cancelled") {
+      await handleOrderCancellation(numericId, currentOrder)
+    }
+
     return { success: true }
   } catch (err) {
     console.warn("DB updateOrderStatusAdmin error, mocked success:", (err as Error).message)

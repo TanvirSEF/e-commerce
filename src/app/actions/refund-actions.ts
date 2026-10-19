@@ -17,7 +17,15 @@ export async function approveRefundAction(data: {
     adminNote: data.adminNote?.trim() || "Approved and refunded to customer wallet.",
   })
 
-  revalidatePath("/admin/refund-requests")
+  try {
+    revalidatePath("/admin/refund-requests")
+    revalidatePath("/seller/refund-requests")
+    revalidatePath("/seller/refund-request")
+    revalidatePath("/dashboard/wallet")
+    revalidatePath("/wallet")
+    revalidatePath("/dashboard")
+    revalidatePath("/sent-refund-request")
+  } catch {}
   return result
 }
 
@@ -35,13 +43,21 @@ export async function rejectRefundAction(data: {
     adminNote: fullNote,
   })
 
-  revalidatePath("/admin/refund-requests")
+  try {
+    revalidatePath("/admin/refund-requests")
+    revalidatePath("/seller/refund-requests")
+    revalidatePath("/seller/refund-request")
+    revalidatePath("/sent-refund-request")
+  } catch {}
   return result
 }
 
 export async function deleteRefundAction(requestId: string | number) {
   const result = await deleteRefundAdmin(requestId)
-  revalidatePath("/admin/refund-requests")
+  try {
+    revalidatePath("/admin/refund-requests")
+    revalidatePath("/seller/refund-requests")
+  } catch {}
   return result
 }
 
@@ -59,6 +75,12 @@ export async function createRefundRequestAction(data: {
   attachment?: string
 }) {
   const result = await createRefundRequest(data)
-  revalidatePath("/admin/refund-requests")
+  try {
+    revalidatePath("/admin/refund-requests")
+    revalidatePath("/seller/refund-requests")
+    revalidatePath("/seller/refund-request")
+    revalidatePath("/sent-refund-request")
+    revalidatePath("/dashboard")
+  } catch {}
   return result
 }
