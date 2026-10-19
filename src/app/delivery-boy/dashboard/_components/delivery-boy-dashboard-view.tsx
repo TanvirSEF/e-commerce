@@ -3,42 +3,48 @@
 import React, { useState } from "react"
 import { Truck, CheckCircle2, Clock, DollarSign, Package, MapPin, Phone, AlertCircle } from "lucide-react"
 import type { DeliveryBoy } from "@/db/schema/delivery-boy"
+import type { DeliveryBoyOrderItem } from "@/services/delivery-boy-service"
+import { confirmDeliveryDropAction } from "@/app/actions/ecommerce-actions"
 
 interface DeliveryBoyDashboardViewProps {
   driver: DeliveryBoy
+  initialDeliveries?: DeliveryBoyOrderItem[]
 }
 
-export function DeliveryBoyDashboardView({ driver }: DeliveryBoyDashboardViewProps) {
+export function DeliveryBoyDashboardView({
+  driver,
+  initialDeliveries = [],
+}: DeliveryBoyDashboardViewProps) {
   const [activeTab, setActiveTab] = useState<"assigned" | "completed">("assigned")
+  const [deliveries, setDeliveries] = useState<DeliveryBoyOrderItem[]>(initialDeliveries)
   const [confirmedCode, setConfirmedCode] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [cashCollected, setCashCollected] = useState(parseFloat(driver.totalCollection || "0"))
 
-  const handleConfirmDrop = (code: string) => {
-    setConfirmedCode(code)
-    setTimeout(() => setConfirmedCode(null), 3000)
+  const handleConfirmDrop = async (order: DeliveryBoyOrderItem) => {
+    setIsSubmitting(true)
+    try {
+      const res = await confirmDeliveryDropAction({
+        orderId: order.id,
+        deliveryBoyId: driver.id,
+        collectedAmount: parseFloat(order.amount),
+        paymentType: order.paymentType,
+      })
+
+      if (res && res.success) {
+        setConfirmedCode(order.code)
+        setDeliveries((prev) => prev.filter((d) => d.id !== order.id))
+        if (order.paymentType.includes("Cash")) {
+          setCashCollected((prev) => prev + parseFloat(order.amount))
+        }
+        setTimeout(() => setConfirmedCode(null), 3500)
+      }
+    } catch (err) {
+      console.error("Failed to confirm delivery drop:", err)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
-
-  const mockDeliveries = [
-    {
-      id: 1,
-      code: "ORD-202609-1082",
-      customer: "Farhan Ahmed",
-      phone: "+880 1712-345678",
-      address: "House 42, Road 11, Sector 4, Uttara, Dhaka",
-      amount: "185.00",
-      paymentType: "Cash on Delivery",
-      status: "assigned",
-    },
-    {
-      id: 2,
-      code: "ORD-202609-1089",
-      customer: "Nusrat Jahan",
-      phone: "+880 1819-998877",
-      address: "Flat 5B, Green Valley Apts, Mirpur DOHS, Dhaka",
-      amount: "95.00",
-      paymentType: "Paid Online",
-      status: "assigned",
-    },
-  ]
 
   return (
     <div className="bg-slate-100 min-h-screen pb-16">
@@ -58,7 +64,7 @@ export function DeliveryBoyDashboardView({ driver }: DeliveryBoyDashboardViewPro
           </div>
           <div className="text-right">
             <span className="text-[10px] text-slate-400 block uppercase">Cash in Hand</span>
-            <span className="font-bold text-amber-400 text-sm">${driver.totalCollection}</span>
+            <span className="font-bold text-amber-400 text-sm">${cashCollected.toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -68,7 +74,7 @@ export function DeliveryBoyDashboardView({ driver }: DeliveryBoyDashboardViewPro
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-1">
             <span className="text-xs text-slate-500 font-medium">Pending Drops</span>
-            <div className="text-2xl font-black text-slate-900">{mockDeliveries.length}</div>
+            <div className="text-2xl font-black text-slate-900">{deliveries.length}</div>
             <span className="text-[11px] text-blue-600 font-medium">Ready for dispatch</span>
           </div>
 
@@ -87,7 +93,7 @@ export function DeliveryBoyDashboardView({ driver }: DeliveryBoyDashboardViewPro
               activeTab === "assigned" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
             }`}
           >
-            Assigned Drops ({mockDeliveries.length})
+            Assigned Drops ({deliveries.length})
           </button>
           <button
             onClick={() => setActiveTab("completed")}
@@ -101,41 +107,50 @@ export function DeliveryBoyDashboardView({ driver }: DeliveryBoyDashboardViewPro
 
         {/* Deliveries List */}
         <div className="space-y-3">
-          {mockDeliveries.map((d) => (
-            <div key={d.id} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span className="font-mono text-xs font-bold text-slate-900">{d.code}</span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                  {d.paymentType}
-                </span>
-              </div>
-
-              <div className="space-y-1 text-xs text-slate-600">
-                <div className="font-bold text-slate-900 text-sm">{d.customer}</div>
-                <div className="flex items-center gap-1.5 text-slate-500">
-                  <Phone className="w-3.5 h-3.5 text-[#d43533]" />
-                  <a href={`tel:${d.phone}`} className="text-blue-600 font-semibold">{d.phone}</a>
-                </div>
-                <div className="flex items-start gap-1.5 text-slate-500 pt-0.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                  <span>{d.address}</span>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-400 block">Collect from Customer</span>
-                  <span className="text-base font-black text-slate-900">${d.amount}</span>
-                </div>
-                <button
-                  onClick={() => handleConfirmDrop(d.code)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 shadow-sm"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Confirm Drop
-                </button>
-              </div>
+          {deliveries.length === 0 ? (
+            <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm text-center space-y-2">
+              <Package className="w-8 h-8 text-slate-400 mx-auto" />
+              <p className="text-xs text-slate-600 font-semibold">No pending drops assigned</p>
+              <p className="text-[11px] text-slate-400">All parcels on your shift have been delivered or none are pending.</p>
             </div>
-          ))}
+          ) : (
+            deliveries.map((d) => (
+              <div key={d.id} className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <span className="font-mono text-xs font-bold text-slate-900">{d.code}</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                    {d.paymentType}
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-xs text-slate-600">
+                  <div className="font-bold text-slate-900 text-sm">{d.customer}</div>
+                  <div className="flex items-center gap-1.5 text-slate-500">
+                    <Phone className="w-3.5 h-3.5 text-[#d43533]" />
+                    <a href={`tel:${d.phone}`} className="text-blue-600 font-semibold">{d.phone}</a>
+                  </div>
+                  <div className="flex items-start gap-1.5 text-slate-500 pt-0.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <span>{d.address}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Collect from Customer</span>
+                    <span className="text-base font-black text-slate-900">${d.amount}</span>
+                  </div>
+                  <button
+                    disabled={isSubmitting}
+                    onClick={() => handleConfirmDrop(d)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Confirm Drop
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

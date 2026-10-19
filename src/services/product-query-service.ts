@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { productQueries } from "../db/schema"
-import { eq, desc, and, sql } from "drizzle-orm"
+import { eq, desc, and, or, sql } from "drizzle-orm"
 
 export interface ProductQueryItem {
   id: number
@@ -116,11 +116,15 @@ export async function getQueryById(id: number): Promise<ProductQueryItem | null>
 }
 
 export async function replyProductQuery(data: {
-  id: number
+  id?: number
+  queryId?: number
   reply: string
   repliedBy?: string
-}): Promise<boolean> {
+}): Promise<{ success: boolean }> {
   try {
+    const targetId = data.id ?? data.queryId
+    if (!targetId) return { success: false }
+
     await db
       .update(productQueries)
       .set({
@@ -129,12 +133,12 @@ export async function replyProductQuery(data: {
         status: "approved",
         updatedAt: new Date(),
       })
-      .where(eq(productQueries.id, data.id))
+      .where(eq(productQueries.id, targetId))
 
-    return true
+    return { success: true }
   } catch (err) {
     console.error("Error in replyProductQuery:", err)
-    return false
+    return { success: false }
   }
 }
 
@@ -148,12 +152,62 @@ export async function deleteProductQuery(id: number): Promise<boolean> {
   }
 }
 
-export async function getQueriesForProduct(productSlug: string): Promise<ProductQueryItem[]> {
+export async function getQueriesForProduct(
+  productSlugOrId: string | number,
+  productIdOrUserId?: number | string,
+  maybeUserId?: string
+): Promise<ProductQueryItem[]> {
   try {
+    let slug: string | undefined
+    let pId: number | undefined
+    let uId: string | undefined
+
+    if (typeof productSlugOrId === "number") {
+      pId = productSlugOrId
+      if (typeof productIdOrUserId === "string") {
+        uId = productIdOrUserId
+      }
+    } else {
+      slug = productSlugOrId
+      if (typeof productIdOrUserId === "number") {
+        pId = productIdOrUserId
+        uId = maybeUserId
+      } else if (typeof productIdOrUserId === "string") {
+        uId = productIdOrUserId
+      }
+    }
+
+    const conditions = []
+
+    if (pId && !isNaN(pId) && slug) {
+      conditions.push(or(eq(productQueries.productSlug, slug), eq(productQueries.productId, pId)))
+    } else if (pId && !isNaN(pId)) {
+      conditions.push(eq(productQueries.productId, pId))
+    } else if (slug) {
+      conditions.push(eq(productQueries.productSlug, slug))
+    }
+
+    if (uId) {
+      conditions.push(
+        or(
+          eq(productQueries.status, "approved"),
+          sql`${productQueries.reply} IS NOT NULL`,
+          eq(productQueries.userId, uId)
+        )
+      )
+    } else {
+      conditions.push(
+        or(
+          eq(productQueries.status, "approved"),
+          sql`${productQueries.reply} IS NOT NULL`
+        )
+      )
+    }
+
     const rows = await db
       .select()
       .from(productQueries)
-      .where(and(eq(productQueries.productSlug, productSlug), eq(productQueries.status, "approved")))
+      .where(and(...conditions))
       .orderBy(desc(productQueries.id))
 
     return rows.map((r) => ({
@@ -166,7 +220,7 @@ export async function getQueriesForProduct(productSlug: string): Promise<Product
       question: r.question,
       reply: r.reply || undefined,
       repliedBy: r.repliedBy || undefined,
-      status: "approved",
+      status: (r.status as "pending" | "approved" | "rejected") || "pending",
       date: r.createdAt ? r.createdAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
       createdAt: r.createdAt || new Date(),
     }))
@@ -177,18 +231,39 @@ export async function getQueriesForProduct(productSlug: string): Promise<Product
 }
 
 export async function askProductQuestion(data: {
-  productSlug: string
-  productName: string
+  productSlug?: string
+  productName?: string
   userName: string
   question: string
   userId?: string
+  productId?: number
 }) {
   try {
+    let productName = data.productName
+    let productSlug = data.productSlug
+
+    if ((!productName || !productSlug) && data.productId) {
+      const { products } = await import("../db/schema")
+      const [prod] = await db
+        .select({ name: products.name, slug: products.slug })
+        .from(products)
+        .where(eq(products.id, data.productId))
+        .limit(1)
+      if (prod) {
+        productName = productName || prod.name
+        productSlug = productSlug || prod.slug
+      }
+    }
+
+    productName = productName || "Product"
+    productSlug = productSlug || "product"
+
     const [row] = await db
       .insert(productQueries)
       .values({
-        productSlug: data.productSlug,
-        productName: data.productName,
+        productId: data.productId,
+        productSlug,
+        productName,
         userName: data.userName,
         question: data.question,
         userId: data.userId,
@@ -196,7 +271,7 @@ export async function askProductQuestion(data: {
       })
       .returning()
 
-    return { success: true, item: row }
+    return { success: true, item: row, id: row.id }
   } catch (err) {
     console.error("askProductQuestion error:", (err as Error).message)
     return { success: false }

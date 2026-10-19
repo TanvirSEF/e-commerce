@@ -350,3 +350,139 @@ export async function updateDeliveryBoyConfig(data: {
 
   return { success: true }
 }
+
+export interface DeliveryBoyOrderItem {
+  id: number
+  code: string
+  trackingCode: string
+  customer: string
+  phone: string
+  address: string
+  amount: string
+  paymentType: string
+  paymentStatus: string
+  deliveryStatus: string
+  date: string
+}
+
+export async function getDeliveryBoyAssignedOrders(
+  deliveryBoyId?: number,
+  status: "assigned" | "completed" = "assigned"
+): Promise<DeliveryBoyOrderItem[]> {
+  try {
+    const { orders } = await import("@/db/schema/orders")
+    const { users } = await import("@/db/schema/auth")
+    const { eq, desc, or } = await import("drizzle-orm")
+
+    const condition =
+      status === "completed"
+        ? eq(orders.deliveryStatus, "delivered")
+        : or(
+            eq(orders.deliveryStatus, "on_delivery"),
+            eq(orders.deliveryStatus, "pending"),
+            eq(orders.deliveryStatus, "confirmed"),
+            eq(orders.deliveryStatus, "on_the_way")
+          )
+
+    const rows = await db
+      .select({
+        id: orders.id,
+        code: orders.code,
+        trackingCode: orders.trackingCode,
+        shippingAddress: orders.shippingAddress,
+        grandTotal: orders.grandTotal,
+        paymentType: orders.paymentType,
+        paymentStatus: orders.paymentStatus,
+        deliveryStatus: orders.deliveryStatus,
+        createdAt: orders.createdAt,
+        userName: users.name,
+        userPhone: users.phone,
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.userId, users.id))
+      .where(condition)
+      .orderBy(desc(orders.createdAt))
+      .limit(20)
+
+    return rows.map((r) => {
+      const addr = r.shippingAddress || {}
+      return {
+        id: r.id,
+        code: r.code,
+        trackingCode: r.trackingCode,
+        customer: addr.name || r.userName || "Customer",
+        phone: addr.phone || r.userPhone || "+880 1700-000000",
+        address: [addr.address, addr.city, addr.country].filter(Boolean).join(", ") || "Dhaka, Bangladesh",
+        amount: Number(r.grandTotal || 0).toFixed(2),
+        paymentType: r.paymentType === "cash_on_delivery" ? "Cash on Delivery" : "Paid Online",
+        paymentStatus: r.paymentStatus,
+        deliveryStatus: r.deliveryStatus,
+        date: r.createdAt ? r.createdAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      }
+    })
+  } catch (err) {
+    console.error("getDeliveryBoyAssignedOrders error:", err)
+    return []
+  }
+}
+
+export async function confirmOrderDeliveryDrop(data: {
+  orderId: number
+  deliveryBoyId: number
+  collectedAmount?: number
+  paymentType?: string
+}): Promise<{ success: boolean; message?: string }> {
+  try {
+    const { orders } = await import("@/db/schema/orders")
+    const { awardOrderClubPoints } = await import("@/services/wallet-service")
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, data.orderId))
+      .limit(1)
+
+    if (!order) return { success: false, message: "Order not found" }
+
+    await db
+      .update(orders)
+      .set({
+        deliveryStatus: "delivered",
+        ...(order.paymentType === "cash_on_delivery" ? { paymentStatus: "paid" } : {}),
+        deliveryViewed: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, data.orderId))
+
+    const amountToCollect = data.collectedAmount || Number(order.grandTotal) || 0
+    if (order.paymentType === "cash_on_delivery" && amountToCollect > 0) {
+      const boy = await getDeliveryBoyById(data.deliveryBoyId)
+      await db.insert(deliveryCollections).values({
+        deliveryBoyId: data.deliveryBoyId,
+        deliveryBoyName: boy?.name || "Delivery Courier",
+        orderCode: order.code,
+        amount: amountToCollect.toFixed(2),
+        collectionDate: new Date(),
+      })
+
+      if (boy) {
+        const newCollection = (Number(boy.totalCollection || 0) + amountToCollect).toFixed(2)
+        const newEarnings = (Number(boy.totalEarnings || 0) + 50).toFixed(2)
+        await db
+          .update(deliveryBoys)
+          .set({
+            totalCollection: newCollection,
+            totalEarnings: newEarnings,
+            currentPendingDeliveries: Math.max(0, (boy.currentPendingDeliveries || 1) - 1),
+          })
+          .where(eq(deliveryBoys.id, data.deliveryBoyId))
+      }
+    }
+
+    await awardOrderClubPoints(order.id)
+    return { success: true }
+  } catch (err: any) {
+    console.error("confirmOrderDeliveryDrop error:", err)
+    return { success: false, message: err?.message }
+  }
+}

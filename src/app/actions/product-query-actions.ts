@@ -11,12 +11,14 @@ export async function replyProductQueryAction(data: {
   reply: string
   repliedBy?: string
 }): Promise<boolean> {
-  const success = await replyProductQuery(data)
-  if (success) {
-    revalidatePath("/admin/product-queries")
-    revalidatePath(`/admin/product-queries/${data.id}`)
+  const res = await replyProductQuery(data)
+  if (res.success) {
+    try {
+      revalidatePath("/admin/product-queries")
+      revalidatePath(`/admin/product-queries/${data.id}`)
+    } catch {}
   }
-  return success
+  return res.success
 }
 
 export async function deleteProductQueryAction(id: number): Promise<boolean> {

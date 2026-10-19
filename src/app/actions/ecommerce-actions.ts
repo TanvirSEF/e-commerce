@@ -31,32 +31,44 @@ export async function createFlashDealAction(data: {
   endDate: number
 }) {
   const res = await createFlashDeal(data)
-  revalidatePath("/admin/flash-deals")
-  revalidatePath("/")
+  try {
+    revalidatePath("/admin/flash-deals")
+    revalidatePath("/flash-deals")
+    revalidatePath("/")
+  } catch {}
   return res
 }
 
 export async function deleteFlashDealAction(id: number | string) {
   const { deleteFlashDeal } = await import("@/services/settings-service")
   const success = await deleteFlashDeal(id)
-  revalidatePath("/admin/flash-deals")
-  revalidatePath("/")
+  try {
+    revalidatePath("/admin/flash-deals")
+    revalidatePath("/flash-deals")
+    revalidatePath("/")
+  } catch {}
   return { success }
 }
 
 export async function toggleFlashDealStatusAction(id: number | string, status: boolean) {
   const { toggleFlashDealStatus } = await import("@/services/settings-service")
   const success = await toggleFlashDealStatus(id, status)
-  revalidatePath("/admin/flash-deals")
-  revalidatePath("/")
+  try {
+    revalidatePath("/admin/flash-deals")
+    revalidatePath("/flash-deals")
+    revalidatePath("/")
+  } catch {}
   return { success }
 }
 
 export async function toggleFlashDealFeaturedAction(id: number | string, featured: boolean) {
   const { toggleFlashDealFeatured } = await import("@/services/settings-service")
   const success = await toggleFlashDealFeatured(id, featured)
-  revalidatePath("/admin/flash-deals")
-  revalidatePath("/")
+  try {
+    revalidatePath("/admin/flash-deals")
+    revalidatePath("/flash-deals")
+    revalidatePath("/")
+  } catch {}
   return { success }
 }
 
@@ -75,8 +87,11 @@ export async function rechargeWalletAction(data: {
     ...data,
     userId: session.user.id,
   })
-  revalidatePath("/dashboard/wallet")
-  revalidatePath("/dashboard")
+  try {
+    revalidatePath("/dashboard/wallet")
+    revalidatePath("/dashboard")
+    revalidatePath("/admin/wallet-recharges")
+  } catch {}
   return res
 }
 
@@ -487,18 +502,47 @@ export async function askProductQuestionAction(data: {
   userName: string
   question: string
   userId?: string
+  productId?: number
 }) {
+  const { getServerSession } = await import("@/lib/auth/session-helper")
+  const session = await getServerSession()
+  const userId = data.userId || session?.user?.id
+  const userName = data.userName || session?.user?.name || "Customer"
+
   const { askProductQuestion } = await import("@/services/product-query-service")
-  return await askProductQuestion(data)
+  const res = await askProductQuestion({
+    ...data,
+    userId,
+    userName,
+  })
+
+  try {
+    revalidatePath(`/product/${data.productSlug}`)
+    revalidatePath("/admin/product-queries")
+    revalidatePath("/seller/product-queries")
+  } catch {}
+
+  return res
 }
 
 export async function replyProductQueryAction(data: {
   id: number
   reply: string
-  repliedBy: string
+  repliedBy?: string
+  productSlug?: string
 }) {
   const { replyProductQuery } = await import("@/services/product-query-service")
-  return await replyProductQuery(data)
+  const res = await replyProductQuery(data)
+
+  try {
+    revalidatePath("/admin/product-queries")
+    revalidatePath("/seller/product-queries")
+    if (data.productSlug) {
+      revalidatePath(`/product/${data.productSlug}`)
+    }
+  } catch {}
+
+  return res
 }
 
 export async function deleteProductQueryAction(id: number) {
@@ -581,7 +625,7 @@ export async function updateCustomerProfileAction(data: {
       targetUserId = session?.user?.id
     }
     if (!targetUserId) {
-      targetUserId = "usr_seller_default_01"
+      return { success: false, message: "Unauthenticated: User session required to update profile." }
     }
 
     const { db } = await import("@/db")
@@ -609,11 +653,13 @@ export async function updateCustomerProfileAction(data: {
       } catch {}
     }
 
-    revalidatePath("/dashboard/profile")
-    revalidatePath("/dashboard")
-    revalidatePath("/seller/profile")
-    revalidatePath("/seller/dashboard")
-    revalidatePath("/seller", "layout")
+    try {
+      revalidatePath("/dashboard/profile")
+      revalidatePath("/dashboard")
+      revalidatePath("/seller/profile")
+      revalidatePath("/seller/dashboard")
+      revalidatePath("/seller", "layout")
+    } catch {}
     return { success: true, message: "Profile updated successfully", avatar: data.avatar, name: data.name }
   } catch (err: any) {
     return { success: false, message: err?.message || "Failed to update profile" }
@@ -3441,6 +3487,26 @@ export async function startConversationAction(data: {
     revalidatePath("/dashboard/conversations")
     revalidatePath("/seller/conversations")
   } catch {}
+  return res
+}
+
+export async function confirmDeliveryDropAction(data: {
+  orderId: number
+  deliveryBoyId: number
+  collectedAmount?: number
+  paymentType?: string
+}) {
+  const { confirmOrderDeliveryDrop } = await import("@/services/delivery-boy-service")
+  const res = await confirmOrderDeliveryDrop(data)
+
+  try {
+    revalidatePath("/delivery-boy/dashboard")
+    revalidatePath("/admin/orders")
+    revalidatePath("/seller/orders")
+    revalidatePath("/dashboard/purchase-history")
+    revalidatePath("/dashboard")
+  } catch {}
+
   return res
 }
 

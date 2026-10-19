@@ -3,6 +3,7 @@ import { Metadata } from "next"
 import { headers } from "next/headers"
 import { auth } from "@/lib/auth/auth"
 import { getCustomerProductsByUser } from "@/services/customer-product-service"
+import { getCustomerPackageQuota } from "@/services/customer-package-service"
 import { CustomerProductsListView } from "./_components/customer-products-list-view"
 
 export const metadata: Metadata = {
@@ -24,7 +25,11 @@ export default async function CustomerDashboardProductsPage() {
     // fallback
   }
 
-  const products = await getCustomerProductsByUser(currentUserId)
+  const [products, quota] = await Promise.all([
+    getCustomerProductsByUser(currentUserId),
+    getCustomerPackageQuota(currentUserId),
+  ])
 
-  return <CustomerProductsListView initialProducts={products} />
+  return <CustomerProductsListView initialProducts={products} quota={quota} />
 }
+

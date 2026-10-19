@@ -1,6 +1,6 @@
 import { db } from "../db"
 import { wallets, clubPoints, users, orders } from "../db/schema"
-import { eq, desc, ilike, or, and, count } from "drizzle-orm"
+import { eq, desc, ilike, or, and, count, sql } from "drizzle-orm"
 import {
   SEED_WALLET_TRANSACTIONS,
   SeedWalletTransaction,
@@ -137,13 +137,30 @@ export async function awardOrderClubPoints(orderId: number): Promise<boolean> {
     const totalAmount = Number(order.grandTotal) || 0
     const pointsToAward = Math.max(5, Math.floor(totalAmount / 50))
 
-    await db.insert(clubPoints).values({
-      userId: order.userId,
-      orderId: order.id,
-      points: pointsToAward,
-      converted: false,
-      createdAt: new Date(),
-    })
+    try {
+      await db.insert(clubPoints).values({
+        userId: order.userId,
+        orderId: order.id,
+        points: pointsToAward,
+        converted: false,
+        createdAt: new Date(),
+      })
+    } catch (insertErr: any) {
+      if (insertErr?.code === "23505") {
+        await db.execute(
+          sql`SELECT setval(pg_get_serial_sequence('club_points', 'id'), COALESCE(max(id), 1)) FROM club_points;`
+        )
+        await db.insert(clubPoints).values({
+          userId: order.userId,
+          orderId: order.id,
+          points: pointsToAward,
+          converted: false,
+          createdAt: new Date(),
+        })
+      } else {
+        throw insertErr
+      }
+    }
 
     return true
   } catch (err) {

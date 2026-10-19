@@ -10,12 +10,14 @@ import {
   deleteCustomerProductAction,
 } from "@/app/actions/customer-product-actions"
 import type { ClassifiedProductItem } from "@/services/customer-product-service"
+import type { CustomerPackageQuota } from "@/services/customer-package-service"
 
 interface CustomerProductsListViewProps {
   initialProducts?: ClassifiedProductItem[]
+  quota?: CustomerPackageQuota
 }
 
-export function CustomerProductsListView({ initialProducts = [] }: CustomerProductsListViewProps) {
+export function CustomerProductsListView({ initialProducts = [], quota }: CustomerProductsListViewProps) {
   const [products, setProducts] = useState<ClassifiedProductItem[]>(initialProducts ?? [])
   const [productToDelete, setProductToDelete] = useState<ClassifiedProductItem | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -77,7 +79,7 @@ export function CustomerProductsListView({ initialProducts = [] }: CustomerProdu
             </g>
           </svg>
           <div className="text-xs text-gray-300">Remaining Uploads</div>
-          <div className="text-2xl sm:text-3xl font-bold mt-1">10</div>
+          <div className="text-2xl sm:text-3xl font-bold mt-1">{quota?.remainingUploads ?? 5}</div>
         </div>
 
         {/* Card 2: Add New Product */}
@@ -96,7 +98,9 @@ export function CustomerProductsListView({ initialProducts = [] }: CustomerProdu
           <div className="w-10 h-10 rounded-full bg-blue-50 text-[#3490f3] flex items-center justify-center mb-2">
             <Package className="w-5 h-5" />
           </div>
-          <div className="text-xs font-semibold text-gray-800">Current Package: Free Package</div>
+          <div className="text-xs font-semibold text-gray-800">
+            Current Package: {quota?.packageName || "Free Package"}
+          </div>
           <Link
             href="/dashboard/customer-packages"
             className="text-xs font-bold text-[#3490f3] hover:text-[#d43533] mt-1.5 inline-flex items-center gap-0.5 transition-colors"

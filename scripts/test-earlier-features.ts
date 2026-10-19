@@ -155,11 +155,11 @@ async function runEarlierFeaturesSuite() {
         shopLogo: "/assets/img/placeholder.jpg",
         status: "active",
       };
-      const packageOverview = await getSellerPackageOverview(sampleSeller);
+      const packageOverview: any = await getSellerPackageOverview(sampleSeller as any);
       report(
         "6. Seller Package Upload Quota Engine",
         !!packageOverview && Array.isArray(packageOverview.plans),
-        `Loaded ${packageOverview?.plans?.length || 0} seller plans, current plan: ${packageOverview?.current?.packageName || "Standard"}`
+        `Loaded ${packageOverview?.plans?.length || 0} seller plans, current plan: ${packageOverview?.current?.packageName || packageOverview?.current?.name || "Standard"}`
       );
     } catch (e: any) {
       report("6. Seller Package Upload Quota Engine", false, e.message);
@@ -179,12 +179,12 @@ async function runEarlierFeaturesSuite() {
 
     // 8. Currency & Language Multi-Locale Engine
     try {
-      const currencies = await getCurrencySettings();
+      const currencies: any = await getCurrencySettings();
       const languages = await getAllLanguages();
       report(
         "8. Currency & Multi-Language Engine",
         !!currencies && Array.isArray(languages),
-        `System Currency: ${currencies?.systemCurrencyCode || "BDT"}, Active Languages: ${languages.length}`
+        `System Currency: ${currencies?.systemCurrencyCode || currencies?.systemDefaultCurrency?.code || "BDT"}, Active Languages: ${languages.length}`
       );
     } catch (e: any) {
       report("8. Currency & Multi-Language Engine", false, e.message);

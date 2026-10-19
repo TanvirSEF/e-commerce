@@ -4,9 +4,13 @@ import React, { useState } from "react"
 import { HelpCircle, MessageSquare, Send, CheckCircle, X } from "lucide-react"
 import { askProductQuestionAction } from "@/app/actions/ecommerce-actions"
 
+import type { ProductQueryItem } from "@/services/product-query-service"
+
 interface ProductQATabProps {
   productSlug: string
   productName: string
+  productId?: number | string
+  initialQueries?: ProductQueryItem[]
 }
 
 interface QuestionItem {
@@ -16,6 +20,7 @@ interface QuestionItem {
   reply?: string
   repliedBy?: string
   date: string
+  status?: string
 }
 
 const DEFAULT_FAQS: QuestionItem[] = [
@@ -37,8 +42,25 @@ const DEFAULT_FAQS: QuestionItem[] = [
   },
 ]
 
-export function ProductQATab({ productSlug, productName }: ProductQATabProps) {
-  const [qaList, setQaList] = useState<QuestionItem[]>(DEFAULT_FAQS)
+export function ProductQATab({
+  productSlug,
+  productName,
+  productId,
+  initialQueries = [],
+}: ProductQATabProps) {
+  const formattedInitial = (initialQueries && initialQueries.length > 0)
+    ? initialQueries.map((q) => ({
+        id: String(q.id),
+        userName: q.userName || "Customer",
+        question: q.question,
+        reply: q.reply,
+        repliedBy: q.repliedBy,
+        date: q.date || "Recently",
+        status: q.status,
+      }))
+    : DEFAULT_FAQS
+
+  const [qaList, setQaList] = useState<QuestionItem[]>(formattedInitial)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [userName, setUserName] = useState("")
   const [question, setQuestion] = useState("")
@@ -51,7 +73,9 @@ export function ProductQATab({ productSlug, productName }: ProductQATabProps) {
 
     setIsSubmitting(true)
     try {
+      const numId = typeof productId === "number" ? productId : parseInt(String(productId || "").replace(/\D/g, "")) || undefined
       await askProductQuestionAction({
+        productId: numId,
         productSlug,
         productName,
         userName: userName.trim() || "Customer",

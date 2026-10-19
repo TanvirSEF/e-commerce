@@ -20,6 +20,7 @@ interface ProductTabsProps {
   }[]
   rating: number
   reviewCount: number
+  queries?: any[]
 }
 
 export function ProductTabs({
@@ -31,6 +32,7 @@ export function ProductTabs({
   reviews = [],
   rating,
   reviewCount,
+  queries = [],
 }: ProductTabsProps) {
   const [activeTab, setActiveTab] = useState<"description" | "specs" | "reviews" | "qa">("description")
   const [reviewList, setReviewList] = useState(reviews)
@@ -344,7 +346,12 @@ export function ProductTabs({
 
         {/* Questions & Answers Tab */}
         {activeTab === "qa" && (
-          <ProductQATab productSlug={productSlug} productName={productName} />
+          <ProductQATab
+            productSlug={productSlug}
+            productName={productName}
+            productId={productId}
+            initialQueries={queries}
+          />
         )}
       </div>
     </div>

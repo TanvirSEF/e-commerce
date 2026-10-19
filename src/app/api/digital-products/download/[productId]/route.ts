@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
   }
 
   // 1. Resolve session user
-  let userId = "usr_customer_default_01"
+  let userId: string | null = null
   let userName = "Valued Customer"
   let userEmail = "customer@example.com"
 
@@ -32,6 +32,12 @@ export async function GET(req: NextRequest, { params }: RouteProps) {
     }
   } catch {
     // fallback
+  }
+
+  if (!userId) {
+    return new NextResponse("Unauthorized: Please log in to download this digital product.", {
+      status: 401,
+    })
   }
 
   // 2. Verify paid purchase in PostgreSQL

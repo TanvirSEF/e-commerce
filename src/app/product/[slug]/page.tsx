@@ -15,6 +15,8 @@ import { getProductReviews } from "@/services/review-service"
 import { getWholesaleTiersForProduct } from "@/services/wholesale-service"
 import { getCustomProductVisitorsSettings, getSmartBarSettings } from "@/services/settings-service"
 import { getFrequentlyBoughtProducts } from "@/services/frequently-bought-service"
+import { getQueriesForProduct } from "@/services/product-query-service"
+import { getServerSession } from "@/lib/auth/session-helper"
 
 export const dynamic = "force-dynamic"
 
@@ -213,12 +215,14 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
       ? product.id
       : parseInt(String(product.id).replace(/\D/g, "")) || 1
 
-  const [wholesaleTiers, visitorsConfig, frequentlyBought, smartBarSettings, dbReviews] = await Promise.all([
+  const session = await getServerSession()
+  const [wholesaleTiers, visitorsConfig, frequentlyBought, smartBarSettings, dbReviews, dbQueries] = await Promise.all([
     getWholesaleTiersForProduct(product.id),
     getCustomProductVisitorsSettings(),
     getFrequentlyBoughtProducts(numericProductId),
     getSmartBarSettings(),
     getProductReviews(String(numericProductId)),
+    getQueriesForProduct(product.slug, numericProductId, session?.user?.id),
   ])
 
   const mappedDbReviews = (dbReviews || []).map((r) => ({
@@ -282,7 +286,7 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
           </div>
         </div>
 
-        {/* Tabs: Description, Specs, Reviews */}
+        {/* Tabs: Description, Specs, Reviews, Q&A */}
         <ProductTabs
           productId={product.id}
           productSlug={product.slug}
@@ -292,6 +296,7 @@ export default async function ProductDetailsPage({ params }: ProductPageProps) {
           reviews={productWithWholesale.reviews}
           rating={productWithWholesale.rating}
           reviewCount={productWithWholesale.reviewCount}
+          queries={dbQueries}
         />
 
         {/* Frequently Bought Together (Active eCommerce CMS 1:1) */}
