@@ -135,7 +135,7 @@ export async function awardOrderClubPoints(orderId: number): Promise<boolean> {
     // Check if club points system is enabled
     const { getClubPointsSettings } = await import("./settings-service")
     const cpSettings = await getClubPointsSettings().catch(() => null)
-    if (cpSettings && !cpSettings.enabled) {
+    if (cpSettings?.enabled === false) {
       return false
     }
 
@@ -197,7 +197,7 @@ export async function convertClubPoints(
 
   const { getClubPointsSettings } = await import("./settings-service")
   const cpSettings = await getClubPointsSettings().catch(() => null)
-  if (cpSettings && !cpSettings.enabled) {
+  if (cpSettings?.enabled === false) {
     return { success: false, creditedAmount: 0, error: "Club points reward redemption is currently disabled." }
   }
 
