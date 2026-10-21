@@ -2892,7 +2892,7 @@ export interface InMemoryUser {
   }
 }
 
-export const inMemoryUsers: InMemoryUser[] = [
+const inMemoryUsers: InMemoryUser[] = [
   {
     id: "usr_admin_default",
     name: "Administrator",

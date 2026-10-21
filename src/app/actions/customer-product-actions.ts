@@ -62,5 +62,7 @@ export async function deleteCustomerProductAction(
   }
 }
 
-export const deleteClassifiedProductAction = deleteCustomerProductAction
+export async function deleteClassifiedProductAction(productId: number) {
+  return deleteCustomerProductAction(productId)
+}
 
