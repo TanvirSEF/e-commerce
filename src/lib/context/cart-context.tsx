@@ -45,6 +45,7 @@ export interface AppliedCoupon {
 interface CartContextType {
   items: CartItem[]
   isOpen: boolean
+  isHydrated: boolean
   openCart: () => void
   closeCart: () => void
   toggleCart: () => void
@@ -73,69 +74,49 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
-const INITIAL_ITEMS: CartItem[] = [
-  {
-    id: "item-1",
-    productId: "prod-1",
-    name: "Classic Men's Casual Shirt - Slim Fit Cotton",
-    slug: "classic-mens-casual-shirt",
-    thumbnail: "/assets/img/placeholder.jpg",
-    price: 1250,
-    quantity: 1,
-    variation: "Blue / L",
-    selected: true,
-    sellerName: "Inhouse Products",
-    tax: 0,
-    shippingCost: 60,
-  },
-  {
-    id: "item-2",
-    productId: "prod-2",
-    name: "Wireless Noise-Cancelling Bluetooth Over-Ear Headphones",
-    slug: "wireless-noise-cancelling-headphones",
-    thumbnail: "/assets/img/placeholder.jpg",
-    price: 3450,
-    quantity: 1,
-    variation: "Matte Black",
-    selected: true,
-    sellerName: "Inhouse Products",
-    tax: 0,
-    shippingCost: 60,
-  },
-]
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(INITIAL_ITEMS)
+  const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null)
   const isInitialized = React.useRef(false)
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem("active_ecom_cart")
-      if (stored) {
+      if (stored !== null) {
         const parsed = JSON.parse(stored)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const sanitized = parsed.map((item: CartItem) => ({
+        if (Array.isArray(parsed)) {
+          // Filter out legacy dummy demo items if they were saved in the user's browser
+          const cleaned = parsed.filter(
+            (item: CartItem) => item.id !== "item-1" && item.id !== "item-2"
+          )
+          const sanitized = cleaned.map((item: CartItem) => ({
             ...item,
             selected: item.selected !== undefined ? item.selected : true,
             sellerName: item.sellerName || "Inhouse Products",
             tax: item.tax || 0,
             shippingCost: item.shippingCost || 60,
           }))
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setItems(sanitized)
+          localStorage.setItem("active_ecom_cart", JSON.stringify(sanitized))
         }
       }
     } catch {
       // ignore
+    } finally {
+      isInitialized.current = true
+      setIsHydrated(true)
     }
-    isInitialized.current = true
   }, [])
 
   useEffect(() => {
     if (isInitialized.current) {
-      localStorage.setItem("active_ecom_cart", JSON.stringify(items))
+      try {
+        localStorage.setItem("active_ecom_cart", JSON.stringify(items))
+      } catch {
+        // ignore
+      }
     }
   }, [items])
 
@@ -186,7 +167,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id))
+    setItems((prev) => {
+      const next = prev.filter((i) => i.id !== id)
+      try {
+        localStorage.setItem("active_ecom_cart", JSON.stringify(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
   }
 
   const updateQuantity = (id: string, delta: number) => {
@@ -252,6 +241,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = () => {
     setItems([])
     setAppliedCoupon(null)
+    try {
+      localStorage.setItem("active_ecom_cart", JSON.stringify([]))
+    } catch {
+      // ignore
+    }
   }
 
   const applyCoupon = async (code: string) => {
@@ -330,6 +324,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       value={{
         items,
         isOpen,
+        isHydrated,
         openCart,
         closeCart,
         toggleCart,
