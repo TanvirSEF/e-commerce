@@ -66,7 +66,7 @@ export async function getAdminOrdersList(
     } else if (params.tab === "seller") {
       conditions.push(`(p.added_by = 'seller' OR (p.shop_id IS NOT NULL AND p.shop_id != 3))`)
     } else if (params.tab === "pickup_point") {
-      conditions.push(`(o.shipping_type = 'pickup_point' OR o.shipping_method = 'pickup_point')`)
+      conditions.push(`o.shipping_method = 'pickup_point'`)
     }
 
     if (params.search && params.search.trim()) {
