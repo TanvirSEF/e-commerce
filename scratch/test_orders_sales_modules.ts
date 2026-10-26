@@ -394,8 +394,8 @@ async function runTestSuite() {
           productName: "Classic Men's Casual Shirt",
           price: 1250,
           quantity: 1,
-          variation: "Blue / L",
-          total: 1250,
+          variant: "Blue / L",
+          lineTotal: 1250,
         },
       ],
     })

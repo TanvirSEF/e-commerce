@@ -520,7 +520,7 @@ async function runTestSuite() {
     )
 
     // 11.2 Admin Search Candidate Products for Campaigns
-    const searchPromo = await searchProductsForPromotional("shirt", 5)
+    const searchPromo = await searchProductsForPromotional({ searchKey: "shirt" })
     assert(
       11,
       "promotional-product-service",
