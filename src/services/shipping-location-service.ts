@@ -176,6 +176,9 @@ async function ensureShippingAreasTable() {
         "updated_at" timestamp NOT NULL DEFAULT now()
       );
     `)
+    try {
+      await db.execute(sql`ALTER TABLE "shipping_areas" ADD COLUMN IF NOT EXISTS "city" varchar(255) NOT NULL DEFAULT 'Dhaka';`)
+    } catch {}
     areasTableInitialized = true
   } catch (err) {
     console.warn("ensureShippingAreasTable error:", err)
